@@ -1919,7 +1919,14 @@ export function TransactionSheet({
                 : `No categories matching "${searchCatQuery}"`}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div
+              className="grid grid-cols-3 gap-2 pr-0.5"
+              onTouchMove={() => {
+                if (document.activeElement instanceof HTMLElement) {
+                  document.activeElement.blur();
+                }
+              }}
+            >
               {filteredMoreCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
                 return (
@@ -2051,7 +2058,14 @@ export function TransactionSheet({
                 : `No accounts matching "${searchWalletQuery}"`}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div
+              className="grid grid-cols-3 gap-2 pr-0.5"
+              onTouchMove={() => {
+                if (document.activeElement instanceof HTMLElement) {
+                  document.activeElement.blur();
+                }
+              }}
+            >
               {filteredMoreWallets.map((w) => {
                 const isSelected =
                   (walletTarget === "from" ? walletId : toWalletId) === w.id;

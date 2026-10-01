@@ -26,6 +26,39 @@ export function BottomSheet({
   const dragControls = useDragControls();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [lockedMinHeight, setLockedMinHeight] = useState<number | undefined>(undefined);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
+  /**
+   * Track virtual keyboard visibility & mobile viewport changes via window.visualViewport.
+   * On iOS Safari & mobile Chrome, when the virtual keyboard opens, visualViewport.height drops.
+   * This anchors the sheet securely above the keyboard so search inputs and results remain visible.
+   */
+  useEffect(() => {
+    if (!isOpen || typeof window === "undefined" || !window.visualViewport) {
+      setKeyboardOffset(0);
+      setViewportHeight(null);
+      return;
+    }
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const offset = window.innerHeight - (vv.height + vv.offsetTop);
+      const isKeyboardActive = offset > 80;
+      setKeyboardOffset(isKeyboardActive ? Math.max(0, Math.round(offset)) : 0);
+      setViewportHeight(Math.round(vv.height));
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportChange);
+    window.visualViewport.addEventListener("scroll", handleViewportChange);
+    handleViewportChange();
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+    };
+  }, [isOpen]);
 
   /**
    * Keep track of the maximum height the sheet achieves while open.
@@ -106,6 +139,22 @@ export function BottomSheet({
     }
   };
 
+  /**
+   * Automatically scroll focused input/textarea into view inside the sheet
+   * when mobile software keyboard opens.
+   */
+  useEffect(() => {
+    if (!isOpen || keyboardOffset === 0) return;
+
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
+      const timer = setTimeout(() => {
+        activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, keyboardOffset]);
+
   if (typeof document === "undefined") {
     return null;
   }
@@ -169,16 +218,32 @@ export function BottomSheet({
 
               borderRadius: "28px 28px 0 0",
 
+              bottom: `${keyboardOffset}px`,
+
               minHeight: lockedMinHeight
-                ? `${Math.min(lockedMinHeight, typeof window !== "undefined" ? window.innerHeight * 0.92 : 800)}px`
+                ? `${Math.min(
+                    lockedMinHeight,
+                    keyboardOffset > 0 && viewportHeight
+                      ? Math.round(viewportHeight * 0.85)
+                      : typeof window !== "undefined"
+                        ? window.innerHeight * 0.92
+                        : 800,
+                  )}px`
                 : undefined,
 
               /*
                * Important:
                * Keep the height constraint on the sheet itself,
                * while allowing the inner scroll area to shrink.
+               * When software keyboard opens, clamp against the visual viewport.
                */
-              maxHeight: "92dvh",
+              maxHeight:
+                keyboardOffset > 0 && viewportHeight
+                  ? `${Math.round(viewportHeight * 0.94)}px`
+                  : "92dvh",
+
+              transition:
+                "bottom 0.22s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
 
               /*
                * Prevent browser from trying to repaint the entire
@@ -217,7 +282,7 @@ export function BottomSheet({
                 ease: [0.22, 1, 0.36, 1],
               },
             }}
-            drag="y"
+            drag={keyboardOffset > 0 ? false : "y"}
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{
@@ -396,7 +461,10 @@ export function BottomSheet({
               <div
                 className="min-h-full"
                 style={{
-                  paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
+                  paddingBottom:
+                    keyboardOffset > 0
+                      ? "16px"
+                      : "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
                 }}
               >
                 {children}

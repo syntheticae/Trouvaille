@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useDeferredValue } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Inbox } from "lucide-react";
 import {
   format,
@@ -112,7 +113,20 @@ export function TransactionsPage({
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchScope, setSearchScope] = useState<"current" | "all">("current");
   const deferredSearch = useDeferredValue(search);
+
+  const handleSearchChange = useCallback((val: string) => {
+    setSearch(val);
+    if (!val) {
+      setSearchScope("current");
+    }
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearch("");
+    setSearchScope("current");
+  }, []);
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedWalletName, setSelectedWalletName] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -349,9 +363,12 @@ export function TransactionsPage({
     return txs;
   }, [visibleTxs, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
 
-  // Filter & Search transactions within the active timeframe
+  // Filter & Search transactions within the active timeframe (or all time if searchScope === 'all')
   const filteredTxs = useMemo(() => {
-    let txs = scopedTxs;
+    let txs =
+      searchScope === "all" && deferredSearch.trim()
+        ? visibleTxs.filter((t) => !!t.occurred_on)
+        : scopedTxs;
 
     if (filter === "income") {
       txs = txs.filter((t) => t.type === "income" && !isTxCorrection(t));
@@ -420,6 +437,8 @@ export function TransactionsPage({
     return txs;
   }, [
     scopedTxs,
+    visibleTxs,
+    searchScope,
     filter,
     selectedWalletName,
     selectedCategoryIds,
@@ -429,6 +448,71 @@ export function TransactionsPage({
     resolveWalletNames,
     categories,
   ]);
+
+  // Count matching transactions across all time when search query is active
+  const allTimeMatchCount = useMemo(() => {
+    const q = deferredSearch.toLowerCase().trim();
+    if (!q) return 0;
+    const digitsOnly = q.replace(/[^0-9]/g, "");
+
+    return visibleTxs.filter((t) => {
+      if (!t.occurred_on) return false;
+      const { from, to } = resolveWalletNames(t);
+      const catName =
+        t.categories?.name ||
+        categories.find((c) => c.id === t.category_id)?.name ||
+        "";
+      const formattedAmount = formatRupiah(
+        Number(t.amount || 0),
+      ).toLowerCase();
+      const amountStr = String(t.amount || "");
+
+      const matchesText =
+        (t.note && t.note.toLowerCase().includes(q)) ||
+        catName.toLowerCase().includes(q) ||
+        from.toLowerCase().includes(q) ||
+        to.toLowerCase().includes(q);
+
+      const matchesAmount =
+        (digitsOnly.length > 0 && amountStr.includes(digitsOnly)) ||
+        formattedAmount.includes(q) ||
+        amountStr.includes(q);
+
+      return matchesText || matchesAmount;
+    }).length;
+  }, [deferredSearch, visibleTxs, resolveWalletNames, categories]);
+
+  // Count matching transactions in the currently active period
+  const currentPeriodMatchCount = useMemo(() => {
+    const q = deferredSearch.toLowerCase().trim();
+    if (!q) return 0;
+    const digitsOnly = q.replace(/[^0-9]/g, "");
+
+    return scopedTxs.filter((t) => {
+      const { from, to } = resolveWalletNames(t);
+      const catName =
+        t.categories?.name ||
+        categories.find((c) => c.id === t.category_id)?.name ||
+        "";
+      const formattedAmount = formatRupiah(
+        Number(t.amount || 0),
+      ).toLowerCase();
+      const amountStr = String(t.amount || "");
+
+      const matchesText =
+        (t.note && t.note.toLowerCase().includes(q)) ||
+        catName.toLowerCase().includes(q) ||
+        from.toLowerCase().includes(q) ||
+        to.toLowerCase().includes(q);
+
+      const matchesAmount =
+        (digitsOnly.length > 0 && amountStr.includes(digitsOnly)) ||
+        formattedAmount.includes(q) ||
+        amountStr.includes(q);
+
+      return matchesText || matchesAmount;
+    }).length;
+  }, [deferredSearch, scopedTxs, resolveWalletNames, categories]);
 
   const filteredTxsByDay = useMemo(() => {
     const dayMap = new Map<string, Transaction[]>();
@@ -691,6 +775,7 @@ export function TransactionsPage({
     setCustomStartDate("");
     setCustomEndDate("");
     setSearch("");
+    setSearchScope("current");
     triggerHaptic("medium");
   }, []);
 
@@ -718,82 +803,119 @@ export function TransactionsPage({
       />
 
       {/* ====== HEADER & FILTERS ====== */}
-      <div className="px-5 pt-5 pb-3">
-        <TransactionHorizonBarChart
-          filter={filter}
-          selectedMonthLabel={selectedMonthLabel}
-          totalPeriodAmount={totalPeriodAmount}
-          dynamicChartData={dynamicChartData}
-          maxBar={maxBar}
-          isStealthMode={isStealthMode}
-          toggleStealthMode={toggleStealthMode}
-          onOpenMonthPicker={() => setMonthPickerOpen(true)}
-          draftCount={draftCount}
-          allDraftItems={allDraftItems}
-          onOpenBatchReview={onOpenBatchReview}
-          clearAllDrafts={clearAllDrafts}
-          activeSpaceId={activeSpaceId}
-          activeSpaceName={activeSpace.name}
-          visibleTxsCount={visibleTxs.length}
-          onResetActiveSpace={() => setActiveSpaceId("all")}
-          shouldRenderHeavy={shouldRenderHeavy}
-          isDark={isDark}
-          isIndonesian={isIndonesian}
-        />
+      <div className="px-5 pt-3 pb-3">
+        <AnimatePresence initial={false}>
+          {!isSearchFocused && !search.trim() && (
+            <motion.div
+              key="horizon-chart-container"
+              initial={{ opacity: 1, height: "auto" }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden mb-2"
+            >
+              <TransactionHorizonBarChart
+                filter={filter}
+                selectedMonthLabel={selectedMonthLabel}
+                totalPeriodAmount={totalPeriodAmount}
+                dynamicChartData={dynamicChartData}
+                maxBar={maxBar}
+                isStealthMode={isStealthMode}
+                toggleStealthMode={toggleStealthMode}
+                onOpenMonthPicker={() => setMonthPickerOpen(true)}
+                draftCount={draftCount}
+                allDraftItems={allDraftItems}
+                onOpenBatchReview={onOpenBatchReview}
+                clearAllDrafts={clearAllDrafts}
+                activeSpaceId={activeSpaceId}
+                activeSpaceName={activeSpace.name}
+                visibleTxsCount={visibleTxs.length}
+                onResetActiveSpace={() => setActiveSpaceId("all")}
+                shouldRenderHeavy={shouldRenderHeavy}
+                isDark={isDark}
+                isIndonesian={isIndonesian}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <TransactionFilterBar
-          search={search}
-          onSearchChange={setSearch}
-          isSearchFocused={isSearchFocused}
-          onFocusSearch={() => setIsSearchFocused(true)}
-          onBlurSearch={() => setIsSearchFocused(false)}
-          onClearSearch={() => setSearch("")}
-          filter={filter}
-          onFilterChange={setFilter}
-          filterTabs={filterTabs}
-          activeFiltersCount={activeFiltersCount}
-          onOpenFilterSheet={() => setFilterSheetOpen(true)}
-          isSelectMode={isSelectMode}
-          onToggleSelectMode={() => {
-            if (isSelectMode) {
-              handleExitSelectMode();
-            } else {
-              setIsSelectMode(true);
-            }
-          }}
-          timeRange={timeRange}
-          selectedMonthLabel={selectedMonthLabel}
-          onResetTimeRange={() => {
-            setTimeRange("this_month");
-            setCustomStartDate("");
-            setCustomEndDate("");
-            triggerHaptic("light");
-          }}
-          selectedWalletName={selectedWalletName}
-          onResetWallet={() => {
-            setSelectedWalletName(null);
-            triggerHaptic("light");
-          }}
-          selectedCategoryIds={selectedCategoryIds}
-          categories={categories}
-          onRemoveCategory={(cid) => {
-            setSelectedCategoryIds((prev) => prev.filter((id) => id !== cid));
-            triggerHaptic("light");
-          }}
-          minAmount={minAmount}
-          maxAmount={maxAmount}
-          onResetAmount={() => {
-            setMinAmount("");
-            setMaxAmount("");
-            triggerHaptic("light");
-          }}
-          onResetAllFilters={handleResetAllFilters}
-          isIndonesian={isIndonesian}
-        />
+        <div
+          className={`transition-all duration-200 ${
+            isSearchFocused || search.trim()
+              ? "sticky top-0 z-30 pt-2 pb-1 bg-[var(--bg-base)]/90 backdrop-blur-xl"
+              : ""
+          }`}
+        >
+          <TransactionFilterBar
+            search={search}
+            onSearchChange={handleSearchChange}
+            isSearchFocused={isSearchFocused}
+            onFocusSearch={() => setIsSearchFocused(true)}
+            onBlurSearch={() => setIsSearchFocused(false)}
+            onClearSearch={handleClearSearch}
+            searchScope={searchScope}
+            onSearchScopeChange={setSearchScope}
+            currentScopeCount={currentPeriodMatchCount}
+            allTimeScopeCount={allTimeMatchCount}
+            filter={filter}
+            onFilterChange={setFilter}
+            filterTabs={filterTabs}
+            activeFiltersCount={activeFiltersCount}
+            onOpenFilterSheet={() => setFilterSheetOpen(true)}
+            isSelectMode={isSelectMode}
+            onToggleSelectMode={() => {
+              if (isSelectMode) {
+                handleExitSelectMode();
+              } else {
+                setIsSelectMode(true);
+              }
+            }}
+            timeRange={timeRange}
+            selectedMonthLabel={selectedMonthLabel}
+            onResetTimeRange={() => {
+              setTimeRange("this_month");
+              setCustomStartDate("");
+              setCustomEndDate("");
+              triggerHaptic("light");
+            }}
+            selectedWalletName={selectedWalletName}
+            onResetWallet={() => {
+              setSelectedWalletName(null);
+              triggerHaptic("light");
+            }}
+            selectedCategoryIds={selectedCategoryIds}
+            categories={categories}
+            onRemoveCategory={(cid) => {
+              setSelectedCategoryIds((prev) => prev.filter((id) => id !== cid));
+              triggerHaptic("light");
+            }}
+            minAmount={minAmount}
+            maxAmount={maxAmount}
+            onResetAmount={() => {
+              setMinAmount("");
+              setMaxAmount("");
+              triggerHaptic("light");
+            }}
+            onResetAllFilters={handleResetAllFilters}
+            isIndonesian={isIndonesian}
+          />
+        </div>
       </div>
 
       {/* ====== TRANSACTION LIST ====== */}
-      <div className="px-5 pb-36 space-y-5">
+      <div
+        className="px-5 pb-36 space-y-5"
+        onTouchMove={() => {
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+        }}
+        onWheel={() => {
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+        }}
+      >
         {isLoading || !shouldRenderHeavy ? (
           <div className="space-y-3 pt-2">
             {[1, 2, 3, 4].map((i) => (
@@ -832,6 +954,25 @@ export function TransactionsPage({
                 ? t("transactions.emptySearch", "Try searching with different keywords or adjust your filters.")
                 : t("transactions.emptyFresh", "Start managing your finances by logging your expenses and income.")}
             </p>
+            {search && searchScope === "current" && allTimeMatchCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSearchScope("all");
+                }}
+                className="mt-3.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 cursor-pointer select-none"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
+                }}
+              >
+                {isIndonesian
+                  ? `Cari di Semua Waktu (${allTimeMatchCount} ditemukan)`
+                  : `Search All Time (${allTimeMatchCount} found)`}
+              </button>
+            )}
           </div>
         ) : (
           <GroupedVirtuoso

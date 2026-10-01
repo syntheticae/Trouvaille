@@ -41,6 +41,10 @@ export interface TransactionFilterBarProps {
   onResetAmount: () => void;
   onResetAllFilters: () => void;
   isIndonesian: boolean;
+  searchScope?: "current" | "all";
+  onSearchScopeChange?: (scope: "current" | "all") => void;
+  currentScopeCount?: number;
+  allTimeScopeCount?: number;
 }
 
 export const TransactionFilterBar = memo(function TransactionFilterBar({
@@ -70,6 +74,10 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
   onResetAmount,
   onResetAllFilters,
   isIndonesian,
+  searchScope = "current",
+  onSearchScopeChange,
+  currentScopeCount = 0,
+  allTimeScopeCount = 0,
 }: TransactionFilterBarProps) {
   return (
     <>
@@ -204,6 +212,77 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Search Scope Filter Strip (Current Period vs All Time) */}
+      <AnimatePresence>
+        {search.trim().length > 0 && timeRange !== "all" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center gap-1.5 mb-2.5 px-0.5 overflow-x-auto no-scrollbar"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onSearchScopeChange?.("current");
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all touch-manipulation cursor-pointer shrink-0 active:scale-95"
+              style={{
+                background:
+                  searchScope === "current"
+                    ? "var(--text-primary)"
+                    : "var(--glass-fill)",
+                color:
+                  searchScope === "current"
+                    ? "var(--bg-base)"
+                    : "var(--text-secondary)",
+                border:
+                  searchScope === "current"
+                    ? "1px solid var(--text-primary)"
+                    : "1px solid var(--glass-border)",
+              }}
+            >
+              {selectedMonthLabel || (isIndonesian ? "Periode Ini" : "Current Period")}{" "}
+              <span className="opacity-75 text-[10px]">({currentScopeCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onSearchScopeChange?.("all");
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all touch-manipulation cursor-pointer shrink-0 active:scale-95"
+              style={{
+                background:
+                  searchScope === "all"
+                    ? "var(--text-primary)"
+                    : currentScopeCount === 0 && allTimeScopeCount > 0
+                      ? "rgba(255, 255, 255, 0.12)"
+                      : "var(--glass-fill)",
+                color:
+                  searchScope === "all"
+                    ? "var(--bg-base)"
+                    : currentScopeCount === 0 && allTimeScopeCount > 0
+                      ? "var(--text-primary)"
+                      : "var(--text-secondary)",
+                border:
+                  searchScope === "all"
+                    ? "1px solid var(--text-primary)"
+                    : currentScopeCount === 0 && allTimeScopeCount > 0
+                      ? "1px solid rgba(255, 255, 255, 0.3)"
+                      : "1px solid var(--glass-border)",
+              }}
+            >
+              {isIndonesian ? "Semua Waktu" : "All Time"}{" "}
+              <span className="opacity-75 text-[10px]">({allTimeScopeCount})</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Unified Clean Filter Tabs */}
       <div
