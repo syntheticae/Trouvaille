@@ -28,6 +28,7 @@ interface CashAccountDetailSheetProps {
   onClose: () => void;
   wallet: Wallet | null;
   onEditWallet?: (wallet: Wallet) => void;
+  zIndex?: number;
 }
 
 export function CashAccountDetailSheet({
@@ -35,6 +36,7 @@ export function CashAccountDetailSheet({
   onClose,
   wallet,
   onEditWallet,
+  zIndex,
 }: CashAccountDetailSheetProps) {
   const { isIndonesian } = useLanguage();
   const navigate = useNavigate();
@@ -88,7 +90,7 @@ export function CashAccountDetailSheet({
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} zIndex={zIndex}>
       <div
         className="px-5 space-y-6"
         style={{

@@ -1,20 +1,18 @@
 import { useState, useMemo, Fragment } from "react";
-import { ChevronRight, ChevronDown, Wallet as WalletIcon, Check, Scale, Edit3, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { ChevronRight, ChevronDown, Wallet as WalletIcon } from "lucide-react";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useBills } from "../../hooks/useBills";
-import { useUpdateWallet, getWalletIcon } from "../../hooks/useWallets";
-import { useAddTransaction } from "../../hooks/useTransactions";
-import { useCategories } from "../../hooks/useCategories";
-import { useToast } from "../../contexts/ToastContext";
+import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic } from "../../lib/haptics";
 import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "./BottomSheet";
 import { IconRenderer } from "./IconRenderer";
+import { CashAccountDetailSheet } from "../assets/CashAccountDetailSheet";
+import { WalletManagementSheets } from "../settings/WalletManagementSheets";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { format } from "date-fns";
-import type { AccountClassification } from "../../lib/types";
+import type { Wallet } from "../../lib/types";
 
 function getWalletRoleDescription(
   name: string,
@@ -106,136 +104,26 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
     allTxs,
   } = useWalletBalances();
   const { data: bills = [] } = useBills();
+  const { data: wallets = [] } = useWallets();
   const { theme } = useTheme();
 
-  const updateWallet = useUpdateWallet();
-  const addTx = useAddTransaction();
-  const { data: categories = [] } = useCategories();
-  const { showToast } = useToast();
-
-  // Selected wallet for detail & quick action modal
-  const [selectedWallet, setSelectedWallet] = useState<any | null>(null);
-  const [activeWalletTab, setActiveWalletTab] = useState<"detail" | "adjust" | "edit">("detail");
-  const [adjustTarget, setAdjustTarget] = useState("");
-  const [adjustNote, setAdjustNote] = useState("");
-  const [isSavingAdjust, setIsSavingAdjust] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editClassification, setEditClassification] = useState<AccountClassification>("liquid");
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  // Selected cash wallet for detail sheet (unified with Assets page)
+  const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(null);
+  const [isWalletManagementOpen, setIsWalletManagementOpen] = useState(false);
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
 
   const handleOpenWalletModal = (acc: any) => {
     triggerHaptic("light");
-    setSelectedWallet(acc);
-    setActiveWalletTab("detail");
-    setAdjustTarget(String(acc.balance || 0));
-    setAdjustNote("");
-    setEditName(acc.name);
-    setEditClassification(acc.classification || "liquid");
-  };
-
-  const handleSaveCorrection = () => {
-    if (!selectedWallet) return;
-    const target = parseFloat(adjustTarget.replace(/[^\d.-]/g, ""));
-    if (isNaN(target)) {
-      showToast(isIndonesian ? "Masukkan nominal yang valid" : "Enter a valid amount", "delete");
-      return;
-    }
-    const current = selectedWallet.balance || 0;
-    const diff = target - current;
-    if (Math.abs(diff) < 0.01) {
-      showToast(isIndonesian ? "Saldo tidak berubah" : "Balance unchanged", "info");
-      setSelectedWallet(null);
-      return;
-    }
-
-    setIsSavingAdjust(true);
-    triggerHaptic("medium");
-
-    const isPositive = diff > 0;
-    const noteToSave = adjustNote.trim()
-      ? (isIndonesian
-          ? `Penyesuaian (${isPositive ? "+" : "-"}) ${selectedWallet.name}: ${adjustNote.trim()}`
-          : `Correction (${isPositive ? "+" : "-"}) ${selectedWallet.name}: ${adjustNote.trim()}`)
-      : (isIndonesian
-          ? `Penyesuaian (${isPositive ? "+" : "-"}) ${selectedWallet.name}`
-          : `Correction (${isPositive ? "+" : "-"}) ${selectedWallet.name}`);
-
-    const otherCat =
-      categories.find((c) => c.name.toLowerCase() === "lainnya") ||
-      categories[0];
-    const catIdToSave = otherCat?.id || null;
-    const txDate = format(new Date(), "yyyy-MM-dd");
-
-    addTx.mutate(
-      {
-        type: isPositive ? "income" : "expense",
-        amount: Math.abs(diff),
-        wallet_id: selectedWallet.id || null,
-        note: noteToSave,
-        occurred_on: txDate,
-        created_at: new Date().toISOString(),
-        category_id: catIdToSave,
-      },
-      {
-        onSuccess: () => {
-          setIsSavingAdjust(false);
-          setSelectedWallet(null);
-          showToast(
-            isIndonesian
-              ? `Saldo disesuaikan ke ${formatRupiah(target)}`
-              : `Balance corrected to ${formatRupiah(target)}`,
-            "update"
-          );
-        },
-        onError: (err: any) => {
-          setIsSavingAdjust(false);
-          showToast(
-            err?.message ||
-              (isIndonesian ? "Gagal menyesuaikan saldo" : "Failed to adjust balance"),
-            "delete"
-          );
-        },
-      }
-    );
-  };
-
-  const handleSaveEdit = () => {
-    if (!selectedWallet) return;
-    const trimmed = editName.trim();
-    if (!trimmed) {
-      showToast(isIndonesian ? "Nama akun tidak boleh kosong" : "Account name cannot be empty", "delete");
-      return;
-    }
-
-    setIsSavingEdit(true);
-    triggerHaptic("medium");
-
-    updateWallet.mutate(
-      {
-        id: selectedWallet.id,
-        name: trimmed,
-        icon: selectedWallet.icon || getWalletIcon(trimmed),
-        classification: editClassification,
-      },
-      {
-        onSuccess: () => {
-          setIsSavingEdit(false);
-          setSelectedWallet(null);
-          showToast(
-            isIndonesian ? "Pengaturan akun disimpan" : "Account settings saved",
-            "update"
-          );
-        },
-        onError: (err: any) => {
-          setIsSavingEdit(false);
-          showToast(
-            err?.message ||
-              (isIndonesian ? "Gagal menyimpan akun" : "Failed to save account"),
-            "delete"
-          );
-        },
-      }
-    );
+    const matched = wallets.find((w) => w.id === acc.id) || {
+      id: acc.id,
+      user_id: acc.user_id || "",
+      name: acc.name,
+      icon: acc.icon,
+      created_at: acc.created_at || new Date().toISOString(),
+      classification: acc.classification,
+      balance: acc.balance,
+    };
+    setSelectedCashWallet(matched);
   };
 
   const unpaidBills = useMemo(() => bills.filter((b) => !b.is_paid), [bills]);
@@ -800,383 +688,28 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
         </div>
       </BottomSheet>
 
-      {/* Wallet Detail & Quick Management Bottom Sheet */}
-      <BottomSheet
-        isOpen={!!selectedWallet}
-        onClose={() => setSelectedWallet(null)}
-      >
-        <div className="p-5 space-y-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+24px),32px)]">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
-                <IconRenderer icon={selectedWallet?.icon} size="w-6 h-6" />
-              </div>
-              <div className="min-w-0">
-                <h3
-                  className="font-bold text-base leading-tight truncate"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {selectedWallet?.name}
-                </h3>
-                <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-block mt-0.5"
-                  style={{
-                    background: "var(--glass-fill)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-tertiary)",
-                  }}
-                >
-                  {selectedWallet?.classification === "investment"
-                    ? (isIndonesian ? "Investasi" : "Investment")
-                    : selectedWallet?.classification === "credit" || selectedWallet?.classification === "loan"
-                    ? (isIndonesian ? "Liabilitas" : "Liability")
-                    : (isIndonesian ? "Kas & Rekening Likuid" : "Liquid Cash & Bank")}
-                </span>
-              </div>
-            </div>
+      {/* Dedicated Cash Account Detail Sheet (Identical to Assets Page) */}
+      <CashAccountDetailSheet
+        isOpen={!!selectedCashWallet}
+        onClose={() => setSelectedCashWallet(null)}
+        wallet={selectedCashWallet}
+        onEditWallet={(w) => {
+          setEditingWallet(w);
+          setIsWalletManagementOpen(true);
+        }}
+        zIndex={1002}
+      />
 
-            {/* Close / Action Tab Switcher */}
-            <div
-              className="flex items-center p-1 rounded-xl border text-[11px] font-semibold"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setActiveWalletTab("detail");
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  activeWalletTab === "detail"
-                    ? "bg-[var(--glass-fill-strong)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                }`}
-              >
-                {isIndonesian ? "Info" : "Info"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setActiveWalletTab("adjust");
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  activeWalletTab === "adjust"
-                    ? "bg-[var(--glass-fill-strong)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                }`}
-              >
-                {isIndonesian ? "Saldo" : "Balance"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setActiveWalletTab("edit");
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  activeWalletTab === "edit"
-                    ? "bg-[var(--glass-fill-strong)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                }`}
-              >
-                {isIndonesian ? "Edit" : "Edit"}
-              </button>
-            </div>
-          </div>
-
-          {/* TAB 1: DETAIL / OVERVIEW */}
-          {activeWalletTab === "detail" && (
-            <div className="space-y-4 pt-1">
-              {/* Balance Hero Card */}
-              <div
-                className="p-4 rounded-2xl border space-y-1 text-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <p
-                  className="text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Saldo Saat Ini" : "Current Balance"}
-                </p>
-                <p
-                  className="amount text-[24px] font-bold leading-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {hideBalance ? "Rp ••••••••" : formatRupiah(selectedWallet?.balance || 0)}
-                </p>
-              </div>
-
-              {/* Inflow & Outflow Telemetry */}
-              <div className="grid grid-cols-2 gap-2">
-                <div
-                  className="p-3 rounded-2xl border"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 text-[10.5px]" style={{ color: "var(--text-tertiary)" }}>
-                    <ArrowDownLeft size={13} />
-                    <span>{isIndonesian ? "Total Masuk" : "Total Inflow"}</span>
-                  </div>
-                  <p
-                    className="amount text-[14px] font-bold mt-1"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {hideBalance ? "Rp ••••••••" : formatRupiah(selectedWallet?.inflow || 0)}
-                  </p>
-                </div>
-
-                <div
-                  className="p-3 rounded-2xl border"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 text-[10.5px]" style={{ color: "var(--text-tertiary)" }}>
-                    <ArrowUpRight size={13} />
-                    <span>{isIndonesian ? "Total Keluar" : "Total Outflow"}</span>
-                  </div>
-                  <p
-                    className="amount text-[14px] font-bold mt-1"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {hideBalance ? "Rp ••••••••" : formatRupiah(selectedWallet?.outflow || 0)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setActiveWalletTab("adjust");
-                  }}
-                  className="py-3 px-3.5 rounded-xl font-semibold text-[13px] border flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Scale size={14} />
-                  <span>{isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setActiveWalletTab("edit");
-                  }}
-                  className="py-3 px-3.5 rounded-xl font-semibold text-[13px] border flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Edit3 size={14} />
-                  <span>{isIndonesian ? "Ubah Akun" : "Edit Account"}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: ADJUST BALANCE */}
-          {activeWalletTab === "adjust" && (
-            <div className="space-y-3 pt-1">
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Saldo Target Terkini" : "Target Balance"}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={adjustTarget}
-                  onChange={(e) => setAdjustTarget(e.target.value)}
-                  placeholder="0"
-                  className="w-full p-3.5 rounded-2xl outline-none font-bold text-[18px] amount"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Catatan Penyesuaian (Opsional)" : "Correction Note (Optional)"}
-                </label>
-                <input
-                  type="text"
-                  value={adjustNote}
-                  onChange={(e) => setAdjustNote(e.target.value)}
-                  placeholder={isIndonesian ? "cth. Rekonsiliasi mutasi" : "e.g. Reconciliation"}
-                  className="w-full p-3.5 rounded-2xl outline-none font-medium text-[13px]"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              <button
-                type="button"
-                disabled={isSavingAdjust}
-                onClick={handleSaveCorrection}
-                className="w-full py-3.5 rounded-2xl font-bold text-[14px] active:scale-98 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                }}
-              >
-                {isSavingAdjust
-                  ? (isIndonesian ? "Menyimpan..." : "Saving...")
-                  : (isIndonesian ? "Simpan Penyesuaian Saldo" : "Save Balance Adjustment")}
-              </button>
-            </div>
-          )}
-
-          {/* TAB 3: EDIT ACCOUNT */}
-          {activeWalletTab === "edit" && (
-            <div className="space-y-3 pt-1">
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Nama Akun" : "Account Name"}
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder={isIndonesian ? "Nama Akun" : "Account Name"}
-                  className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Klasifikasi Akun" : "Account Classification"}
-                </label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {(
-                    [
-                      {
-                        key: "liquid",
-                        label: isIndonesian ? "Kas & Rekening Likuid" : "Liquid Cash & Bank",
-                        desc: isIndonesian ? "Uang tunai, bank, akun digital" : "Cash, bank checking, e-wallets",
-                      },
-                      {
-                        key: "investment",
-                        label: isIndonesian ? "Portofolio Investasi" : "Investment Portfolio",
-                        desc: isIndonesian ? "Saham, reksa dana, kripto, emas" : "Stocks, mutual funds, crypto, gold",
-                      },
-                      {
-                        key: "receivable",
-                        label: isIndonesian ? "Piutang" : "Receivable",
-                        desc: isIndonesian ? "Dana yang dipinjamkan ke pihak lain" : "Money lent out to others",
-                      },
-                      {
-                        key: "credit",
-                        label: isIndonesian ? "Kartu Kredit & PayLater" : "Credit Card & PayLater",
-                        desc: isIndonesian ? "Kredit bergulir / limit terpakai" : "Revolving lines of credit",
-                      },
-                      {
-                        key: "loan",
-                        label: isIndonesian ? "Pinjaman & Utang" : "Loan & Liability",
-                        desc: isIndonesian ? "Utang jangka panjang, cicilan" : "Term debt, installment loans",
-                      },
-                    ] as const
-                  ).map((opt) => {
-                    const isSelected = editClassification === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setEditClassification(opt.key);
-                        }}
-                        className={`p-2.5 rounded-xl text-left transition-all active:scale-98 cursor-pointer flex items-center justify-between border ${
-                          isSelected
-                            ? "bg-white/[0.08] border-white/30"
-                            : "bg-[var(--glass-fill)] border-[var(--glass-border)]"
-                        }`}
-                      >
-                        <div>
-                          <p
-                            className="text-[12px] font-semibold"
-                            style={{
-                              color: isSelected
-                                ? "var(--text-primary)"
-                                : "var(--text-secondary)",
-                            }}
-                          >
-                            {opt.label}
-                          </p>
-                          <p
-                            className="text-[10px]"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {opt.desc}
-                          </p>
-                        </div>
-                        {isSelected && (
-                          <Check size={14} className="text-[var(--text-primary)] shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={isSavingEdit}
-                onClick={handleSaveEdit}
-                className="w-full py-3.5 rounded-2xl font-bold text-[14px] active:scale-98 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                }}
-              >
-                {isSavingEdit
-                  ? (isIndonesian ? "Menyimpan..." : "Saving...")
-                  : (isIndonesian ? "Simpan Perubahan Akun" : "Save Account Changes")}
-              </button>
-            </div>
-          )}
-        </div>
-      </BottomSheet>
+      {/* Direct Wallet Management Sheet for Account Card Detail */}
+      <WalletManagementSheets
+        isOpen={isWalletManagementOpen}
+        onClose={() => {
+          setIsWalletManagementOpen(false);
+          setEditingWallet(null);
+        }}
+        initialWalletToEdit={editingWallet}
+        zIndex={1005}
+      />
     </>
   );
 }

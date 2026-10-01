@@ -28,12 +28,14 @@ interface WalletManagementSheetsProps {
   isOpen: boolean;
   onClose: () => void;
   initialWalletToEdit?: Wallet | null;
+  zIndex?: number;
 }
 
 export function WalletManagementSheets({
   isOpen,
   onClose,
   initialWalletToEdit,
+  zIndex,
 }: WalletManagementSheetsProps) {
   const { data: wallets = [] } = useWallets();
   const addWallet = useAddWallet();
@@ -320,7 +322,11 @@ export function WalletManagementSheets({
   return (
     <>
       {/* Manage Accounts & Wallets Sheet */}
-      <BottomSheet isOpen={isOpen} onClose={onClose}>
+      <BottomSheet
+        isOpen={isOpen && !initialWalletToEdit}
+        onClose={onClose}
+        zIndex={zIndex}
+      >
         <div
           className="p-5 space-y-4"
           style={{
@@ -683,6 +689,7 @@ export function WalletManagementSheets({
         onClose={() => {
           if (!isSavingCorrection) setCorrectWallet(null);
         }}
+        zIndex={zIndex ? zIndex + 2 : undefined}
       >
         <div className="p-5 pb-10 space-y-4">
           <div className="flex items-center gap-3 mb-1">
@@ -866,7 +873,11 @@ export function WalletManagementSheets({
       </BottomSheet>
 
       {/* Edit Wallet Modal */}
-      <BottomSheet isOpen={!!editWallet} onClose={handleCloseEditWallet}>
+      <BottomSheet
+        isOpen={!!editWallet}
+        onClose={handleCloseEditWallet}
+        zIndex={zIndex ? zIndex + 2 : 1001}
+      >
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3
@@ -1086,6 +1097,7 @@ export function WalletManagementSheets({
       <BottomSheet
         isOpen={addWalletOpen}
         onClose={() => setAddWalletOpen(false)}
+        zIndex={zIndex ? zIndex + 2 : undefined}
       >
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
