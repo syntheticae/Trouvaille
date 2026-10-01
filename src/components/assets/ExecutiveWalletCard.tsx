@@ -355,34 +355,51 @@ export function ExecutiveWalletCard({
               variants={{
                 enter: (dir: number) => ({
                   x: dir > 0 ? 140 : -140,
+                  y: isExpanded ? -92 : 0,
                   opacity: 0,
                   scale: 0.95,
                   rotate: dir > 0 ? 2 : -2,
                 }),
                 center: {
                   x: 0,
+                  y: isExpanded ? -92 : 0,
                   opacity: 1,
                   scale: 1,
                   rotate: -1,
                   transition: {
                     x: { type: "spring", stiffness: 340, damping: 28 },
+                    y: { type: "spring", stiffness: 320, damping: 26 },
                     opacity: { duration: 0.2 },
                     rotate: { duration: 0.25 },
                   },
                 },
                 exit: (dir: number) => ({
                   x: dir > 0 ? -140 : 140,
+                  y: isExpanded ? -92 : 0,
                   opacity: 0,
                   scale: 0.95,
                   rotate: dir > 0 ? -2 : 2,
                   transition: {
                     x: { type: "spring", stiffness: 340, damping: 28 },
+                    y: { type: "spring", stiffness: 320, damping: 26 },
                     opacity: { duration: 0.2 },
                   },
                 }),
               }}
               initial="enter"
-              animate="center"
+              animate={{
+                x: 0,
+                y: isExpanded ? -92 : 0,
+                opacity: 1,
+                scale: 1,
+                rotate: -1,
+                transition: {
+                  x: { type: "spring", stiffness: 340, damping: 28 },
+                  y: { type: "spring", stiffness: 320, damping: 26 },
+                  opacity: { duration: 0.2 },
+                  rotate: { duration: 0.25 },
+                },
+              }}
               exit="exit"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
@@ -394,10 +411,9 @@ export function ExecutiveWalletCard({
                   paginate(-1);
                 }
               }}
-              className="absolute w-[92%] h-[126px] rounded-xl p-3 cursor-pointer active:scale-[0.99] select-none transition-transform duration-300"
+              className="absolute w-[92%] h-[126px] rounded-xl p-3 cursor-pointer active:scale-[0.99] select-none"
               style={{
                 bottom: "54px",
-                transform: isExpanded ? "translateY(-92px)" : "translateY(0)",
                 zIndex: 25,
                 background: isWhite
                   ? "linear-gradient(155deg, #ffffff 0%, #f6f6f9 55%, #eaeaf0 100%)"

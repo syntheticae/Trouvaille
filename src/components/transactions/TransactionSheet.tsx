@@ -1862,7 +1862,8 @@ export function TransactionSheet({
           <button
             type="button"
             onTouchStart={(e) => {
-              // 1. Immediately dismiss any active virtual keyboard to prevent layout shift dropping the tap
+              // 1. Prevent default immediately suppresses iOS native text selection, magnifying glass, and Paste callout
+              e.preventDefault();
               if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
                 document.activeElement.blur();
               }
@@ -1925,18 +1926,18 @@ export function TransactionSheet({
             }}
           >
             {currentUserRole === "viewer" ? (
-              <span className="font-semibold flex items-center gap-1.5 opacity-75 select-none">
+              <span className="font-semibold flex items-center gap-1.5 opacity-75 select-none pointer-events-none">
                 <Lock size={15} strokeWidth={2} />
                 {isIndonesian ? "Hanya Lihat (Viewer)" : "Read-Only (Viewer)"}
               </span>
             ) : isSaving || addTx.isPending || updateTx.isPending ? (
-              <span className="font-semibold select-none">
+              <span className="font-semibold select-none pointer-events-none">
                 {isIndonesian ? "Menyimpan..." : "Saving..."}
               </span>
             ) : (
-              <>
+              <div className="flex items-center justify-center gap-2 select-none pointer-events-none">
                 <Check size={16} strokeWidth={2.25} />
-                <span className="font-semibold select-none">
+                <span className="font-semibold select-none pointer-events-none">
                   {transaction
                     ? isIndonesian
                       ? "Perbarui Transaksi"
@@ -1945,7 +1946,7 @@ export function TransactionSheet({
                       ? "Simpan Transaksi"
                       : "Save Transaction"}
                 </span>
-              </>
+              </div>
             )}
           </button>
 

@@ -2354,7 +2354,8 @@ export function ReceiptScanModal({
                     type="button"
                     disabled={addTx.isPending}
                     onTouchStart={(e) => {
-                      // 1. Immediately dismiss any active virtual keyboard to prevent layout shift dropping the tap
+                      // 1. Prevent default immediately suppresses iOS native text selection, magnifying glass, and Paste callout
+                      e.preventDefault();
                       if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
                         document.activeElement.blur();
                       }
@@ -2412,13 +2413,13 @@ export function ReceiptScanModal({
                     {addTx.isPending ? (
                       <Loader2
                         size={16}
-                        className="animate-spin"
+                        className="animate-spin pointer-events-none select-none"
                         style={{
                           color: isDark ? "#000000" : "#ffffff",
                         }}
                       />
                     ) : (
-                      <>
+                      <div className="flex items-center justify-center gap-2 select-none pointer-events-none">
                         <Check
                           size={16}
                           strokeWidth={2.25}
@@ -2428,7 +2429,7 @@ export function ReceiptScanModal({
                         />
 
                         <span
-                          className="font-semibold select-none"
+                          className="font-semibold select-none pointer-events-none"
                           style={{
                             color: isDark ? "#000000" : "#ffffff",
                           }}
@@ -2436,7 +2437,7 @@ export function ReceiptScanModal({
                           {isIndonesian ? "Simpan Transaksi" : "Save Transaction"}{" "}
                           {amount > 0 ? `(${formatRupiah(amount)})` : ""}
                         </span>
-                      </>
+                      </div>
                     )}
                   </button>
 

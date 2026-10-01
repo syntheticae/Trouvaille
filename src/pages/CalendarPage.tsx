@@ -294,7 +294,7 @@ export function CalendarPage() {
       }}
     >
       {/* Header & View Mode Switcher */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="calendar-header">
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
           <button
             type="button"
