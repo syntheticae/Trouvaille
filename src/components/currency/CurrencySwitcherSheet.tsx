@@ -4,8 +4,6 @@ import {
   X,
   Check,
   RefreshCw,
-  Coins,
-  ArrowRightLeft,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import {

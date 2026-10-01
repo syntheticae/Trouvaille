@@ -923,7 +923,21 @@ export function calculatePortfolioSummary(holdings: InvestmentHolding[]): Portfo
  */
 export function getHoldingActivities(holding: InvestmentHolding): HoldingActivity[] {
   if (holding.activities && Array.isArray(holding.activities) && holding.activities.length > 0) {
-    return [...holding.activities].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const sanitized = holding.activities.map((act) => {
+      // Auto-heal any legacy activities with distorted total_amount
+      if (
+        act.units > 0 &&
+        act.price_per_unit > 0 &&
+        act.total_amount > act.units * act.price_per_unit * 1.5
+      ) {
+        return {
+          ...act,
+          total_amount: Math.round(act.units * act.price_per_unit),
+        };
+      }
+      return act;
+    });
+    return sanitized.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }
 
   // Synthesize an initial position for backward compatibility
@@ -936,7 +950,7 @@ export function getHoldingActivities(holding: InvestmentHolding): HoldingActivit
       date: initialDate,
       units: holding.units,
       price_per_unit: holding.avg_buy_price,
-      total_amount: holding.units * holding.avg_buy_price,
+      total_amount: Math.round(holding.units * holding.avg_buy_price),
       note: "Initial position",
       created_at: holding.last_price_updated_at || new Date().toISOString(),
     },
@@ -1201,9 +1215,18 @@ export function setHoldingDirectUnits(
   const deltaUnits = Number((sanitizedUnits - prevUnits).toFixed(4));
   const existingActivities = target.activities || [];
 
+  const isUsdtTarget = target.symbol?.toUpperCase() === "USDT" || target.id.startsWith("usdt-");
+  let validAnchorCostBasis = anchorCostBasis;
+  if (validAnchorCostBasis && validAnchorCostBasis > 0 && sanitizedUnits > 0) {
+    const impliedPrice = validAnchorCostBasis / sanitizedUnits;
+    if (isUsdtTarget && (impliedPrice < 10000 || impliedPrice > 30000)) {
+      validAnchorCostBasis = undefined; // Reject distorted anchor that would distort average price
+    }
+  }
+
   const calibratedAvgBuyPrice =
-    anchorCostBasis && anchorCostBasis > 0 && sanitizedUnits > 0
-      ? Math.round((anchorCostBasis / sanitizedUnits) * 100) / 100
+    validAnchorCostBasis && validAnchorCostBasis > 0 && sanitizedUnits > 0
+      ? Math.round((validAnchorCostBasis / sanitizedUnits) * 100) / 100
       : target.avg_buy_price;
 
   const unitPrice =
@@ -1251,8 +1274,8 @@ export function setHoldingDirectUnits(
 
   if (updatedHolding.symbol?.toUpperCase() === "USDT") {
     const resolvedCostBasis =
-      anchorCostBasis && anchorCostBasis > 0
-        ? Math.round(anchorCostBasis)
+      validAnchorCostBasis && validAnchorCostBasis > 0
+        ? Math.round(validAnchorCostBasis)
         : Math.round(sanitizedUnits * (updatedHolding.avg_buy_price || USD_IDR_ESTIMATE));
     saveUsdtPref(
       {

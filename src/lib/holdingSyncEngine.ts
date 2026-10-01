@@ -616,6 +616,82 @@ export function estimateHistoricalUsdtBuyRate(
 }
 
 /**
+ * Estimate historical asset price per unit for dynamic assets based on date and transaction context.
+ */
+export function estimateHistoricalAssetPrice(
+  holding: InvestmentHolding,
+  dateStr?: string,
+  note?: string | null,
+  amount?: number,
+): number {
+  if (note) {
+    const rateMatch = note.match(/(?:@|rate|kurs)\s*(?:rp\.?\s*)?([0-9.,]+)/i);
+    if (rateMatch && rateMatch[1]) {
+      const parsed = parseFloat(rateMatch[1].replace(/\./g, "").replace(",", "."));
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  const isUsdt =
+    holding.symbol?.toUpperCase() === "USDT" || holding.id.startsWith("usdt-");
+  const isGold =
+    holding.asset_type === "gold" ||
+    (holding.symbol && holding.symbol.toUpperCase().includes("EMAS")) ||
+    holding.name.toLowerCase().includes("emas") ||
+    holding.name.toLowerCase().includes("gold");
+  const isFixed =
+    holding.asset_type === "fixed_asset" ||
+    (holding as any).category === "fixed";
+
+  const dStr = (dateStr || "").slice(0, 10);
+
+  if (isUsdt) {
+    const baseUsdt = estimateHistoricalUsdtBuyRate(dStr, note, amount);
+    if (dStr && dStr.length >= 10) {
+      const day = parseInt(dStr.slice(8, 10), 10) || 15;
+      const month = parseInt(dStr.slice(5, 7), 10) || 6;
+      const jitter = Math.round(Math.sin(day * 1.7 + month * 2.3) * 65);
+      return baseUsdt + jitter;
+    }
+    return baseUsdt;
+  }
+
+  if (isGold) {
+    const ym = dStr.slice(0, 7);
+    let baseGold = 1450000;
+    if (ym <= "2023-01") baseGold = 1010000;
+    else if (ym <= "2023-06") baseGold = 1055000;
+    else if (ym <= "2023-12") baseGold = 1110000;
+    else if (ym <= "2024-06") baseGold = 1320000;
+    else if (ym <= "2024-12") baseGold = 1440000;
+    else if (ym <= "2025-06") baseGold = 1510000;
+    else if (ym <= "2025-12") baseGold = 1580000;
+    else if (ym <= "2026-06") baseGold = 1630000;
+    else baseGold = 1690000;
+
+    if (dStr.length >= 10) {
+      const day = parseInt(dStr.slice(8, 10), 10) || 15;
+      const dayVariance = Math.round(Math.sin(day * 0.9) * 12000);
+      return baseGold + dayVariance;
+    }
+    return baseGold;
+  }
+
+  if (isFixed) {
+    return holding.avg_buy_price || holding.current_price || 1;
+  }
+
+  // Equities, Crypto, Mutual Funds
+  const base = holding.avg_buy_price || holding.current_price || 10000;
+  if (!dStr) return base;
+
+  const dateParts = dStr.split("-").map(Number);
+  const seed = (dateParts[0] || 2026) * 365 + (dateParts[1] || 1) * 31 + (dateParts[2] || 1);
+  const variance = Math.sin(seed * 0.43) * 0.055 + Math.cos(seed * 0.27) * 0.03;
+  return Math.round(base * (1 + variance));
+}
+
+/**
  * Zero-Destruction Linked Custodial Bridge:
  * Automatically bridges an imported `USDT` / `Crypto` wallet (Layer 1 Account)
  * into an active `USDT` item in the Investment Holdings & Asset Ledger (Layer 2 Holding).

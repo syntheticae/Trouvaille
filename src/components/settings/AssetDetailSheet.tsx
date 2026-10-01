@@ -30,7 +30,10 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useAddTransaction, useAllTransactions } from "../../hooks/useTransactions";
-import { isInvestmentOrCryptoWallet, estimateHistoricalUsdtBuyRate } from "../../lib/holdingSyncEngine";
+import {
+  isInvestmentOrCryptoWallet,
+  estimateHistoricalAssetPrice,
+} from "../../lib/holdingSyncEngine";
 import {
   recordHoldingActivity,
   undoHoldingActivity,
@@ -215,36 +218,7 @@ export function AssetDetailSheet({
         }
         // Dynamic historical pricing for assets with volatile market valuations
         if (!rate) {
-          const isToday = txDateStr === format(new Date(), "yyyy-MM-dd");
-          const isUsdtHolding =
-            holding.symbol?.toUpperCase() === "USDT" || holding.id.startsWith("usdt-");
-          const isFixed =
-            holding.asset_type === "fixed_asset" ||
-            (holding as any).category === "fixed";
-
-          if (isToday) {
-            rate = holding.current_price || holding.avg_buy_price || 16400;
-          } else if (isUsdtHolding) {
-            const baseUsdt = estimateHistoricalUsdtBuyRate(txDateStr, tx.note, tx.amount);
-            if (txDateStr && txDateStr.length >= 10) {
-              const day = parseInt(txDateStr.slice(8, 10), 10) || 15;
-              const month = parseInt(txDateStr.slice(5, 7), 10) || 6;
-              const jitter = Math.round(Math.sin(day * 1.7 + month * 2.3) * 65);
-              rate = baseUsdt + jitter;
-            } else {
-              rate = baseUsdt;
-            }
-          } else if (isFixed) {
-            rate = holding.avg_buy_price || holding.current_price || 1;
-          } else {
-            // Dynamic asset (Crypto, Stocks, Mutual Funds)
-            const base = holding.avg_buy_price || holding.current_price || 10000;
-            // Seeded deterministic variation based on date to represent authentic historical prices
-            const dateParts = txDateStr.split("-").map(Number);
-            const seed = (dateParts[0] || 2026) * 365 + (dateParts[1] || 1) * 31 + (dateParts[2] || 1);
-            const variance = Math.sin(seed * 0.43) * 0.05 + Math.cos(seed * 0.27) * 0.025; // ±7.5% realistic fluctuation
-            rate = Math.round(base * (1 + variance));
-          }
+          rate = estimateHistoricalAssetPrice(holding, txDateStr, tx.note, tx.amount);
         }
 
         const units =
@@ -373,6 +347,19 @@ export function AssetDetailSheet({
     }
   };
 
+  // When user changes transaction date, auto-estimate historical rate if price mode is auto
+  const handleDateChange = (newDate: string) => {
+    setInputDate(newDate);
+    if (modalPriceMode === "auto" && holding) {
+      const estimatedRate = estimateHistoricalAssetPrice(holding, newDate);
+      setInputPrice(String(estimatedRate));
+      const units = parseFloat(inputUnits);
+      if (!isNaN(units) && units > 0) {
+        setInputNominal(String(Math.round(units * estimatedRate)));
+      }
+    }
+  };
+
   // Confirm Buy or Sell execution
   const handleConfirmAction = (e: React.FormEvent) => {
     e.preventDefault();
@@ -463,37 +450,11 @@ export function AssetDetailSheet({
     }
     triggerHaptic("medium");
     try {
-      const isUsdt =
-        holding.symbol?.toUpperCase() === "USDT" || holding.id.startsWith("usdt-");
-      let anchorCostBasis: number | undefined;
-      if (isUsdt) {
-        const cryptoWallets = wallets.filter(isInvestmentOrCryptoWallet);
-        const cryptoIds = new Set(cryptoWallets.map((w) => w.id));
-        let netLedger = cryptoWallets.reduce(
-          (acc, w) => acc + (Number((w as any).initial_balance) || 0),
-          0,
-        );
-        for (const tx of allTxs) {
-          const amt = Number(tx.amount) || 0;
-          const isFrom = tx.wallet_id ? cryptoIds.has(tx.wallet_id) : false;
-          const isTo = tx.to_wallet_id ? cryptoIds.has(tx.to_wallet_id) : false;
-          if (tx.type === "income" && isFrom) netLedger += amt;
-          else if (tx.type === "expense" && isFrom) netLedger -= amt;
-          else if (tx.type === "adjustment" && isFrom) netLedger += amt;
-          else if (tx.type === "transfer") {
-            if (isTo && !isFrom) netLedger += amt;
-            else if (isFrom && !isTo) netLedger -= amt;
-          }
-        }
-        if (netLedger > 0) anchorCostBasis = netLedger;
-      }
-
       setHoldingDirectUnits(
         holding.id,
         parsed,
         user?.id,
-        "Koreksi Saldo Manual",
-        anchorCostBasis,
+        isIndonesian ? "Koreksi Saldo Manual" : "Manual Balance Correction",
       );
       setIsEditingDirectUnits(false);
       onHoldingUpdated();
@@ -1117,7 +1078,7 @@ export function AssetDetailSheet({
                 <input
                   type="date"
                   value={inputDate}
-                  onChange={(e) => setInputDate(e.target.value)}
+                  onChange={(e) => handleDateChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                 />
               </div>

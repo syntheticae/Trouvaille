@@ -59,6 +59,7 @@ import {
   PortfolioHoldingsDeck,
   WealthHistoryTrajectoryCard,
   AssetsModalsContainer,
+  CashAccountDetailSheet,
   type BalanceSheetRange,
   type MetricDrillDownData,
 } from "../components/assets";
@@ -103,6 +104,7 @@ export function AssetsPage() {
   // Modals & Sheets State
   const [selectedDetailHolding, setSelectedDetailHolding] =
     useState<InvestmentHolding | null>(null);
+  const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(null);
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(() => {
@@ -931,9 +933,11 @@ export function AssetsPage() {
         onDetailAsset={(item) => {
           triggerHaptic("light");
           if (typeof item === "object" && item !== null) {
-            if ("classification" in item && !("asset_type" in item)) {
-              setEditingWallet(item as Wallet);
-              setIsWalletManagementOpen(true);
+            const isWalletObject =
+              !("asset_type" in item) &&
+              (wallets.some((w) => w.id === (item as any).id) || "icon" in item || "classification" in item);
+            if (isWalletObject) {
+              setSelectedCashWallet(item as Wallet);
               return;
             }
             setSelectedDetailHolding(item as InvestmentHolding);
@@ -949,8 +953,7 @@ export function AssetsPage() {
               (w) => w.id === item || `card-${w.id}` === item,
             );
             if (matchedWallet) {
-              setEditingWallet(matchedWallet);
-              setIsWalletManagementOpen(true);
+              setSelectedCashWallet(matchedWallet);
               return;
             }
             const found = holdings.find(
@@ -1274,7 +1277,18 @@ export function AssetsPage() {
         isDark={isDark}
       />
 
-      {/* ── 9. Direct Wallet Management Sheet for Account Card Detail ── */}
+      {/* ── 9. Dedicated Cash Account Detail Sheet ── */}
+      <CashAccountDetailSheet
+        isOpen={!!selectedCashWallet}
+        onClose={() => setSelectedCashWallet(null)}
+        wallet={selectedCashWallet}
+        onEditWallet={(w) => {
+          setEditingWallet(w);
+          setIsWalletManagementOpen(true);
+        }}
+      />
+
+      {/* ── 10. Direct Wallet Management Sheet for Account Card Detail ── */}
       <WalletManagementSheets
         isOpen={isWalletManagementOpen}
         onClose={() => {
