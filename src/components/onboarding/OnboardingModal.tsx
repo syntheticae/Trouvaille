@@ -71,20 +71,26 @@ async function seedOnboardingCategories(
 
   if (!isGuest && userId) {
     try {
-      const { count: txCount } = await supabase
-        .from("transactions")
-        .select("id", { count: "exact", head: true })
+      const { data: existingCats } = await supabase
+        .from("categories")
+        .select("id, name, type")
         .eq("user_id", userId);
 
-      if (!txCount || txCount === 0) {
-        await supabase
-          .from("categories")
-          .delete()
-          .eq("user_id", userId)
-          .eq("is_default", true);
+      const existingKeys = new Set(
+        (existingCats || []).map(
+          (c) => `${c.type || "expense"}:${c.name.trim().toLowerCase()}`,
+        ),
+      );
+      const catsToInsert = fullCategories.filter(
+        (c) =>
+          !existingKeys.has(
+            `${c.type || "expense"}:${c.name.trim().toLowerCase()}`,
+          ),
+      );
 
+      if (catsToInsert.length > 0) {
         await supabase.from("categories").insert(
-          fullCategories.map((c) => ({
+          catsToInsert.map((c) => ({
             id: c.id,
             user_id: userId,
             name: c.name,

@@ -53,6 +53,7 @@ import {
   discardGuestData,
 } from "./lib/guestMigration";
 import { fetchHoldingsFromSupabase } from "./lib/marketPriceService";
+import { autoDeduplicateCategories, autoDeduplicateWallets } from "./lib/deduplicationEngine";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 import { useSpace } from "./contexts/SpaceContext";
@@ -865,6 +866,18 @@ function AppShell() {
             }
             if (!billsRes.error) {
               queryClient.setQueryData(["bills", user.id], billsRes.data ?? []);
+            }
+
+            // Proactively auto-consolidate any duplicate categories or wallets in the background
+            if (user?.id && !isGuest) {
+              const currentWallets = walletsRes.data ?? [];
+              const currentCats = categoriesRes.data ?? [];
+              if (currentCats.length > 0) {
+                autoDeduplicateCategories(user.id, currentCats, freshTxs, queryClient).catch(() => {});
+              }
+              if (currentWallets.length > 0) {
+                autoDeduplicateWallets(user.id, currentWallets, freshTxs, queryClient).catch(() => {});
+              }
             }
 
             transactionsReady = true;

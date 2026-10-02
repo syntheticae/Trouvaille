@@ -30,6 +30,10 @@ import {
 } from "../../lib/wrappedAnalytics";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { useToast } from "../../contexts/ToastContext";
 
 interface TopCategoryStat {
   total: number;
@@ -58,6 +62,7 @@ export function FinancialWrappedModal({
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { showToast } = useToast();
   const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const { liquidCapital, marketAssets, fixedAssets, totalAssets } =
     useWalletBalances();
@@ -76,33 +81,9 @@ export function FinancialWrappedModal({
   const pauseHUDTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideContainerRef = useRef<HTMLDivElement>(null);
   const cachedSlideFilesRef = useRef<Map<number, File>>(new Map());
-  const pointerDownTime = useRef<number>(0);
-  const wasHolding = useRef<boolean>(false);
-
-  const handleCenterPointerDown = () => {
-    pointerDownTime.current = Date.now();
-    wasHolding.current = false;
-  };
-
-  const handleCenterPointerUp = () => {
-    const duration = Date.now() - pointerDownTime.current;
-    if (duration > 350) {
-      wasHolding.current = true;
-      setIsPaused(false);
-      setShowPauseHUD(false);
-      if (pauseHUDTimerRef.current) {
-        clearTimeout(pauseHUDTimerRef.current);
-        pauseHUDTimerRef.current = null;
-      }
-    }
-  };
 
   const handleCenterClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (wasHolding.current) {
-      wasHolding.current = false;
-      return;
-    }
     triggerHaptic("light");
     setIsPaused((prev) => {
       const next = !prev;
@@ -115,6 +96,7 @@ export function FinancialWrappedModal({
         setShowPauseHUD(true);
         pauseHUDTimerRef.current = setTimeout(() => {
           setShowPauseHUD(false);
+          pauseHUDTimerRef.current = null;
         }, 2000);
       } else {
         // Resumed: immediately hide pause HUD
@@ -699,34 +681,71 @@ export function FinancialWrappedModal({
         }
       }
 
-      let sharedViaNavigator = false;
-      if (
-        file &&
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] })
-      ) {
+      let sharedSuccess = false;
+
+      // 1. Native Capacitor Sharing (iOS IPA / Android)
+      if (Capacitor.isNativePlatform()) {
         try {
-          await navigator.share({
-            files: [file],
+          if (!dataUrl && file) {
+            dataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(file!);
+            });
+          }
+          const base64Data = dataUrl.includes(",")
+            ? dataUrl.split(",")[1]
+            : dataUrl;
+
+          const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache,
+          });
+
+          await Share.share({
             title: isIndonesian
               ? `Kilas Balik Finansial - Slide ${currentSlide + 1}`
               : `Financial Wrapped - Slide ${currentSlide + 1}`,
             text: isIndonesian
               ? `Kilas Balik Finansial Trouvaille ${periodTitle} (Slide ${currentSlide + 1})`
               : `Trouvaille Financial Wrapped ${periodTitle} (Slide ${currentSlide + 1})`,
+            url: savedFile.uri,
           });
-          sharedViaNavigator = true;
-        } catch (err: any) {
-          if (err?.name === "AbortError") {
-            sharedViaNavigator = true;
+          sharedSuccess = true;
+        } catch (nativeErr: any) {
+          if (nativeErr?.name === "AbortError") {
+            sharedSuccess = true;
+          } else {
+            console.warn("[FinancialWrappedModal] Native share photo error:", nativeErr);
           }
         }
       }
 
-      // Fallback: download PNG file directly and copy to clipboard
-      if (!sharedViaNavigator) {
+      // 2. Web Share API Fallback
+      if (!sharedSuccess && file && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+        try {
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: isIndonesian
+                ? `Kilas Balik Finansial - Slide ${currentSlide + 1}`
+                : `Financial Wrapped - Slide ${currentSlide + 1}`,
+              text: isIndonesian
+                ? `Kilas Balik Finansial Trouvaille ${periodTitle} (Slide ${currentSlide + 1})`
+                : `Trouvaille Financial Wrapped ${periodTitle} (Slide ${currentSlide + 1})`,
+            });
+            sharedSuccess = true;
+          }
+        } catch (webShareErr: any) {
+          if (webShareErr?.name === "AbortError") {
+            sharedSuccess = true;
+          }
+        }
+      }
+
+      // 3. Desktop / Browser Download Fallback
+      if (!sharedSuccess) {
         if (!dataUrl && file) {
           dataUrl = URL.createObjectURL(file);
         }
@@ -740,6 +759,7 @@ export function FinancialWrappedModal({
           if (dataUrl.startsWith("blob:")) {
             setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
           }
+          sharedSuccess = true;
         }
 
         if (
@@ -760,8 +780,19 @@ export function FinancialWrappedModal({
 
       setIsPhotoSaved(true);
       setTimeout(() => setIsPhotoSaved(false), 2500);
+
+      showToast(
+        isIndonesian ? "Foto slide berhasil dibagikan" : "Slide photo shared successfully",
+        "update",
+        () => {},
+      );
     } catch (err) {
       console.error("Failed to share slide photo:", err);
+      showToast(
+        isIndonesian ? "Gagal membagikan foto slide" : "Failed to share slide photo",
+        "delete",
+        () => {},
+      );
     } finally {
       setIsSharingPhoto(false);
     }
@@ -851,44 +882,94 @@ export function FinancialWrappedModal({
           : format(targetDate, "yyyy");
       const fileName = `Trouvaille-Financial-Wrapped-${periodLabel}.pdf`;
 
-      const pdfBlob = pdf.output("blob");
-      let sharedViaNavigator = false;
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function"
-      ) {
+      let sharedSuccess = false;
+
+      // 1. Native Capacitor Sharing (iOS IPA / Android)
+      if (Capacitor.isNativePlatform()) {
         try {
-          const pdfFile = new File([pdfBlob], fileName, {
-            type: "application/pdf",
+          const pdfDataUri = pdf.output("datauristring");
+          const base64Data = pdfDataUri.includes(",")
+            ? pdfDataUri.split(",")[1]
+            : pdfDataUri;
+
+          const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache,
           });
-          if (navigator.canShare({ files: [pdfFile] })) {
-            await navigator.share({
-              files: [pdfFile],
-              title: isIndonesian
-                ? "Laporan Kilas Balik Finansial Trouvaille"
-                : "Trouvaille Financial Wrapped Report",
-              text: isIndonesian
-                ? `Laporan Finansial Lengkap ${periodTitle} (10 Slide)`
-                : `Complete Financial Report ${periodTitle} (10 Slides)`,
-            });
-            sharedViaNavigator = true;
-          }
-        } catch (err: any) {
-          if (err?.name === "AbortError") {
-            sharedViaNavigator = true;
+
+          await Share.share({
+            title: isIndonesian
+              ? "Laporan Kilas Balik Finansial Trouvaille"
+              : "Trouvaille Financial Wrapped Report",
+            text: isIndonesian
+              ? `Laporan Finansial Lengkap ${periodTitle} (10 Slide)`
+              : `Complete Financial Report ${periodTitle} (10 Slides)`,
+            url: savedFile.uri,
+          });
+          sharedSuccess = true;
+        } catch (nativeErr: any) {
+          if (nativeErr?.name === "AbortError") {
+            sharedSuccess = true;
+          } else {
+            console.warn("[FinancialWrappedModal] Native share PDF error:", nativeErr);
           }
         }
       }
 
-      if (!sharedViaNavigator) {
-        pdf.save(fileName);
+      // 2. Web Share API Fallback
+      if (!sharedSuccess) {
+        const pdfBlob = pdf.output("blob");
+        if (
+          typeof navigator !== "undefined" &&
+          typeof navigator.share === "function" &&
+          typeof navigator.canShare === "function"
+        ) {
+          try {
+            const pdfFile = new File([pdfBlob], fileName, {
+              type: "application/pdf",
+            });
+            if (navigator.canShare({ files: [pdfFile] })) {
+              await navigator.share({
+                files: [pdfFile],
+                title: isIndonesian
+                  ? "Laporan Kilas Balik Finansial Trouvaille"
+                  : "Trouvaille Financial Wrapped Report",
+                text: isIndonesian
+                  ? `Laporan Finansial Lengkap ${periodTitle} (10 Slide)`
+                  : `Complete Financial Report ${periodTitle} (10 Slides)`,
+              });
+              sharedSuccess = true;
+            }
+          } catch (err: any) {
+            if (err?.name === "AbortError") {
+              sharedSuccess = true;
+            }
+          }
+        }
+
+        // 3. Desktop / Browser Download Fallback
+        if (!sharedSuccess) {
+          pdf.save(fileName);
+          sharedSuccess = true;
+        }
       }
 
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 3000);
+
+      showToast(
+        isIndonesian ? "Laporan PDF berhasil dibagikan" : "PDF report shared successfully",
+        "update",
+        () => {},
+      );
     } catch (err) {
       console.error("Failed to generate Financial Wrapped PDF:", err);
+      showToast(
+        isIndonesian ? "Gagal membuat laporan PDF" : "Failed to generate PDF report",
+        "delete",
+        () => {},
+      );
     } finally {
       setCurrentSlide(originalSlide);
       setIsExporting(false);
@@ -1212,8 +1293,6 @@ export function FinancialWrappedModal({
                   ? "Klik untuk jeda / lanjutkan"
                   : "Click to pause / resume"
               }
-              onPointerDown={handleCenterPointerDown}
-              onPointerUp={handleCenterPointerUp}
               onClick={handleCenterClick}
             />
 

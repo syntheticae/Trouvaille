@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
-import { Plus, Trash2, Scale, Check, ChevronRight, Search, X } from "lucide-react";
+import { Plus, Trash2, Scale, Check, ChevronRight, Search, X, AlertCircle } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
@@ -119,6 +119,21 @@ export function WalletManagementSheets({
     [wallets],
   );
 
+  const isDuplicateWalletName = useMemo(() => {
+    const trimmed = walletName.trim().toLowerCase();
+    if (!trimmed) return false;
+    return activeWalletNames.has(trimmed);
+  }, [walletName, activeWalletNames]);
+
+  const isDuplicateEditWalletName = useMemo(() => {
+    if (!editWallet) return false;
+    const trimmed = editWallet.name.trim().toLowerCase();
+    if (!trimmed) return false;
+    return wallets.some(
+      (w) => w.id !== editWallet.id && w.name.trim().toLowerCase() === trimmed,
+    );
+  }, [editWallet, wallets]);
+
   const availableDefaultWallets = useMemo(
     () =>
       WALLET_PRESETS.filter(
@@ -191,7 +206,7 @@ export function WalletManagementSheets({
   }, [wallets, classificationFilter, walletSearch, balancesById, balancesByName]);
 
   const handleSaveWallet = () => {
-    if (!walletName.trim()) return;
+    if (!walletName.trim() || isDuplicateWalletName) return;
     const name = walletName.trim();
     const chosenIcon = walletIcon || getWalletIcon(name) || "Wallet";
     const initVal = Number(initialBalanceRaw || 0);
@@ -1023,11 +1038,23 @@ export function WalletManagementSheets({
             </div>
           </div>
 
+          {/* Duplicate Edit Wallet Warning Pill */}
+          {isDuplicateEditWalletName && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] text-[var(--text-secondary)]">
+              <AlertCircle size={14} className="shrink-0 text-[var(--text-tertiary)]" strokeWidth={1.75} />
+              <span>
+                {isIndonesian
+                  ? "Akun dengan nama ini sudah ada. Pilih nama lain agar tidak ganda."
+                  : "An account with this name already exists. Choose a different name."}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-2 pt-1">
             <button
               type="button"
               onClick={() => {
-                if (!editWallet?.name.trim()) return;
+                if (!editWallet?.name.trim() || isDuplicateEditWalletName) return;
                 updateWallet.mutate(
                   {
                     id: editWallet.id,
@@ -1043,7 +1070,8 @@ export function WalletManagementSheets({
                   },
                 );
               }}
-              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+              disabled={!editWallet?.name.trim() || isDuplicateEditWalletName}
+              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 transition-all"
               style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
             >
               {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
@@ -1320,9 +1348,22 @@ export function WalletManagementSheets({
               />
             </div>
 
+            {/* Duplicate Wallet Realtime Warning Pill */}
+            {isDuplicateWalletName && (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] text-[var(--text-secondary)]">
+                <AlertCircle size={14} className="shrink-0 text-[var(--text-tertiary)]" strokeWidth={1.75} />
+                <span>
+                  {isIndonesian
+                    ? "Akun dengan nama ini sudah ada. Pilih nama lain agar tidak ganda."
+                    : "An account with this name already exists. Choose a different name."}
+                </span>
+              </div>
+            )}
+
             <button
               onClick={handleSaveWallet}
-              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+              disabled={!walletName.trim() || isDuplicateWalletName}
+              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 transition-all"
               style={{
                 background: "var(--accent)",
                 color: "var(--accent-ink)",

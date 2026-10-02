@@ -456,16 +456,32 @@ export async function seedOnboardingWallets(
     }
   } else if (userId) {
     try {
-      const { error } = await supabase
+      const { data: existingWallets } = await supabase
         .from("wallets")
-        .insert(
-          seeded.map((w) => ({
-            id: w.id,
-            user_id: userId,
-            name: w.name,
-            icon: w.icon,
-          })),
-        );
+        .select("id, name")
+        .eq("user_id", userId);
+
+      const existingNames = new Set(
+        (existingWallets || []).map((w) => w.name.trim().toLowerCase()),
+      );
+      const walletsToInsert = seeded.filter(
+        (w) => !existingNames.has(w.name.trim().toLowerCase()),
+      );
+
+      let error = null;
+      if (walletsToInsert.length > 0) {
+        const res = await supabase
+          .from("wallets")
+          .insert(
+            walletsToInsert.map((w) => ({
+              id: w.id,
+              user_id: userId,
+              name: w.name,
+              icon: w.icon,
+            })),
+          );
+        error = res.error;
+      }
 
       if (!error && initialBalance && initialBalance > 0 && seeded.length > 0) {
         const primaryWallet = seeded[0];
@@ -626,11 +642,25 @@ export function useAddWallet() {
 
       // 2. Authenticated Cloud Mode with local offline fallback
       let created: Wallet;
+      const trimmedName = w.name.trim();
+
+      // Duplicate pre-check: Return existing wallet if identical name exists
+      const { data: existingDup } = await supabase
+        .from("wallets")
+        .select("*")
+        .eq("user_id", authUser.id)
+        .ilike("name", trimmedName)
+        .limit(1);
+
+      if (existingDup && existingDup.length > 0) {
+        return existingDup[0] as Wallet;
+      }
+
       try {
         const { data, error } = await supabase
           .from("wallets")
           .insert({
-            name: w.name.trim(),
+            name: trimmedName,
             icon: finalIcon,
             user_id: authUser.id,
             classification: resolvedClassification,
@@ -644,7 +674,7 @@ export function useAddWallet() {
         try {
           const { data, error } = await supabase
             .from("wallets")
-            .insert({ name: w.name.trim(), icon: finalIcon, user_id: authUser.id })
+            .insert({ name: trimmedName, icon: finalIcon, user_id: authUser.id })
             .select()
             .single();
           if (error) throw error;

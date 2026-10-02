@@ -649,10 +649,10 @@ export function useCategories(type?: TransactionType) {
           } catch {}
         } else if (uniqueList.length === 0) {
           const activeDefaults = getDefaultCategories();
-          const seedCategories: Category[] = activeDefaults
+          const fallbackCategories: Category[] = activeDefaults
             .filter((c) => !type || c.type === type)
             .map((c) => ({
-              id: generateUUID(),
+              id: `default-${c.type}-${c.name.toLowerCase().replace(/\s+/g, "-")}`,
               user_id: userId || "guest_local_user",
               name: c.name,
               emoji: c.emoji,
@@ -661,28 +661,7 @@ export function useCategories(type?: TransactionType) {
               created_at: new Date().toISOString(),
             }));
 
-          if (userId && userId !== "guest_local_user") {
-            try {
-              const { data: inserted } = await supabase
-                .from("categories")
-                .insert(seedCategories)
-                .select();
-              if (inserted && inserted.length > 0) {
-                return inserted as Category[];
-              }
-            } catch (seedErr) {
-              console.warn("[useCategories] Failed to auto-seed cloud categories:", seedErr);
-            }
-          }
-          if (!type) {
-            try {
-              localStorage.setItem(
-                CATEGORIES_BACKUP_STORAGE_KEY,
-                JSON.stringify(seedCategories),
-              );
-            } catch {}
-          }
-          return seedCategories;
+          return fallbackCategories;
         }
         return uniqueList;
       } catch (err) {
@@ -807,9 +786,23 @@ export function useAddCategory() {
         localStorage.getItem("trouvaille_guest_mode") === "true";
 
       if (isCurrentGuest) {
+        const trimmedName = cat.name.trim();
+        try {
+          const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          const list = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(list)) {
+            const existing = list.find(
+              (c: Category) =>
+                c.type === cat.type &&
+                c.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+            );
+            if (existing) return existing;
+          }
+        } catch {}
+
         const newCat: Category = {
           id: generateUUID(),
-          name: cat.name,
+          name: trimmedName,
           emoji: cat.emoji,
           type: cat.type,
           budget_amount: cat.budget_amount,
@@ -838,10 +831,25 @@ export function useAddCategory() {
       const authUser = session?.user;
       if (!authUser) throw new Error("Not authenticated");
 
+      const trimmedName = cat.name.trim();
+
+      // Duplicate pre-check: Return existing category if identical name and type already exists
+      const { data: existingDup } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("user_id", authUser.id)
+        .eq("type", cat.type)
+        .ilike("name", trimmedName)
+        .limit(1);
+
+      if (existingDup && existingDup.length > 0) {
+        return existingDup[0] as Category;
+      }
+
       try {
         const { data, error } = await supabase
           .from("categories")
-          .insert({ ...cat, user_id: authUser.id, is_default: false })
+          .insert({ ...cat, name: trimmedName, user_id: authUser.id, is_default: false })
           .select()
           .single();
 

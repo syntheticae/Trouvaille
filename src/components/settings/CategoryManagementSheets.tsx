@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Trash2,
@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Target,
+  AlertCircle,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -90,8 +91,16 @@ export function CategoryManagementSheets({
     onClose();
   };
 
+  const isDuplicateCatName = useMemo(() => {
+    const trimmed = catName.trim().toLowerCase();
+    if (!trimmed) return false;
+    return categories.some(
+      (c) => c.type === catType && c.name.trim().toLowerCase() === trimmed,
+    );
+  }, [catName, catType, categories]);
+
   const handleSaveCategory = () => {
-    if (!catName.trim()) return;
+    if (!catName.trim() || isDuplicateCatName) return;
     const finalIcon = catIcon || autoSuggestIcon(catName) || "Tag";
     const numBudget = catBudget.trim()
       ? Number(catBudget.replace(/\D/g, ""))
@@ -742,12 +751,24 @@ export function CategoryManagementSheets({
               </div>
 
 
+              {/* Duplicate Name Realtime Warning Pill */}
+              {isDuplicateCatName && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] text-[var(--text-secondary)]">
+                  <AlertCircle size={14} className="shrink-0 text-[var(--text-tertiary)]" strokeWidth={1.75} />
+                  <span>
+                    {isIndonesian
+                      ? "Kategori dengan nama ini sudah ada. Pilih nama lain agar tidak ganda."
+                      : "A category with this name already exists. Choose a different name."}
+                  </span>
+                </div>
+              )}
+
               {/* Primary Action Button */}
               <button
                 type="button"
                 onClick={handleSaveCategory}
-                disabled={!catName.trim()}
-                className="w-full h-11 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm flex items-center justify-center disabled:opacity-40"
+                disabled={!catName.trim() || isDuplicateCatName}
+                className="w-full h-11 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
                   background: "var(--text-primary)",
                   color: "var(--bg-base)",
