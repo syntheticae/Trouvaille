@@ -1,5 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Eye, EyeOff, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
@@ -18,7 +24,9 @@ interface ExecutiveWalletCardProps {
   wallets?: WalletType[];
   balancesById?: Record<string, number>;
   holdings?: InvestmentHolding[];
-  onDetailAsset?: (holdingOrId?: InvestmentHolding | WalletType | string) => void;
+  onDetailAsset?: (
+    holdingOrId?: InvestmentHolding | WalletType | string,
+  ) => void;
   userName?: string;
   usdtRate?: number;
   usdtUnits?: number;
@@ -47,8 +55,15 @@ export function ExecutiveWalletCard({
 
   useEffect(() => {
     const handlePref = () => setReceivablePrefTick((t) => t + 1);
-    window.addEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
-    return () => window.removeEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
+    window.addEventListener(
+      "trouvaille:receivable-liquid-pref-changed",
+      handlePref,
+    );
+    return () =>
+      window.removeEventListener(
+        "trouvaille:receivable-liquid-pref-changed",
+        handlePref,
+      );
   }, []);
 
   // ── DYNAMIC ZERO-DUMMY REAL ASSET CARDS ─────────────────────────────
@@ -72,12 +87,18 @@ export function ExecutiveWalletCard({
 
     // 1. USDT Holding Card (If user owns USDT)
     const effectiveUsdtUnits = usdtUnits;
-    const usdtHolding = holdings.find((h) => h.symbol?.toUpperCase() === "USDT");
-    const finalUsdtUnits = effectiveUsdtUnits > 0 ? effectiveUsdtUnits : (usdtHolding?.units ?? 0);
+    const usdtHolding = holdings.find(
+      (h) => h.symbol?.toUpperCase() === "USDT",
+    );
+    const finalUsdtUnits =
+      effectiveUsdtUnits > 0 ? effectiveUsdtUnits : (usdtHolding?.units ?? 0);
 
     if (finalUsdtUnits > 0) {
       const usdtBalance = finalUsdtUnits * usdtRate;
-      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((usdtBalance / totalGrossAssets) * 100)) : 100;
+      const alloc =
+        totalGrossAssets > 0
+          ? Math.min(100, Math.round((usdtBalance / totalGrossAssets) * 100))
+          : 100;
       const usdtObj: InvestmentHolding = usdtHolding || {
         id: "usdt-card",
         symbol: "USDT",
@@ -101,7 +122,8 @@ export function ExecutiveWalletCard({
         trendText: "▲ 0.0%",
         livePrice: `${formatRupiah(usdtRate)} / USDT`,
         sparklinePoints: "M 0 16 Q 25 14 50 16 T 80 15 T 100 16",
-        sparklineArea: "M 0 16 Q 25 14 50 16 T 80 15 T 100 16 L 100 32 L 0 32 Z",
+        sparklineArea:
+          "M 0 16 Q 25 14 50 16 T 80 15 T 100 16 L 100 32 L 0 32 Z",
         sparklinePeakY: 16,
       });
     }
@@ -112,7 +134,10 @@ export function ExecutiveWalletCard({
     );
     realHoldings.forEach((h) => {
       const val = h.units * (h.current_price || h.avg_buy_price);
-      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((val / totalGrossAssets) * 100)) : 0;
+      const alloc =
+        totalGrossAssets > 0
+          ? Math.min(100, Math.round((val / totalGrossAssets) * 100))
+          : 0;
       list.push({
         id: `card-${h.id}`,
         holdingRef: h,
@@ -136,7 +161,9 @@ export function ExecutiveWalletCard({
     // 3. User's Real Cash Wallets (Wallets with positive balance, not debt/crypto)
     const includeReceivable = getIncludeReceivableInLiquid();
     const realCashWallets = wallets.filter((w) => {
-      const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
+      const bal = balancesById
+        ? (balancesById[w.id] ?? 0)
+        : Number(w.balance || 0);
       const isCrypto =
         w.name.toLowerCase().includes("crypto") ||
         w.name.toLowerCase().includes("usdt") ||
@@ -156,8 +183,13 @@ export function ExecutiveWalletCard({
       );
     });
     realCashWallets.forEach((w) => {
-      const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
-      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((bal / totalGrossAssets) * 100)) : 0;
+      const bal = balancesById
+        ? (balancesById[w.id] ?? 0)
+        : Number(w.balance || 0);
+      const alloc =
+        totalGrossAssets > 0
+          ? Math.min(100, Math.round((bal / totalGrossAssets) * 100))
+          : 0;
       const isRdn =
         w.classification === "investment" ||
         w.name.toLowerCase().includes("rdn") ||
@@ -197,7 +229,9 @@ export function ExecutiveWalletCard({
     if (list.length > 1 || list.length === 0) {
       list.push({
         id: "card-equity",
-        name: isIndonesian ? "Ekuitas Bersih Konsolidasi" : "Consolidated Equity Vault",
+        name: isIndonesian
+          ? "Ekuitas Bersih Konsolidasi"
+          : "Consolidated Equity Vault",
         category: isIndonesian ? "EKUITAS MODAL" : "CAPITAL VAULT",
         balance: netWorth,
         allocation: 100,
@@ -224,10 +258,22 @@ export function ExecutiveWalletCard({
       seen.add(item.id);
       return true;
     });
-  }, [holdings, wallets, balancesById, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian, receivablePrefTick]);
+  }, [
+    holdings,
+    wallets,
+    balancesById,
+    usdtUnits,
+    usdtRate,
+    netWorth,
+    totalGrossAssets,
+    solvencyScore,
+    isIndonesian,
+    receivablePrefTick,
+  ]);
 
   const cardCount = rawCards.length;
-  const safeActiveIndex = cardCount > 0 ? ((page % cardCount) + cardCount) % cardCount : 0;
+  const safeActiveIndex =
+    cardCount > 0 ? ((page % cardCount) + cardCount) % cardCount : 0;
   const activeCard = rawCards[safeActiveIndex];
 
   const paginate = (newDirection: number) => {
@@ -302,7 +348,9 @@ export function ExecutiveWalletCard({
         <div className="absolute top-2.5 inset-x-0 text-center">
           <span
             className="text-[8.5px]  font-bold tracking-[0.22em] uppercase"
-            style={{ color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.38)" }}
+            style={{
+              color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.38)",
+            }}
           >
             {isIndonesian ? "NERACA AKUN EKSEKUTIF" : "EXECUTIVE BALANCE VAULT"}
           </span>
@@ -492,7 +540,9 @@ export function ExecutiveWalletCard({
                         className="text-[17px] sm:text-[19px] font-light tracking-tight  leading-none truncate"
                         style={{ color: isWhite ? "#000000" : "#ffffff" }}
                       >
-                        {isStealthMode ? "••••••••" : formatRupiah(activeCard.balance)}
+                        {isStealthMode
+                          ? "••••••••"
+                          : formatRupiah(activeCard.balance)}
                       </span>
                       <span
                         className="text-[8px]  font-bold px-1 py-0.2 rounded shrink-0"
@@ -520,7 +570,10 @@ export function ExecutiveWalletCard({
 
                   {/* Strict Monochrome Sparkline Line Chart SVG */}
                   <div className="w-24 h-7 relative flex items-center justify-end shrink-0">
-                    <svg className="w-full h-full overflow-visible" viewBox="0 0 100 32">
+                    <svg
+                      className="w-full h-full overflow-visible"
+                      viewBox="0 0 100 32"
+                    >
                       <defs>
                         <linearGradient
                           id={`monoSpark-${activeCard.id}`}
@@ -627,11 +680,17 @@ export function ExecutiveWalletCard({
               aria-label="Previous card"
               className="absolute -left-1.5 top-1/2 -translate-y-[86px] w-6.5 h-6.5 rounded-full glass-surface flex items-center justify-center z-35 border border-[var(--glass-border)] active:scale-90 transition-transform cursor-pointer"
               style={{
-                background: isDark ? "rgba(22, 22, 28, 0.88)" : "rgba(255, 255, 255, 0.92)",
+                background: isDark
+                  ? "rgba(22, 22, 28, 0.88)"
+                  : "rgba(255, 255, 255, 0.92)",
                 boxShadow: "var(--shadow-card)",
               }}
             >
-              <ChevronLeft size={13} strokeWidth={2} style={{ color: "var(--text-secondary)" }} />
+              <ChevronLeft
+                size={13}
+                strokeWidth={2}
+                style={{ color: "var(--text-secondary)" }}
+              />
             </button>
             <button
               type="button"
@@ -642,11 +701,17 @@ export function ExecutiveWalletCard({
               aria-label="Next card"
               className="absolute -right-1.5 top-1/2 -translate-y-[86px] w-6.5 h-6.5 rounded-full glass-surface flex items-center justify-center z-35 border border-[var(--glass-border)] active:scale-90 transition-transform cursor-pointer"
               style={{
-                background: isDark ? "rgba(22, 22, 28, 0.88)" : "rgba(255, 255, 255, 0.92)",
+                background: isDark
+                  ? "rgba(22, 22, 28, 0.88)"
+                  : "rgba(255, 255, 255, 0.92)",
                 boxShadow: "var(--shadow-card)",
               }}
             >
-              <ChevronRight size={13} strokeWidth={2} style={{ color: "var(--text-secondary)" }} />
+              <ChevronRight
+                size={13}
+                strokeWidth={2}
+                style={{ color: "var(--text-secondary)" }}
+              />
             </button>
           </>
         )}
@@ -674,7 +739,9 @@ export function ExecutiveWalletCard({
         <div
           className="absolute inset-[3px] rounded-[21px] pointer-events-none border border-dashed"
           style={{
-            borderColor: isDark ? "rgba(255, 255, 255, 0.22)" : "rgba(0, 0, 0, 0.18)",
+            borderColor: isDark
+              ? "rgba(255, 255, 255, 0.22)"
+              : "rgba(0, 0, 0, 0.18)",
             strokeDasharray: "4 3",
           }}
         />
@@ -702,8 +769,12 @@ export function ExecutiveWalletCard({
               }}
               className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all border"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
-                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.1)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.06)"
+                  : "rgba(0, 0, 0, 0.05)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.12)"
+                  : "rgba(0, 0, 0, 0.1)",
                 color: isDark ? "var(--text-secondary)" : "var(--text-primary)",
               }}
               title={
@@ -734,7 +805,9 @@ export function ExecutiveWalletCard({
           <div
             className="grid grid-cols-3 gap-1 py-1.5 px-2 rounded-lg text-center"
             style={{
-              background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.04)"
+                : "rgba(0, 0, 0, 0.04)",
               border: isDark
                 ? "1px solid rgba(255, 255, 255, 0.1)"
                 : "1px solid rgba(0, 0, 0, 0.1)",
@@ -758,7 +831,9 @@ export function ExecutiveWalletCard({
             <div
               className="border-x"
               style={{
-                borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.1)"
+                  : "rgba(0, 0, 0, 0.1)",
               }}
             >
               <span

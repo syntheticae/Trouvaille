@@ -21,6 +21,7 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface FinancialReportSectionProps {
   wallets: Wallet[];
@@ -147,7 +148,10 @@ const getDebtDescription = (calk: CALKReport, isIndonesian: boolean) => {
   return `Beban utang tinggi: Liabilitas mencapai ${calk.debtToAssetRatioPct}% dari total aset. Prioritaskan percepatan pengurangan pokok pinjaman.`;
 };
 
-const getFreeCashflowDescription = (calk: CALKReport, isIndonesian: boolean) => {
+const getFreeCashflowDescription = (
+  calk: CALKReport,
+  isIndonesian: boolean,
+) => {
   if (!isIndonesian) return calk.freeCashflowDescription;
   if (calk.freeCashflowRating === "superior") {
     return `Laju tabungan prima: Anda mempertahankan ${calk.freeCashflowRatePct}% pemasukan sebagai surplus arus kas operasional.`;
@@ -180,6 +184,8 @@ export function FinancialReportSection({
 }: FinancialReportSectionProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [copied, setCopied] = useState(false);
 
   // Section collapse toggles (default folded for clean luxury presentation)
@@ -310,47 +316,62 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
     });
   };
 
+  // ── Liquid Glass Tactile Tokens ──
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 247, 250, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.09)"
+    : "1px solid rgba(0, 0, 0, 0.065)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.22)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+
+  const gradientDivider = {
+    background: isDark
+      ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 15%, rgba(255, 255, 255, 0.08) 85%, transparent 100%)"
+      : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.06) 15%, rgba(0, 0, 0, 0.06) 85%, transparent 100%)",
+    height: "1px",
+    width: "100%",
+  };
+
   return (
-    <div className="space-y-4">
-      {/* 1. Executive Accounting Header Hero */}
+    <div className="space-y-3.5 select-none">
+      {/* ====================================================================== */}
+      {/* 1. EXECUTIVE ACCOUNTING HEADER HERO                                    */}
+      {/* ====================================================================== */}
       <section
-        className="glass-card p-4 sm:p-5 rounded-[24px] relative overflow-hidden space-y-3"
+        className="p-4 sm:p-5 rounded-[26px] relative overflow-hidden space-y-3 transition-all"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: controlBg,
+          border: controlBorder,
+          boxShadow: controlShadow,
         }}
       >
+        {/* Specular Rim Light */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
+
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
                 {isIndonesian ? "Laporan" : "Statements"} • {periodLabel}
               </span>
-              <span
-                className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {isIndonesian ? "Terverifikasi SAK" : "IFRS Verified"}
-              </span>
             </div>
-            <h2
-              className="text-[20px] sm:text-[22px] font-semibold tracking-tight truncate"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight text-[var(--text-primary)] leading-tight truncate">
               {isIndonesian ? "Laporan Keuangan" : "Financial Report"}
             </h2>
-            <p
-              className="text-[11px] font-medium truncate"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-[11px] font-medium text-[var(--text-secondary)] truncate">
               {isIndonesian
                 ? "Neraca Posisi Keuangan, Arus Kas & Catatan Pengungkapan"
                 : "Balance Sheet, Cash Flows & Disclosures"}
@@ -360,37 +381,37 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           <button
             type="button"
             onClick={handleCopySummary}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: controlBg,
+              border: controlBorder,
               color: "var(--text-primary)",
+              boxShadow: controlShadow,
             }}
           >
             {copied ? (
               <>
-                <Check size={12} strokeWidth={2.5} />
+                <Check size={12} strokeWidth={2.8} />
                 <span>{isIndonesian ? "Tersalin" : "Copied"}</span>
               </>
             ) : (
               <>
-                <Copy size={12} strokeWidth={1.75} />
+                <Copy size={12} strokeWidth={1.8} />
                 <span>{isIndonesian ? "Ekspor" : "Export"}</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Status Keseimbangan Neraca (Strictly 1 Baris) */}
-        <div
-          className="pt-2.5 border-t flex items-center justify-between gap-2"
-          style={{ borderColor: "var(--glass-border)" }}
-        >
-          <div
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight truncate"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            <ShieldCheck size={13} strokeWidth={1.75} className="shrink-0" />
+        {/* Status Keseimbangan Neraca */}
+        <div style={gradientDivider} className="pt-0.5" />
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight truncate text-[var(--text-secondary)]">
+            <ShieldCheck
+              size={13.5}
+              strokeWidth={2}
+              className="shrink-0 text-[var(--text-primary)]"
+            />
             <span className="truncate">
               {balanceSheet.isBalanced
                 ? isIndonesian
@@ -402,64 +423,59 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             </span>
           </div>
 
-          <div
-            className="text-[10.5px] font-semibold whitespace-nowrap shrink-0 tabular-nums"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {isIndonesian ? "Selisih" : "Discrepancy"}: {formatRupiah(balanceSheet.discrepancy)}
+          <div className="text-[10.5px] font-mono font-medium whitespace-nowrap shrink-0 text-[var(--text-tertiary)]">
+            {isIndonesian ? "Selisih" : "Diff"}:{" "}
+            {formatRupiah(balanceSheet.discrepancy)}
           </div>
         </div>
       </section>
 
       {/* ====================================================================== */}
-      {/* CONTAINER 1: STATEMENT OF FINANCIAL POSITION (BALANCE SHEET) */}
+      {/* 2. STATEMENT OF FINANCIAL POSITION (BALANCE SHEET)                     */}
       {/* ====================================================================== */}
       <section
-        className="p-4 sm:p-5 rounded-[24px] glass-card space-y-4"
+        className="p-4 sm:p-5 rounded-[26px] space-y-3.5 relative overflow-hidden transition-all"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: controlBg,
+          border: controlBorder,
+          boxShadow: controlShadow,
         }}
       >
-        {/* Header: Judul, Subjudul & Badge Kanan Strictly 1 Baris */}
+        {/* Header Bar */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: controlBorder,
                 color: "var(--text-primary)",
               }}
             >
-              <Scale size={15} strokeWidth={1.75} />
+              <Scale size={15} strokeWidth={1.8} />
             </div>
             <div className="min-w-0">
-              <h3
-                className="text-[13px] font-semibold tracking-tight leading-tight truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h3 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)] leading-tight truncate">
                 {isIndonesian
                   ? "1. Laporan Posisi Keuangan (Neraca)"
                   : "1. Statement of Financial Position"}
               </h3>
-              <p
-                className="text-[11px] mt-0.5 leading-tight truncate"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-tight truncate">
                 {isIndonesian
                   ? "Struktur aset, liabilitas & ekuitas bersih"
                   : "Asset structure, liabilities & net worth equity"}
               </p>
             </div>
           </div>
-          {/* Badge Kanan 1 Baris */}
           <span
-            className="whitespace-nowrap shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            className="whitespace-nowrap shrink-0 text-[9px] font-semibold px-2 py-0.5 rounded-full border"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(0, 0, 0, 0.04)",
+              borderColor: "var(--glass-border)",
               color: "var(--text-secondary)",
             }}
           >
@@ -467,78 +483,61 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           </span>
         </div>
 
-        {/* 3-Col KPI Bento */}
+        {/* 3-Col Bento Telemetry */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
+          {[
+            {
+              label: isIndonesian ? "Total Aset" : "Total Assets",
+              value: formatRupiah(balanceSheet.totalAssets),
+              highlight: false,
+            },
+            {
+              label: isIndonesian ? "Total Liabilitas" : "Liabilities",
+              value: formatRupiah(balanceSheet.totalLiabilities),
+              highlight: false,
+            },
+            {
+              label: isIndonesian ? "Kekayaan Bersih" : "Net Worth",
+              value: formatRupiah(balanceSheet.netWorth),
+              highlight: true,
+            },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className="p-2.5 rounded-2xl transition-all"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.04)"
+                  : "rgba(0, 0, 0, 0.03)",
+                border: controlBorder,
+              }}
             >
-              {isIndonesian ? "Total Aset" : "Total Assets"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {formatRupiah(balanceSheet.totalAssets)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Total Liabilitas" : "Total Liabilities"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {formatRupiah(balanceSheet.totalLiabilities)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Kekayaan Bersih" : "Net Worth"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {formatRupiah(balanceSheet.netWorth)}
-            </span>
-          </div>
+              <span className="text-[8.5px] uppercase font-bold text-[var(--text-tertiary)] block truncate">
+                {item.label}
+              </span>
+              <span
+                className={`amount text-[12px] sm:text-[13px] font-bold mt-0.5 block truncate tabular-nums ${
+                  item.highlight
+                    ? "text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)]"
+                }`}
+              >
+                {item.value}
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* Baris Accordion Terpadu */}
-        <div className="space-y-2 pt-1">
+        {/* Inset Accordion Rows */}
+        <div className="space-y-1.5 pt-0.5">
           {/* Accordion 1: Assets Breakdown */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -547,50 +546,41 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setAssetsOpen(!assetsOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Layers size={13} strokeWidth={1.75} />
+                  <Layers size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
                     {isIndonesian ? "Rincian Aset" : "Assets Breakdown"}
                   </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Kas/Bank: ${formatRupiah(balanceSheet.liquidAssets.total)} • Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)} • Piutang: ${formatRupiah(balanceSheet.receivableAssets.total)}`
-                      : `Liquid: ${formatRupiah(balanceSheet.liquidAssets.total)} • Inv: ${formatRupiah(balanceSheet.investmentAssets.total)} • Rec: ${formatRupiah(balanceSheet.receivableAssets.total)}`}
+                      ? `Kas/Bank: ${formatRupiah(balanceSheet.liquidAssets.total)} • Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)}`
+                      : `Liquid: ${formatRupiah(balanceSheet.liquidAssets.total)} • Inv: ${formatRupiah(balanceSheet.investmentAssets.total)}`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-primary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
                   {formatRupiah(balanceSheet.totalAssets)}
                 </span>
                 <motion.div
                   animate={{ rotate: assetsOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -602,194 +592,102 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-3"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-2.5 text-[11px]"
                 >
+                  <div style={gradientDivider} />
                   {/* Liquid Assets Sub-group */}
-                  <div>
-                    <div
-                      className="flex items-center justify-between mb-1 pb-1 border-b px-1"
-                      style={{ borderColor: "var(--glass-border)" }}
-                    >
-                      <span
-                        className="text-[11.5px] font-bold tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Aset Likuid (Kas & Bank)" : "Liquid Assets (Cash & Bank)"}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-[var(--text-primary)]">
+                      <span>
+                        {isIndonesian
+                          ? "Aset Likuid (Kas & Bank)"
+                          : "Liquid Assets"}
                       </span>
-                      <span
-                        className="amount text-[11.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                      <span className="tabular-nums">
                         {formatRupiah(balanceSheet.liquidAssets.total)}
                       </span>
                     </div>
-                    <div>
-                      {balanceSheet.liquidAssets.items.length === 0 ? (
-                        <p
-                          className="text-[11px] px-2 py-1 font-normal"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {isIndonesian
-                            ? "Belum ada akun kas & bank tercatat."
-                            : "No liquid accounts recorded."}
-                        </p>
-                      ) : (
-                        balanceSheet.liquidAssets.items.map((it) => (
-                          <div
-                            key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                            style={{ borderColor: "var(--glass-border)" }}
-                          >
-                            <span
-                              className="text-[11.5px] font-normal tracking-tight"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {it.name}
-                            </span>
-                            <div className="text-right flex items-baseline gap-2.5">
-                              <span
-                                className="text-[10.5px] tabular-nums"
-                                style={{ color: "var(--text-tertiary)" }}
-                              >
-                                {it.percentageOfTotal.toFixed(1)}%
-                              </span>
-                              <span
-                                className="amount text-[11.5px] font-normal tabular-nums"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                    {balanceSheet.liquidAssets.items.map((it) => (
+                      <div
+                        key={it.id}
+                        className="flex items-center justify-between py-1 px-1.5 text-[10.5px] text-[var(--text-secondary)]"
+                      >
+                        <span className="truncate">{it.name}</span>
+                        <div className="flex items-center gap-2 tabular-nums shrink-0">
+                          <span className="text-[9.5px] text-[var(--text-tertiary)]">
+                            {it.percentageOfTotal.toFixed(1)}%
+                          </span>
+                          <span className="font-semibold text-[var(--text-primary)]">
+                            {formatRupiah(it.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Investment Portfolio Sub-group */}
-                  <div>
-                    <div
-                      className="flex items-center justify-between mb-1 pb-1 border-b px-1"
-                      style={{ borderColor: "var(--glass-border)" }}
-                    >
-                      <span
-                        className="text-[11.5px] font-bold tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Portofolio Investasi" : "Investment Portfolio"}
+                  <div style={gradientDivider} />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-[var(--text-primary)]">
+                      <span>
+                        {isIndonesian
+                          ? "Portofolio Investasi"
+                          : "Investment Portfolio"}
                       </span>
-                      <span
-                        className="amount text-[11.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                      <span className="tabular-nums">
                         {formatRupiah(balanceSheet.investmentAssets.total)}
                       </span>
                     </div>
-                    <div>
-                      {balanceSheet.investmentAssets.items.length === 0 ? (
-                        <p
-                          className="text-[11px] px-2 py-1 font-normal"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {isIndonesian
-                            ? "Belum ada portofolio investasi tercatat."
-                            : "No investment assets recorded."}
-                        </p>
-                      ) : (
-                        balanceSheet.investmentAssets.items.map((it) => (
-                          <div
-                            key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                            style={{ borderColor: "var(--glass-border)" }}
-                          >
-                            <span
-                              className="text-[11.5px] font-normal tracking-tight"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {it.name}
-                            </span>
-                            <div className="text-right flex items-baseline gap-2.5">
-                              <span
-                                className="text-[10.5px] tabular-nums"
-                                style={{ color: "var(--text-tertiary)" }}
-                              >
-                                {it.percentageOfTotal.toFixed(1)}%
-                              </span>
-                              <span
-                                className="amount text-[11.5px] font-normal tabular-nums"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                    {balanceSheet.investmentAssets.items.map((it) => (
+                      <div
+                        key={it.id}
+                        className="flex items-center justify-between py-1 px-1.5 text-[10.5px] text-[var(--text-secondary)]"
+                      >
+                        <span className="truncate">{it.name}</span>
+                        <div className="flex items-center gap-2 tabular-nums shrink-0">
+                          <span className="text-[9.5px] text-[var(--text-tertiary)]">
+                            {it.percentageOfTotal.toFixed(1)}%
+                          </span>
+                          <span className="font-semibold text-[var(--text-primary)]">
+                            {formatRupiah(it.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Receivables Sub-group */}
-                  <div>
-                    <div
-                      className="flex items-center justify-between mb-1 pb-1 border-b px-1"
-                      style={{ borderColor: "var(--glass-border)" }}
-                    >
-                      <span
-                        className="text-[11.5px] font-bold tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Piutang Tertunda" : "Receivables"}
-                      </span>
-                      <span
-                        className="amount text-[11.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatRupiah(balanceSheet.receivableAssets.total)}
-                      </span>
-                    </div>
-                    <div>
-                      {balanceSheet.receivableAssets.items.length === 0 ? (
-                        <p
-                          className="text-[11px] px-2 py-1 font-normal"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {isIndonesian
-                            ? "Belum ada piutang aktif tercatat."
-                            : "No active receivables recorded."}
-                        </p>
-                      ) : (
-                        balanceSheet.receivableAssets.items.map((it) => (
+                  {balanceSheet.receivableAssets.items.length > 0 && (
+                    <>
+                      <div style={gradientDivider} />
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-[var(--text-primary)]">
+                          <span>
+                            {isIndonesian ? "Piutang Tertunda" : "Receivables"}
+                          </span>
+                          <span className="tabular-nums">
+                            {formatRupiah(balanceSheet.receivableAssets.total)}
+                          </span>
+                        </div>
+                        {balanceSheet.receivableAssets.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                            style={{ borderColor: "var(--glass-border)" }}
+                            className="flex items-center justify-between py-1 px-1.5 text-[10.5px] text-[var(--text-secondary)]"
                           >
-                            <span
-                              className="text-[11.5px] font-normal tracking-tight"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {it.name}
-                            </span>
-                            <div className="text-right flex items-baseline gap-2.5">
-                              <span
-                                className="text-[10.5px] tabular-nums"
-                                style={{ color: "var(--text-tertiary)" }}
-                              >
+                            <span className="truncate">{it.name}</span>
+                            <div className="flex items-center gap-2 tabular-nums shrink-0">
+                              <span className="text-[9.5px] text-[var(--text-tertiary)]">
                                 {it.percentageOfTotal.toFixed(1)}%
                               </span>
-                              <span
-                                className="amount text-[11.5px] font-normal tabular-nums"
-                                style={{ color: "var(--text-primary)" }}
-                              >
+                              <span className="font-semibold text-[var(--text-primary)]">
                                 {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -797,10 +695,12 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Accordion 2: Liabilities Breakdown */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -809,50 +709,43 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setLiabilitiesOpen(!liabilitiesOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Building2 size={13} strokeWidth={1.75} />
+                  <Building2 size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Rincian Liabilitas" : "Liabilities Breakdown"}
-                  </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
                     {isIndonesian
-                      ? `Jangka Pendek: ${formatRupiah(balanceSheet.currentLiabilities.total)} • Jangka Panjang: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`
+                      ? "Rincian Liabilitas"
+                      : "Liabilities Breakdown"}
+                  </h4>
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                    {isIndonesian
+                      ? `Utang Lancar: ${formatRupiah(balanceSheet.currentLiabilities.total)} • Jangka Panjang: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`
                       : `Current: ${formatRupiah(balanceSheet.currentLiabilities.total)} • Long-Term: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
                   {formatRupiah(balanceSheet.totalLiabilities)}
                 </span>
                 <motion.div
                   animate={{ rotate: liabilitiesOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -864,132 +757,41 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-3"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-2 text-[11px]"
                 >
-                  {/* Current Liabilities */}
-                  <div>
-                    <div
-                      className="flex items-center justify-between mb-1 pb-1 border-b px-1"
-                      style={{ borderColor: "var(--glass-border)" }}
-                    >
-                      <span
-                        className="text-[11.5px] font-bold tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Liabilitas Jangka Pendek (Utang Lancar)" : "Current Liabilities"}
-                      </span>
-                      <span
-                        className="amount text-[11.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatRupiah(balanceSheet.currentLiabilities.total)}
-                      </span>
-                    </div>
-                    <div>
-                      {balanceSheet.currentLiabilities.items.length === 0 ? (
-                        <p
-                          className="text-[11px] px-2 py-1 font-normal"
-                          style={{ color: "var(--text-tertiary)" }}
+                  <div style={gradientDivider} />
+                  {balanceSheet.totalLiabilities === 0 ? (
+                    <p className="text-[10.5px] px-1 text-[var(--text-tertiary)]">
+                      {isIndonesian
+                        ? "Bebas dari liabilitas dan pinjaman aktif."
+                        : "Zero active debt or loan liabilities recorded."}
+                    </p>
+                  ) : (
+                    <>
+                      {balanceSheet.currentLiabilities.items.map((it) => (
+                        <div
+                          key={it.id}
+                          className="flex items-center justify-between py-1 px-1.5 text-[10.5px] text-[var(--text-secondary)]"
                         >
-                          {isIndonesian
-                            ? "Tidak ada utang lancar atau tagihan kartu tercatat."
-                            : "No short-term liabilities or credit debt recorded."}
-                        </p>
-                      ) : (
-                        balanceSheet.currentLiabilities.items.map((it) => (
-                          <div
-                            key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                            style={{ borderColor: "var(--glass-border)" }}
-                          >
-                            <span
-                              className="text-[11.5px] font-normal tracking-tight"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {it.name}
-                            </span>
-                            <div className="text-right flex items-baseline gap-2.5">
-                              <span
-                                className="text-[10.5px] tabular-nums"
-                                style={{ color: "var(--text-tertiary)" }}
-                              >
-                                {it.percentageOfTotal.toFixed(1)}%
-                              </span>
-                              <span
-                                className="amount text-[11.5px] font-normal tabular-nums"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Long-Term Debt */}
-                  <div>
-                    <div
-                      className="flex items-center justify-between mb-1 pb-1 border-b px-1"
-                      style={{ borderColor: "var(--glass-border)" }}
-                    >
-                      <span
-                        className="text-[11.5px] font-bold tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Liabilitas Jangka Panjang" : "Long-Term Debt"}
-                      </span>
-                      <span
-                        className="amount text-[11.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatRupiah(balanceSheet.longTermLiabilities.total)}
-                      </span>
-                    </div>
-                    <div>
-                      {balanceSheet.longTermLiabilities.items.length === 0 ? (
-                        <p
-                          className="text-[11px] px-2 py-1 font-normal"
-                          style={{ color: "var(--text-tertiary)" }}
+                          <span className="truncate">{it.name}</span>
+                          <span className="font-semibold text-[var(--text-primary)] tabular-nums">
+                            {formatRupiah(it.balance)}
+                          </span>
+                        </div>
+                      ))}
+                      {balanceSheet.longTermLiabilities.items.map((it) => (
+                        <div
+                          key={it.id}
+                          className="flex items-center justify-between py-1 px-1.5 text-[10.5px] text-[var(--text-secondary)]"
                         >
-                          {isIndonesian
-                            ? "Tidak ada pinjaman jangka panjang tercatat."
-                            : "No long-term loans or mortgage liabilities recorded."}
-                        </p>
-                      ) : (
-                        balanceSheet.longTermLiabilities.items.map((it) => (
-                          <div
-                            key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                            style={{ borderColor: "var(--glass-border)" }}
-                          >
-                            <span
-                              className="text-[11.5px] font-normal tracking-tight"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {it.name}
-                            </span>
-                            <div className="text-right flex items-baseline gap-2.5">
-                              <span
-                                className="text-[10.5px] tabular-nums"
-                                style={{ color: "var(--text-tertiary)" }}
-                              >
-                                {it.percentageOfTotal.toFixed(1)}%
-                              </span>
-                              <span
-                                className="amount text-[11.5px] font-normal tabular-nums"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                          <span className="truncate">{it.name}</span>
+                          <span className="font-semibold text-[var(--text-primary)] tabular-nums">
+                            {formatRupiah(it.balance)}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -997,10 +799,12 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Accordion 3: Equity & Capital Structure */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -1009,50 +813,43 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setEquityOpen(!equityOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <ShieldCheck size={13} strokeWidth={1.75} />
+                  <ShieldCheck size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Struktur Modal & Ekuitas" : "Equity & Capital Structure"}
-                  </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
                     {isIndonesian
-                      ? `Solvabilitas: ${balanceSheet.totalAssets > 0 ? ((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1) + "%" : "100%"} • Kekayaan Bersih`
-                      : `Solvency: ${balanceSheet.totalAssets > 0 ? ((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1) + "%" : "100%"} • Net Worth`}
+                      ? "Struktur Modal & Ekuitas"
+                      : "Equity & Capital Structure"}
+                  </h4>
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                    {isIndonesian
+                      ? `Solvabilitas: ${balanceSheet.totalAssets > 0 ? ((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1) + "%" : "100%"}`
+                      : `Solvency: ${balanceSheet.totalAssets > 0 ? ((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1) + "%" : "100%"}`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-primary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
                   {formatRupiah(balanceSheet.netWorth)}
                 </span>
                 <motion.div
                   animate={{ rotate: equityOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -1064,60 +861,27 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-2 text-[11px]"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-1.5 text-[11px]"
                 >
-                  <div
-                    className="flex items-center justify-between py-1 border-b"
-                    style={{ borderColor: "var(--glass-border)" }}
-                  >
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      {isIndonesian ? "Total Modal Ekuitas Bersih" : "Total Net Worth Equity"}
+                  <div style={gradientDivider} />
+                  <div className="flex items-center justify-between py-1 px-1 text-[10.5px]">
+                    <span className="text-[var(--text-secondary)]">
+                      {isIndonesian ? "Rasio Solvabilitas" : "Solvency Ratio"}
                     </span>
-                    <span
-                      className="amount font-bold tabular-nums"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {formatRupiah(balanceSheet.netWorth)}
-                    </span>
-                  </div>
-
-                  <div
-                    className="flex items-center justify-between py-1 border-b"
-                    style={{ borderColor: "var(--glass-border)" }}
-                  >
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      {isIndonesian
-                        ? "Rasio Solvabilitas (Aset terhadap Utang)"
-                        : "Solvency Ratio (Assets to Debt)"}
-                    </span>
-                    <span
-                      className="font-semibold tabular-nums"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                    <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                       {balanceSheet.totalLiabilities > 0
-                        ? `${((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1)}% (${isIndonesian ? "Sangat Kuat" : "Very Strong"})`
-                        : isIndonesian
-                          ? "100.0% (Bebas Liabilitas)"
-                          : "100.0% (Debt-Free)"}
+                        ? `${((balanceSheet.netWorth / balanceSheet.totalAssets) * 100).toFixed(1)}%`
+                        : "100.0% (Bebas Utang)"}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between py-1">
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      {isIndonesian ? "Status Keseimbangan Neraca" : "Balance Sheet Status"}
+                  <div className="flex items-center justify-between py-1 px-1 text-[10.5px]">
+                    <span className="text-[var(--text-secondary)]">
+                      {isIndonesian ? "Keseimbangan Neraca" : "Balance Status"}
                     </span>
-                    <span
-                      className="font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                    <span className="font-semibold text-[var(--text-primary)]">
                       {balanceSheet.isBalanced
-                        ? isIndonesian
-                          ? "100% Seimbang (Selisih Rp 0)"
-                          : "100% Balanced (Zero Discrepancy)"
-                        : isIndonesian
-                          ? `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`
-                          : `Discrepancy: ${formatRupiah(balanceSheet.discrepancy)}`}
+                        ? "100% Seimbang"
+                        : "Ada Diskrepansi"}
                     </span>
                   </div>
                 </motion.div>
@@ -1128,52 +892,50 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
       </section>
 
       {/* ====================================================================== */}
-      {/* CONTAINER 2: STATEMENT OF CASH FLOWS (3 CORE ACTIVITIES) */}
+      {/* 3. STATEMENT OF CASH FLOWS (3 CORE ACTIVITIES)                         */}
       {/* ====================================================================== */}
       <section
-        className="p-4 sm:p-5 rounded-[24px] glass-card space-y-4"
+        className="p-4 sm:p-5 rounded-[26px] space-y-3.5 relative overflow-hidden transition-all"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: controlBg,
+          border: controlBorder,
+          boxShadow: controlShadow,
         }}
       >
-        {/* Header: Judul, Subjudul & Nilai Bersih Kas Strictly 1 Baris */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: controlBorder,
                 color: "var(--text-primary)",
               }}
             >
-              <TrendingUp size={15} strokeWidth={1.75} />
+              <TrendingUp size={15} strokeWidth={1.8} />
             </div>
             <div className="min-w-0">
-              <h3
-                className="text-[13px] font-semibold tracking-tight leading-tight truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian ? "2. Laporan Arus Kas" : "2. Statement of Cash Flows"}
+              <h3 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)] leading-tight truncate">
+                {isIndonesian
+                  ? "2. Laporan Arus Kas"
+                  : "2. Statement of Cash Flows"}
               </h3>
-              <p
-                className="text-[11px] mt-0.5 leading-tight truncate"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-tight truncate">
                 {isIndonesian
                   ? "Rekonsiliasi kas 3 aktivitas utama"
                   : "Cash reconciliation across 3 core activities"}
               </p>
             </div>
           </div>
-          {/* Badge Kanan Net Kas 1 Baris */}
           <span
-            className="whitespace-nowrap shrink-0 text-[10.5px] font-bold px-2.5 py-0.5 rounded-full tabular-nums"
+            className="whitespace-nowrap shrink-0 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border tabular-nums"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(0, 0, 0, 0.04)",
+              borderColor: "var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
@@ -1182,111 +944,52 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           </span>
         </div>
 
-        {/* 3-Col KPI Bento */}
+        {/* 3-Col Bento Telemetry */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
+          {[
+            {
+              label: isIndonesian ? "Operasional (OCF)" : "Operating (OCF)",
+              value: `${cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netOperatingCashFlow)}`,
+            },
+            {
+              label: isIndonesian ? "Investasi (ICF)" : "Investing (ICF)",
+              value: `${cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netInvestingCashFlow)}`,
+            },
+            {
+              label: isIndonesian ? "Pendanaan (FCF)" : "Financing (FCF)",
+              value: `${cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netFinancingCashFlow)}`,
+            },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className="p-2.5 rounded-2xl transition-all"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.04)"
+                  : "rgba(0, 0, 0, 0.03)",
+                border: controlBorder,
+              }}
             >
-              {isIndonesian ? "Operasional (OCF)" : "Operating (OCF)"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}
-              {formatRupiah(cashFlow.netOperatingCashFlow)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Investasi (ICF)" : "Investing (ICF)"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}
-              {formatRupiah(cashFlow.netInvestingCashFlow)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Pendanaan (FCF)" : "Financing (FCF)"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}
-              {formatRupiah(cashFlow.netFinancingCashFlow)}
-            </span>
-          </div>
+              <span className="text-[8.5px] uppercase font-bold text-[var(--text-tertiary)] block truncate">
+                {item.label}
+              </span>
+              <span className="amount text-[12px] sm:text-[13px] font-bold mt-0.5 block truncate tabular-nums text-[var(--text-primary)]">
+                {item.value}
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* Ringkasan Perputaran Kas Bruto */}
-        <div
-          className="px-3 py-2 rounded-xl border flex items-center justify-between text-[11px]"
-          style={{
-            background: "var(--glass-fill)",
-            borderColor: "var(--glass-border)",
-          }}
-        >
-          <span
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {isIndonesian ? "Perputaran Kas Bruto" : "Gross Turnover"}
-          </span>
-          <div className="flex items-center gap-3 tabular-nums">
-            <span style={{ color: "var(--text-secondary)" }}>
-              {isIndonesian ? "Masuk" : "In"}:{" "}
-              <span style={{ color: "var(--text-primary)" }}>
-                {formatRupiah(cashFlow.totalInflow)}
-              </span>
-            </span>
-            <span style={{ color: "var(--text-secondary)" }}>
-              {isIndonesian ? "Keluar" : "Out"}:{" "}
-              <span style={{ color: "var(--text-primary)" }}>
-                {formatRupiah(cashFlow.totalOutflow)}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        {/* Baris Accordion Terpadu */}
-        <div className="space-y-2 pt-1">
-          {/* 1. Aktivitas Operasional Accordion */}
+        {/* Inset Accordion Rows */}
+        <div className="space-y-1.5 pt-0.5">
+          {/* Operating Accordion */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -1295,51 +998,44 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setOperatingOpen(!operatingOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <TrendingUp size={13} strokeWidth={1.75} />
+                  <TrendingUp size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "1. Aktivitas Operasional (OCF)" : "1. Operating Activities (OCF)"}
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
+                    {isIndonesian
+                      ? "Aktivitas Operasional (OCF)"
+                      : "Operating Activities (OCF)"}
                   </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
                       ? `Masuk: ${formatRupiah(cashFlow.operatingInflow)} • Keluar: ${formatRupiah(cashFlow.operatingOutflow)}`
-                      : `Inflow: ${formatRupiah(cashFlow.operatingInflow)} • Outflow: ${formatRupiah(cashFlow.operatingOutflow)}`}
+                      : `In: ${formatRupiah(cashFlow.operatingInflow)} • Out: ${formatRupiah(cashFlow.operatingOutflow)}`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-primary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
                   {cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}
                   {formatRupiah(cashFlow.netOperatingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: operatingOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -1351,62 +1047,36 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-1.5"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-1 text-[11px]"
                 >
-                  {cashFlow.operatingItems.length === 0 ? (
-                    <p
-                      className="text-[11px] px-1 py-1"
-                      style={{ color: "var(--text-tertiary)" }}
+                  <div style={gradientDivider} />
+                  {cashFlow.operatingItems.map((it) => (
+                    <div
+                      key={it.id}
+                      className="flex items-center justify-between py-1 px-1 text-[10.5px]"
                     >
-                      {isIndonesian
-                        ? "Tidak ada transaksi operasional pada periode ini."
-                        : "No operating transactions recorded in this period."}
-                    </p>
-                  ) : (
-                    cashFlow.operatingItems.map((it) => (
-                      <div
-                        key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                        style={{ borderColor: "var(--glass-border)" }}
-                      >
-                        <div className="min-w-0">
-                          <span
-                            className="text-[11.5px] font-normal tracking-tight truncate block"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {it.name}
-                          </span>
-                          <span
-                            className="text-[10px] tabular-nums"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {it.txCount} {isIndonesian ? "transaksi" : "tx"}
-                          </span>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span
-                            className="amount text-[11.5px] font-normal tabular-nums"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {it.net >= 0 ? "+" : ""}
-                            {formatRupiah(it.net)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                      <span className="text-[var(--text-secondary)] truncate">
+                        {it.name}
+                      </span>
+                      <span className="font-semibold text-[var(--text-primary)] tabular-nums">
+                        {it.net >= 0 ? "+" : ""}
+                        {formatRupiah(it.net)}
+                      </span>
+                    </div>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* 2. Aktivitas Investasi Accordion */}
+          {/* Investing Accordion */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -1415,30 +1085,26 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setInvestingOpen(!investingOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Layers size={13} strokeWidth={1.75} />
+                  <Layers size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "2. Aktivitas Investasi (ICF)" : "2. Investing Activities (ICF)"}
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
+                    {isIndonesian
+                      ? "Aktivitas Investasi (ICF)"
+                      : "Investing Activities (ICF)"}
                   </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
                       ? `Masuk: ${formatRupiah(cashFlow.investingInflow)} • Keluar: ${formatRupiah(cashFlow.investingOutflow)}`
                       : `In: ${formatRupiah(cashFlow.investingInflow)} • Out: ${formatRupiah(cashFlow.investingOutflow)}`}
@@ -1446,20 +1112,17 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
                   {cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}
                   {formatRupiah(cashFlow.netInvestingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: investingOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -1471,35 +1134,25 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-1.5"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-1 text-[11px]"
                 >
+                  <div style={gradientDivider} />
                   {cashFlow.investingItems.length === 0 ? (
-                    <p
-                      className="text-[11px] px-1 py-1"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
+                    <p className="text-[10.5px] px-1 text-[var(--text-tertiary)]">
                       {isIndonesian
                         ? "Tidak ada pergerakan investasi pada periode ini."
-                        : "No capital or investment movements recorded in this period."}
+                        : "No investment movements recorded."}
                     </p>
                   ) : (
                     cashFlow.investingItems.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                        style={{ borderColor: "var(--glass-border)" }}
+                        className="flex items-center justify-between py-1 px-1 text-[10.5px]"
                       >
-                        <span
-                          className="text-[11.5px] font-normal tracking-tight truncate"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
+                        <span className="text-[var(--text-secondary)] truncate">
                           {it.name}
                         </span>
-                        <span
-                          className="amount text-[11.5px] font-normal tabular-nums shrink-0"
-                          style={{ color: "var(--text-primary)" }}
-                        >
+                        <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                           {it.net >= 0 ? "+" : ""}
                           {formatRupiah(it.net)}
                         </span>
@@ -1511,12 +1164,14 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             </AnimatePresence>
           </div>
 
-          {/* 3. Aktivitas Pendanaan Accordion */}
+          {/* Financing Accordion */}
           <div
-            className="rounded-xl overflow-hidden border transition-colors"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <button
@@ -1525,30 +1180,26 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setFinancingOpen(!financingOpen);
                 triggerHaptic("light");
               }}
-              className="w-full p-3 sm:p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              className="w-full p-3 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: controlBg,
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Building2 size={13} strokeWidth={1.75} />
+                  <Building2 size={12.5} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0">
-                  <h4
-                    className="text-[12.5px] font-bold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "3. Aktivitas Pendanaan (FCF)" : "3. Financing Activities (FCF)"}
+                  <h4 className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
+                    {isIndonesian
+                      ? "Aktivitas Pendanaan (FCF)"
+                      : "Financing Activities (FCF)"}
                   </h4>
-                  <p
-                    className="text-[10px] truncate mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
                       ? `Masuk: ${formatRupiah(cashFlow.financingInflow)} • Keluar: ${formatRupiah(cashFlow.financingOutflow)}`
                       : `In: ${formatRupiah(cashFlow.financingInflow)} • Out: ${formatRupiah(cashFlow.financingOutflow)}`}
@@ -1556,20 +1207,17 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className="amount text-[12px] sm:text-[13px] font-bold tabular-nums whitespace-nowrap"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
                   {cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}
                   {formatRupiah(cashFlow.netFinancingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: financingOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ color: "var(--text-tertiary)" }}
+                  transition={{ duration: 0.18 }}
+                  className="text-[var(--text-tertiary)]"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={14} />
                 </motion.div>
               </div>
             </button>
@@ -1581,35 +1229,25 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t p-3 space-y-1.5"
-                  style={{ borderColor: "var(--glass-border)" }}
+                  className="p-3 pt-1 space-y-1 text-[11px]"
                 >
+                  <div style={gradientDivider} />
                   {cashFlow.financingItems.length === 0 ? (
-                    <p
-                      className="text-[11px] px-1 py-1"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
+                    <p className="text-[10.5px] px-1 text-[var(--text-tertiary)]">
                       {isIndonesian
                         ? "Tidak ada mutasi pinjaman atau pembiayaan pada periode ini."
-                        : "No loan disbursements or debt repayments in this period."}
+                        : "No financing movements recorded."}
                     </p>
                   ) : (
                     cashFlow.financingItems.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                        style={{ borderColor: "var(--glass-border)" }}
+                        className="flex items-center justify-between py-1 px-1 text-[10.5px]"
                       >
-                        <span
-                          className="text-[11.5px] font-normal tracking-tight truncate"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
+                        <span className="text-[var(--text-secondary)] truncate">
                           {it.name}
                         </span>
-                        <span
-                          className="amount text-[11.5px] font-normal tabular-nums shrink-0"
-                          style={{ color: "var(--text-primary)" }}
-                        >
+                        <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                           {it.net >= 0 ? "+" : ""}
                           {formatRupiah(it.net)}
                         </span>
@@ -1624,54 +1262,50 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
       </section>
 
       {/* ====================================================================== */}
-      {/* CONTAINER 3: NOTES TO FINANCIAL STATEMENTS (CALK & DISCLOSURES) */}
+      {/* 4. NOTES TO FINANCIAL STATEMENTS (CALK & DISCLOSURES)                   */}
       {/* ====================================================================== */}
       <section
-        className="p-4 sm:p-5 rounded-[24px] glass-card space-y-4"
+        className="p-4 sm:p-5 rounded-[26px] space-y-3.5 relative overflow-hidden transition-all"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: controlBg,
+          border: controlBorder,
+          boxShadow: controlShadow,
         }}
       >
-        {/* Header: Judul, Subjudul & Badge Pengungkapan Strictly 1 Baris */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: controlBorder,
                 color: "var(--text-primary)",
               }}
             >
-              <FileSpreadsheet size={15} strokeWidth={1.75} />
+              <FileSpreadsheet size={15} strokeWidth={1.8} />
             </div>
             <div className="min-w-0">
-              <h3
-                className="text-[13px] font-semibold tracking-tight leading-tight truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h3 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)] leading-tight truncate">
                 {isIndonesian
                   ? "3. Catatan atas Laporan Keuangan (CaLK)"
                   : "3. Notes to Financial Statements"}
               </h3>
-              <p
-                className="text-[11px] mt-0.5 leading-tight truncate"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-tight truncate">
                 {isIndonesian
                   ? "Pengungkapan & catatan kaki"
                   : "Disclosures & explanatory footnotes"}
               </p>
             </div>
           </div>
-          {/* Badge Kanan 1 Baris */}
           <span
-            className="whitespace-nowrap shrink-0 text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
+            className="whitespace-nowrap shrink-0 text-[9px] font-semibold px-2 py-0.5 rounded-full border"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(0, 0, 0, 0.04)",
+              borderColor: "var(--glass-border)",
               color: "var(--text-secondary)",
             }}
           >
@@ -1679,240 +1313,159 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           </span>
         </div>
 
-        {/* 3-Col KPI Bento */}
+        {/* 3-Col Bento Telemetry */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
+          {[
+            {
+              label: isIndonesian ? "Ketahanan Kas" : "Solvency Runway",
+              value: `${calk.solvencyRunwayMonths} ${isIndonesian ? "bln" : "mo"}`,
+              sub: getSolvencyRatingLabel(
+                calk.solvencyRunwayRating,
+                isIndonesian,
+              ),
+            },
+            {
+              label: isIndonesian ? "Rasio Utang (DAR)" : "Debt-to-Asset",
+              value: `${calk.debtToAssetRatioPct}%`,
+              sub: getDebtRatingLabel(calk.debtRating, isIndonesian),
+            },
+            {
+              label: isIndonesian ? "Arus Kas Bebas" : "Free Cashflow",
+              value: `${calk.freeCashflowRatePct}%`,
+              sub: getFreeCashflowRatingLabel(
+                calk.freeCashflowRating,
+                isIndonesian,
+              ),
+            },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className="p-2.5 rounded-2xl transition-all"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.04)"
+                  : "rgba(0, 0, 0, 0.03)",
+                border: controlBorder,
+              }}
             >
-              {isIndonesian ? "Ketahanan Kas" : "Solvency Runway"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {calk.solvencyRunwayMonths}{" "}
-              <span className="text-[10px] font-normal">
-                {isIndonesian ? "bln" : "mo"}
+              <span className="text-[8.5px] uppercase font-bold text-[var(--text-tertiary)] block truncate">
+                {item.label}
               </span>
-            </span>
-            <span
-              className="text-[9px] block mt-0.5 font-medium truncate"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {getSolvencyRatingLabel(calk.solvencyRunwayRating, isIndonesian)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Rasio Utang (DAR)" : "Debt-to-Asset"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {calk.debtToAssetRatioPct}%
-            </span>
-            <span
-              className="text-[9px] block mt-0.5 font-medium truncate"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {getDebtRatingLabel(calk.debtRating, isIndonesian)}
-            </span>
-          </div>
-          <div
-            className="p-2.5 rounded-xl"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <span
-              className="text-[9px] uppercase font-semibold block truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Arus Kas Bebas" : "Free Cashflow"}
-            </span>
-            <span
-              className="amount text-[12.5px] sm:text-[13.5px] font-bold mt-0.5 block truncate tabular-nums"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {calk.freeCashflowRatePct}%
-            </span>
-            <span
-              className="text-[9px] block mt-0.5 font-medium truncate"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {getFreeCashflowRatingLabel(calk.freeCashflowRating, isIndonesian)}
-            </span>
-          </div>
+              <span className="amount text-[12px] sm:text-[13px] font-bold mt-0.5 block truncate tabular-nums text-[var(--text-primary)]">
+                {item.value}
+              </span>
+              <span className="text-[8.5px] font-medium text-[var(--text-secondary)] block truncate mt-0.5">
+                {item.sub}
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* 5 CATATAN DETAIL LENGKAP */}
-        <div className="space-y-3 pt-1">
-          {/* Kotak 1: Catatan Naratif 1, 2, 3 */}
+        {/* Notes Cards Container */}
+        <div className="space-y-2 pt-0.5">
+          {/* Note 1, 2, 3 Card */}
           <div
-            className="p-3.5 sm:p-4 rounded-[20px] border space-y-3"
+            className="p-3.5 rounded-2xl space-y-2.5 text-[11px]"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
-            {/* Catatan 1 */}
-            <div className="space-y-1">
-              <h4
-                className="text-[12px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+            <div>
+              <h4 className="text-[11.5px] font-bold text-[var(--text-primary)]">
                 {isIndonesian
                   ? "Catatan 1: Penilaian Solvabilitas"
                   : "Note 1: Solvency Assessment"}
               </h4>
-              <p
-                className="text-[11.5px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
                 {getSolvencyDescription(calk, isIndonesian)}
               </p>
             </div>
 
-            {/* Catatan 2 */}
-            <div
-              className="space-y-1 pt-2.5 border-t"
-              style={{ borderColor: "var(--glass-border)" }}
-            >
-              <h4
-                className="text-[12px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+            <div style={gradientDivider} />
+
+            <div>
+              <h4 className="text-[11.5px] font-bold text-[var(--text-primary)]">
                 {isIndonesian
                   ? "Catatan 2: Struktur Modal & Leverage"
                   : "Note 2: Capital Structure & Leverage"}
               </h4>
-              <p
-                className="text-[11.5px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
                 {getDebtDescription(calk, isIndonesian)}
               </p>
             </div>
 
-            {/* Catatan 3 */}
-            <div
-              className="space-y-1 pt-2.5 border-t"
-              style={{ borderColor: "var(--glass-border)" }}
-            >
-              <h4
-                className="text-[12px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+            <div style={gradientDivider} />
+
+            <div>
+              <h4 className="text-[11.5px] font-bold text-[var(--text-primary)]">
                 {isIndonesian
                   ? "Catatan 3: Retensi & Surplus Arus Kas"
                   : "Note 3: Operating Retention & Surplus"}
               </h4>
-              <p
-                className="text-[11.5px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
                 {getFreeCashflowDescription(calk, isIndonesian)}
               </p>
             </div>
           </div>
 
-          {/* Kotak 2: Catatan 4 Pengungkapan Mutasi Transaksi Material */}
+          {/* Note 4: Material Transactions */}
           <div
-            className="p-3.5 sm:p-4 rounded-[20px] border space-y-2.5"
+            className="p-3.5 rounded-2xl space-y-2 text-[11px]"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
             <div>
-              <h4
-                className="text-[12px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h4 className="text-[11.5px] font-bold text-[var(--text-primary)]">
                 {isIndonesian
-                  ? "Catatan 4: Pengungkapan Transaksi Material (≥ 15% Belanja)"
-                  : "Note 4: Material Transactions Disclosure (≥ 15% Outflow)"}
+                  ? "Catatan 4: Transaksi Material (≥ 15% Belanja)"
+                  : "Note 4: Material Transactions (≥ 15%)"}
               </h4>
-              <p
-                className="text-[11px] mt-0.5 leading-snug"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
                 {isIndonesian
-                  ? "Transparansi akuntansi untuk transaksi bernilai signifikan terhadap arus kas keluar periode ini."
-                  : "Accounting transparency for significant individual expenditures influencing period cash flow."}
+                  ? "Transparansi akuntansi untuk transaksi bernilai signifikan terhadap arus kas."
+                  : "Accounting disclosure for transactions heavily impacting period cashflow."}
               </p>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1 pt-1">
               {calk.materialTransactions.length === 0 ? (
-                <div
-                  className="p-3 rounded-xl text-[11px]"
-                  style={{
-                    background: "var(--glass-fill)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
+                <p className="text-[10.5px] text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Tidak ada transaksi individual yang melebihi 15% dari total pengeluaran periode ini. Distribusi belanja berlangsung rutin."
-                    : "No single transaction exceeded 15% of total period expenses. Expenditure remained routinely distributed."}
-                </div>
+                    ? "Tidak ada transaksi individual yang melebihi 15% dari total pengeluaran."
+                    : "No single transaction exceeded 15% of total period expenses."}
+                </p>
               ) : (
                 calk.materialTransactions.map((tx) => (
                   <div
                     key={tx.id}
-                    className="p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2"
+                    className="p-2 rounded-xl flex items-center justify-between gap-2"
                     style={{
-                      background: "var(--glass-fill)",
-                      borderColor: "var(--glass-border)",
+                      background: controlBg,
+                      border: controlBorder,
                     }}
                   >
                     <div className="min-w-0">
-                      <div
-                        className="text-[12px] sm:text-[12.5px] font-medium truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {tx.note || (isIndonesian ? "Transaksi" : "Transaction")}
+                      <div className="text-[11.5px] font-medium text-[var(--text-primary)] truncate">
+                        {tx.note ||
+                          (isIndonesian ? "Transaksi" : "Transaction")}
                       </div>
-                      <div
-                        className="text-[10px] sm:text-[10.5px] mt-0.5 truncate"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
+                      <div className="text-[9.5px] text-[var(--text-tertiary)] truncate">
                         {tx.categoryName} • {tx.date}
                       </div>
                     </div>
-
                     <div className="text-right shrink-0">
-                      <div
-                        className="amount text-[12px] sm:text-[12.5px] font-bold tabular-nums"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                      <div className="amount text-[11.5px] font-bold text-[var(--text-primary)] tabular-nums">
                         {formatRupiah(tx.amount)}
                       </div>
-                      <div
-                        className="text-[10px] sm:text-[10.5px] font-medium mt-0.5 tabular-nums"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {tx.percentageOfTotalExpense.toFixed(1)}%{" "}
-                        {isIndonesian ? "dari total belanja" : "of total spend"}
+                      <div className="text-[9.5px] text-[var(--text-secondary)] tabular-nums">
+                        {tx.percentageOfTotalExpense.toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -1921,40 +1474,31 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             </div>
           </div>
 
-          {/* Kotak 3: Catatan 5 Integritas Standar & Status Rekonsiliasi Audit */}
+          {/* Note 5: Audit Status */}
           <div
-            className="p-3.5 sm:p-4 rounded-[20px] border space-y-1.5"
+            className="p-3.5 rounded-2xl flex items-start gap-2.5 text-[11px]"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.035)"
+                : "rgba(0, 0, 0, 0.02)",
+              border: controlBorder,
             }}
           >
-            <div className="flex items-center gap-2">
-              <ShieldCheck
-                size={15}
-                strokeWidth={2}
-                style={{
-                  color: calk.reconciliation.assetsEqualLiabilitiesPlusEquity
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)",
-                }}
-                className="shrink-0"
-              />
-              <h4
-                className="text-[12px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+            <ShieldCheck
+              size={16}
+              strokeWidth={2}
+              className="shrink-0 text-[var(--text-primary)] mt-0.5"
+            />
+            <div className="min-w-0">
+              <h4 className="text-[11.5px] font-bold text-[var(--text-primary)]">
                 {isIndonesian
-                  ? "Catatan 5: Integritas Standar & Status Rekonsiliasi Audit"
-                  : "Note 5: Standard Integrity & Audit Status"}
+                  ? "Catatan 5: Status Rekonsiliasi Audit"
+                  : "Note 5: Reconciliation & Audit Status"}
               </h4>
+              <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
+                {getReconciliationNotes(calk, isIndonesian)}
+              </p>
             </div>
-            <p
-              className="text-[11.5px] leading-relaxed"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {getReconciliationNotes(calk, isIndonesian)}
-            </p>
           </div>
         </div>
       </section>

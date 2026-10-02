@@ -1,13 +1,7 @@
 // ======================================================================
 // TROUVAILLE ESSENTIAL CROSS-PAGE PRODUCT TOUR OVERLAY
-// Ultra-luxury Apple Monochrome Glassmorphism
-// 6-Step Macro Tour traversing:
-// [1] Home (Executive Cockpit) -> [2] Quick Add (Voice & Scan) -> [3] Assets (4 Pillars) -> [4] Transactions (Ledger) -> [5] Calendar (Bills) -> [6] Statistics (Diagnostics)
-// Strictly compliant with GEMINI.md:
-// - Vector Lucide outline icons only (zero native colored emojis)
-// - Rule 6: 100% pure localization (zero bilingual mixing)
-// - Rule 7: Strictly monochrome luxury palette
-// - Dynamic safe area placement (no hardcoded notch collisions)
+// Ultra-luxury Apple Monochrome Liquid Glass
+// Dynamic Smart-Flipping Card & Precision Minimalist Spotlight Cutout
 // ======================================================================
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -29,6 +23,7 @@ import {
   Compass,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
 export interface ProductTourOverlayProps {
@@ -63,8 +58,8 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="nav-home"]',
     badgeId: "KOKPIT UTAMA",
     badgeEn: "EXECUTIVE COCKPIT",
-    titleId: "1. Beranda: Kendali Likuiditas & Aset",
-    titleEn: "1. Home: Liquidity & Wealth Pacing",
+    titleId: "Kendali Likuiditas & Aset",
+    titleEn: "Liquidity & Wealth Pacing",
     descId:
       "Pantau posisi keuangan secara komprehensif. Lacak modal kas likuid, estimasi kekayaan bersih, dan ritme pengeluaran bulanan dalam satu dasbor eksekutif.",
     descEn:
@@ -81,9 +76,9 @@ export const TOUR_STEPS: TourStep[] = [
       "Shared Money Spaces",
     ],
     proTipId:
-      "Gestur: Tarik ke bawah untuk sinkronisasi kurs live. Ketuk kartu saldo untuk melihat rincian mutasi dompet.",
+      "Tarik ke bawah untuk sinkronisasi kurs live. Ketuk kartu saldo untuk rincian dompet.",
     proTipEn:
-      "Gesture: Pull down to sync live rates. Tap any balance card to inspect account details.",
+      "Pull down to sync live rates. Tap any balance card to inspect account details.",
     actionLabelId: "Lihat Dasbor Kokpit",
     actionLabelEn: "Inspect Cockpit View",
   },
@@ -93,27 +88,27 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="quick-add"]',
     badgeId: "1-KETUKAN",
     badgeEn: "INSTANT CAPTURE",
-    titleId: "2. Tambah Cepat: Suara Cerdas & Kamera",
-    titleEn: "2. Quick Add: Smart Voice & Receipt Scan",
+    titleId: "Tambah Cepat: Suara & Kamera",
+    titleEn: "Quick Add: Voice & Receipt Scan",
     descId:
       "Catat mutasi dalam hitungan detik. Gunakan Liquid Keypad dengan evaluasi matematika instan, dikte suara natural bebas format, atau pindai struk belanja otomatis.",
     descEn:
       "Capture transactions effortlessly within seconds. Use the arithmetic Liquid Keypad, natural voice logging, or automated camera receipt scanning.",
     icon: PlusCircle,
     highlightsId: [
-      "Keypad Hitung Cepat (Matematika)",
-      "Pencatatan Suara Natural (AI Voice)",
+      "Keypad Hitung Cepat",
+      "Pencatatan Suara Natural",
       "Pemindai Struk & Bukti Transfer",
     ],
     highlightsEn: [
       "Arithmetic Liquid Keypad",
-      "Natural Voice Logging (AI Voice)",
+      "Natural Voice Logging",
       "Receipt & Slip Camera Scan",
     ],
     proTipId:
-      "Cara Pakai: Tekan tombol mikrofon untuk mendikte mutasi secara bebas, atau pindai struk fisik dengan kamera AI.",
+      "Tekan tombol mikrofon untuk mendikte mutasi, atau pindai struk fisik dengan kamera.",
     proTipEn:
-      "How to Use: Tap the mic icon to dictate transactions naturally, or scan paper receipts with AI.",
+      "Tap the mic icon to dictate transactions naturally, or scan paper receipts.",
     actionLabelId: "Coba Intip Pencatatan",
     actionLabelEn: "Peek Instant Capture",
   },
@@ -123,10 +118,10 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="nav-assets"]',
     badgeId: "NERACA 4 PILAR",
     badgeEn: "4-PILLAR CAPITAL",
-    titleId: "3. Aset: Struktur Modal & Valuasi USDT",
-    titleEn: "3. Assets: Capital Solvency & USDT",
+    titleId: "Aset: Struktur Modal & Valuasi",
+    titleEn: "Assets: Capital Solvency & USDT",
     descId:
-      "Evaluasi neraca 4 pilar: Kas Likuid (Tier 1), Portofolio Investasi (Tier 2), Aset Riil Fisik (Tier 3), dan Liabilitas Utang. Terintegrasi kurs live USDT dan rekonsiliasi mutasi.",
+      "Evaluasi neraca 4 pilar: Kas Likuid (Tier 1), Portofolio Investasi (Tier 2), Aset Riil Fisik (Tier 3), dan Liabilitas Utang dengan valuasi kurs kripto USDT live.",
     descEn:
       "Comprehensive 4-pillar balance sheet: Liquid Cash (Tier 1), Investment Holdings (Tier 2), Real Tangibles (Tier 3), and Liabilities with live USDT pricing.",
     icon: Landmark,
@@ -141,9 +136,9 @@ export const TOUR_STEPS: TourStep[] = [
       "Auto-Reconciliation Engine",
     ],
     proTipId:
-      "Solvabilitas: Pantau rasio utang vs aset likuid Anda. Aset kripto USDT dan emas terkonversi otomatis ke Rupiah.",
+      "Pantau rasio solvabilitas utang vs aset. Aset kripto USDT dan emas terkonversi otomatis ke Rupiah.",
     proTipEn:
-      "Solvency: Monitor your debt vs liquid capital ratio. USDT crypto and gold convert automatically to Rupiah.",
+      "Monitor your debt vs liquid capital ratio. USDT crypto and gold convert automatically to Rupiah.",
     actionLabelId: "Jelajahi Neraca Aset",
     actionLabelEn: "Explore Balance Sheet",
   },
@@ -153,10 +148,10 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="nav-transactions"]',
     badgeId: "BUKU BESAR",
     badgeEn: "FINANCIAL LEDGER",
-    titleId: "4. Transaksi: Mutasi & Impor Rekening",
-    titleEn: "4. Transactions: Ledger & Statement Import",
+    titleId: "Transaksi: Mutasi & Impor Bank",
+    titleEn: "Transactions: Ledger & Statement Import",
     descId:
-      "Audit mutasi keuangan tak terbatas. Telusuri riwayat belanja dengan multi-filter kategori dan rekening, serta impor mutasi rekening koran BCA, Mandiri, Seabank via Excel/CSV/PDF.",
+      "Audit mutasi keuangan tak terbatas. Telusuri riwayat belanja dengan multi-filter kategori dan rekening, serta impor mutasi rekening koran BCA, Mandiri via file.",
     descEn:
       "Infinite cashflow audit trail. Filter spending across categories or accounts, and import bank statements seamlessly via Excel, CSV, or PDF.",
     icon: History,
@@ -167,13 +162,13 @@ export const TOUR_STEPS: TourStep[] = [
     ],
     highlightsEn: [
       "Instant Search & Multi-Filters",
-      "Bank Statement Importer (Excel/PDF)",
+      "Bank Statement Importer",
       "Custom Categories & Vector Icons",
     ],
     proTipId:
-      "Alur Kerja: Geser item mutasi ke kiri untuk edit atau hapus. Gunakan Impor Rekening untuk unggah file rekening koran.",
+      "Geser item mutasi ke kiri untuk ubah atau hapus. Gunakan Impor Rekening untuk unggah mutasi.",
     proTipEn:
-      "Workflow: Swipe any transaction row to edit or delete. Use Bank Statement Import to upload bank PDFs/CSVs.",
+      "Swipe any transaction row to edit or delete. Use Bank Statement Import to upload bank statements.",
     actionLabelId: "Periksa Buku Besar",
     actionLabelEn: "Audit Ledger Entries",
   },
@@ -183,8 +178,8 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="calendar-header"]',
     badgeId: "JADWAL KOMITMEN",
     badgeEn: "CASHFLOW CALENDAR",
-    titleId: "5. Kalender: Arus Kas Harian & Tagihan",
-    titleEn: "5. Calendar: Cashflow Schedule & Bills",
+    titleId: "Kalender: Arus Kas & Tagihan",
+    titleEn: "Calendar: Cashflow Schedule & Bills",
     descId:
       "Peta komitmen harian dan tagihan rutin berulang. Antisipasi tanggal jatuh tempo komitmen finansial agar cadangan likuiditas bulanan Anda senantiasa aman terkendali.",
     descEn:
@@ -201,9 +196,9 @@ export const TOUR_STEPS: TourStep[] = [
       "Liquidity Runway Forecasting",
     ],
     proTipId:
-      "Indikator: Titik pada tanggal menandai jadwal tagihan. Ketuk tanggal untuk proyeksi sisa uang kas di hari tersebut.",
+      "Titik pada tanggal menandai jadwal tagihan. Ketuk tanggal untuk proyeksi sisa uang kas.",
     proTipEn:
-      "Indicator: Calendar dots mark bill due dates. Tap any date to view projected cash runway.",
+      "Calendar dots mark bill due dates. Tap any date to view projected cash runway.",
     actionLabelId: "Buka Jadwal Arus Kas",
     actionLabelEn: "Open Cashflow Schedule",
   },
@@ -213,8 +208,8 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="nav-statistics"]',
     badgeId: "DIAGNOSTIK EKSEKUTIF",
     badgeEn: "EXECUTIVE DIAGNOSTICS",
-    titleId: "6. Statistik: Analitik & Laporan Resmi",
-    titleEn: "6. Statistics: Diagnostics & GAAP Reports",
+    titleId: "Statistik: Analitik & Laporan",
+    titleEn: "Statistics: Diagnostics & Reports",
     descId:
       "Diagnostik mendalam rasio tabungan, velocity pengeluaran, burn rate, kilas balik tahunan (Wrapped), serta ekspor laporan Neraca Keuangan resmi format Excel dan PDF.",
     descEn:
@@ -227,13 +222,13 @@ export const TOUR_STEPS: TourStep[] = [
     ],
     highlightsEn: [
       "Spending Velocity & Burn Rate",
-      "Official Report Export (Excel/PDF)",
+      "Official Report Export",
       "Annual Financial Wrapped Review",
     ],
     proTipId:
-      "Laporan Eksekutif: Buka Kilas Balik Finansial (Wrapped) untuk analisis 10 slide dan unduh laporan resmi format PDF.",
+      "Buka Kilas Balik Finansial (Wrapped) untuk analisis menyeluruh dan unduh laporan resmi.",
     proTipEn:
-      "Executive Report: Open Financial Wrapped for a 10-slide dossier and download your official PDF report.",
+      "Open Financial Wrapped for a multi-slide dossier and download your official report.",
     actionLabelId: "Mulai Eksplorasi Analisis",
     actionLabelEn: "Explore Diagnostics",
   },
@@ -245,6 +240,8 @@ export function ProductTourOverlay({
   onComplete,
 }: ProductTourOverlayProps) {
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -288,12 +285,11 @@ export function ProductTourOverlay({
   useEffect(() => {
     if (isOpen) {
       setIsPeekMode(false);
-      // Measure immediately and retry across route/render frame transitions
       measureTarget();
       const timers = [60, 160, 320, 600, 1000].map((delay) =>
         setTimeout(() => {
           measureTarget();
-        }, delay)
+        }, delay),
       );
       const handleResize = () => measureTarget();
       window.addEventListener("resize", handleResize);
@@ -310,36 +306,41 @@ export function ProductTourOverlay({
     }
   }, [isOpen, currentStepIndex, measureTarget, location.pathname]);
 
-  if (!isOpen) return null;
+  // ── Penempatan Posisi Kartu (Wajib dipanggil SEBELUM return conditional) ──
+  const isTargetAtBottom = useMemo(() => {
+    if (!targetRect) return true;
+    return targetRect.top > window.innerHeight * 0.5;
+  }, [targetRect]);
 
-  const handleNext = () => {
+  const highlights = useMemo(() => {
+    if (!step) return [];
+    return isIndonesian ? step.highlightsId : step.highlightsEn;
+  }, [step, isIndonesian]);
+
+  const handleNext = useCallback(() => {
     triggerHaptic("medium");
     if (currentStepIndex < TOUR_STEPS.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      handleFinish();
+      triggerSuccessHaptic();
+      try {
+        localStorage.setItem("trouvaille_tour_completed", "true");
+        localStorage.removeItem("trouvaille_tour_pending");
+      } catch {}
+      navigate("/");
+      if (onComplete) onComplete();
+      onClose();
     }
-  };
+  }, [currentStepIndex, navigate, onComplete, onClose]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     triggerHaptic("light");
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
     }
-  };
+  }, [currentStepIndex]);
 
-  const handleFinish = () => {
-    triggerSuccessHaptic();
-    try {
-      localStorage.setItem("trouvaille_tour_completed", "true");
-      localStorage.removeItem("trouvaille_tour_pending");
-    } catch {}
-    navigate("/");
-    if (onComplete) onComplete();
-    onClose();
-  };
-
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     triggerHaptic("light");
     try {
       localStorage.setItem("trouvaille_tour_completed", "true");
@@ -347,10 +348,40 @@ export function ProductTourOverlay({
     } catch {}
     navigate("/");
     onClose();
-  };
+  }, [navigate, onClose]);
+
+  // ── Early Return Aman: Semua hook telah dipanggil di atas ──
+  if (!isOpen || !step) return null;
 
   const IconComp = step.icon;
-  const highlights = isIndonesian ? step.highlightsId : step.highlightsEn;
+
+  // ── Material Liquid Glass Apple ──
+  const shellBg = isDark
+    ? "linear-gradient(160deg, rgba(26, 26, 32, 0.95) 0%, rgba(14, 14, 18, 0.98) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.96) 100%)";
+
+  const shellBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.14)"
+    : "1px solid rgba(0, 0, 0, 0.08)";
+
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 247, 250, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.09)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.22)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+
+  const paddingSpotlight = 6;
+  const spotWidth = targetRect ? targetRect.width + paddingSpotlight * 2 : 0;
+  const spotHeight = targetRect ? targetRect.height + paddingSpotlight * 2 : 0;
+  const spotTop = targetRect ? targetRect.top - paddingSpotlight : 0;
+  const spotLeft = targetRect ? targetRect.left - paddingSpotlight : 0;
+  const spotRadius = targetRect && targetRect.width > 60 ? 18 : spotHeight / 2;
 
   return (
     <div
@@ -358,19 +389,38 @@ export function ProductTourOverlay({
       className="fixed inset-0 z-[99999] overflow-hidden select-none font-sans pointer-events-auto"
       style={{ touchAction: isPeekMode ? "auto" : "none" }}
     >
-      {/* ── 1. Soft Ambient Scrim (Not pitch black, not blurry, page is crisp & clearly visible) ── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isPeekMode ? 0.05 : 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 transition-opacity duration-300"
-        style={{
-          background: isPeekMode
-            ? "transparent"
-            : "rgba(0, 0, 0, 0.35)",
-          backdropFilter: isPeekMode ? "none" : "blur(1px)",
-          WebkitBackdropFilter: isPeekMode ? "none" : "blur(1px)",
-        }}
+      {/* ── 1. Cutout Masking SVG (Jernih & Tanpa Glow Berlebih) ── */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-300"
+        style={{ opacity: isPeekMode ? 0.04 : 1 }}
+      >
+        <defs>
+          <mask id="tour-spotlight-cutout">
+            <rect width="100%" height="100%" fill="white" />
+            {targetRect && !isPeekMode && (
+              <rect
+                x={spotLeft}
+                y={spotTop}
+                width={spotWidth}
+                height={spotHeight}
+                rx={spotRadius}
+                fill="black"
+              />
+            )}
+          </mask>
+        </defs>
+
+        <rect
+          width="100%"
+          height="100%"
+          fill="rgba(0, 0, 0, 0.58)"
+          mask="url(#tour-spotlight-cutout)"
+        />
+      </svg>
+
+      {/* Background Click Handler */}
+      <div
+        className="absolute inset-0 z-10"
         onClick={() => {
           if (isPeekMode) {
             setIsPeekMode(false);
@@ -380,120 +430,147 @@ export function ProductTourOverlay({
         }}
       />
 
-      {/* ── 2. Animated Glowing Spotlight Halo around Target Navigation Element ── */}
+      {/* ── 2. Minimalist Apple Spotlight Frame (Tanpa Glow Berlebih) ── */}
       {targetRect && !isPeekMode && (
         <motion.div
-          key={`spotlight-${currentStepIndex}`}
-          initial={{ opacity: 0, scale: 0.85 }}
+          key={`spotlight-frame-${currentStepIndex}`}
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 26, stiffness: 360 }}
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            boxShadow:
-              "0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 32px 6px rgba(255, 255, 255, 0.5), inset 0 0 16px rgba(255, 255, 255, 0.35)",
-            border: "1.75px solid rgba(255, 255, 255, 0.95)",
+          transition={{ type: "spring", damping: 28, stiffness: 380 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNext();
           }}
+          className="absolute z-30 cursor-pointer active:scale-95 transition-transform"
+          style={{
+            top: spotTop,
+            left: spotLeft,
+            width: spotWidth,
+            height: spotHeight,
+            borderRadius: spotRadius,
+            border: isDark
+              ? "1.5px solid rgba(255, 255, 255, 0.85)"
+              : "1.5px solid rgba(0, 0, 0, 0.85)",
+            boxShadow: isDark
+              ? "inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4)"
+              : "inset 0 1px 0 #ffffff, 0 2px 8px rgba(0, 0, 0, 0.15)",
+          }}
+          title={isIndonesian ? "Ketuk untuk lanjut" : "Tap to continue"}
         />
       )}
 
-      {/* ── 3. Minimized Peek Mode Capsule (Allows user to inspect page and re-open guide) ── */}
+      {/* ── 3. Peek Mode Minimized Island ── */}
       {isPeekMode && (
         <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.95 }}
           type="button"
           onClick={() => {
             triggerHaptic("medium");
             setIsPeekMode(false);
           }}
-          className="fixed left-4 right-4 z-[100000] max-w-xs mx-auto py-3 px-4 rounded-2xl glass-surface border border-[var(--glass-border)] flex items-center justify-between shadow-2xl active:scale-95 transition-transform cursor-pointer"
+          className="fixed left-4 right-4 z-[100000] max-w-xs mx-auto h-11 px-4 rounded-full flex items-center justify-between shadow-2xl active:scale-95 transition-all cursor-pointer"
           style={{
             bottom: "max(calc(env(safe-area-inset-bottom, 0px) + 84px), 96px)",
-            background: "var(--bg-elevated)",
+            background: shellBg,
+            border: shellBorder,
             color: "var(--text-primary)",
+            boxShadow: isDark
+              ? "0 16px 36px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.18)"
+              : "0 12px 28px rgba(0,0,0,0.12), inset 0 1px 0 #ffffff",
           }}
         >
           <div className="flex items-center gap-2">
-            <Eye size={16} className="text-[var(--text-primary)]" />
-            <span className="text-[12px] font-semibold">
-              {isIndonesian ? "Lanjutkan Panduan Tur" : "Resume Product Tour"}
+            <Eye
+              size={15}
+              strokeWidth={2}
+              className="text-[var(--text-primary)]"
+            />
+            <span className="text-[12px] font-semibold tracking-tight">
+              {isIndonesian ? "Lanjutkan Panduan" : "Resume Tour"}
             </span>
           </div>
-          <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
-            {currentStepIndex + 1} / {TOUR_STEPS.length}
+          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.08] border border-[var(--glass-border)] text-[var(--text-secondary)]">
+            {currentStepIndex + 1}/{TOUR_STEPS.length}
           </span>
         </motion.button>
       )}
 
-      {/* ── 4. Main Tour Dialogue Card (Fixed cleanly above Bottom Dock) ── */}
+      {/* ── 4. Main Dialog Card (Smart Top/Bottom Positioning) ── */}
       {!isPeekMode && (
         <div
-          className="fixed left-4 right-4 z-50 max-w-sm mx-auto pointer-events-auto"
+          className="fixed left-4 right-4 z-40 max-w-[380px] mx-auto pointer-events-auto transition-all duration-300"
           style={{
-            bottom: "max(calc(env(safe-area-inset-bottom, 0px) + 82px), 94px)",
+            top: isTargetAtBottom
+              ? "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)"
+              : "auto",
+            bottom: !isTargetAtBottom
+              ? "max(calc(env(safe-area-inset-bottom, 0px) + 84px), 96px)"
+              : "auto",
           }}
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={`tour-card-${currentStepIndex}`}
-              initial={{ opacity: 0, y: 18, scale: 0.95 }}
+              key={`tour-card-${currentStepIndex}-${isTargetAtBottom ? "top" : "bottom"}`}
+              initial={{
+                opacity: 0,
+                y: isTargetAtBottom ? -16 : 16,
+                scale: 0.96,
+              }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -14, scale: 0.95 }}
-              transition={{ type: "spring", damping: 26, stiffness: 360 }}
-              className="p-5 rounded-[26px] overflow-hidden relative"
+              exit={{ opacity: 0, y: isTargetAtBottom ? -12 : 12, scale: 0.96 }}
+              transition={{ type: "spring", damping: 30, stiffness: 380 }}
+              className="p-4 sm:p-4.5 rounded-[26px] overflow-hidden relative space-y-2.5"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow:
-                  "0 24px 60px -12px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.12)",
-                backdropFilter: "blur(32px) saturate(190%)",
-                WebkitBackdropFilter: "blur(32px) saturate(190%)",
+                background: shellBg,
+                border: shellBorder,
+                boxShadow: isDark
+                  ? "0 24px 60px -12px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.16)"
+                  : "0 16px 40px -8px rgba(31,36,48,0.14), inset 0 1px 0 #ffffff",
+                backdropFilter: "blur(28px) saturate(180%)",
+                WebkitBackdropFilter: "blur(28px) saturate(180%)",
               }}
             >
-              {/* Top Bar: Icon + Step Counter + Category Badge + Peek Button + Close */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              {/* Specular Rim Light */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+                style={{
+                  background: isDark
+                    ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)"
+                    : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+                }}
+              />
+
+              {/* Top Bar: Counter, Badge & Dismiss */}
+              <div className="flex items-center justify-between pb-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-full"
                     style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      background: controlBg,
+                      border: controlBorder,
                       color: "var(--text-primary)",
                     }}
                   >
-                    <IconComp size={15} strokeWidth={2} />
-                  </div>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full shrink-0"
-                      style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      {currentStepIndex + 1} / {TOUR_STEPS.length}
-                    </span>
-                    <span
-                      className="text-[9.5px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full truncate opacity-80"
-                      style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {isIndonesian ? step.badgeId : step.badgeEn}
-                    </span>
-                  </div>
+                    0{currentStepIndex + 1} / 0{TOUR_STEPS.length}
+                  </span>
+                  <span
+                    className="text-[9px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(0,0,0,0.03)",
+                      border: controlBorder,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {isIndonesian ? step.badgeId : step.badgeEn}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Peek / Preview Page Toggle */}
                   <button
                     type="button"
                     onClick={() => {
@@ -502,119 +579,114 @@ export function ProductTourOverlay({
                     }}
                     className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                     style={{
-                      background: "var(--glass-fill)",
+                      background: controlBg,
+                      border: controlBorder,
                       color: "var(--text-secondary)",
-                      border: "1px solid var(--glass-border)",
                     }}
-                    title={
-                      isIndonesian
-                        ? "Lihat Tampilan Halaman"
-                        : "Peek Screen View"
-                    }
-                    aria-label="Peek Screen View"
+                    title={isIndonesian ? "Intip Layar" : "Peek View"}
+                    aria-label="Peek View"
                   >
-                    <Eye size={12} strokeWidth={2} />
+                    <Eye size={12.5} strokeWidth={2} />
                   </button>
 
-                  {/* Close / Skip */}
                   <button
                     type="button"
                     onClick={handleSkip}
                     className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                     style={{
-                      background: "var(--glass-fill)",
+                      background: controlBg,
+                      border: controlBorder,
                       color: "var(--text-tertiary)",
-                      border: "1px solid var(--glass-border)",
                     }}
                     title={isIndonesian ? "Lewati Tur" : "Skip Tour"}
                     aria-label="Skip Tour"
                   >
-                    <X size={12} strokeWidth={2} />
+                    <X size={12.5} strokeWidth={2} />
                   </button>
                 </div>
               </div>
 
-              {/* Title & Body Description */}
-              <h3
-                className="text-[15px] font-bold tracking-tight mb-1.5 leading-snug"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian ? step.titleId : step.titleEn}
-              </h3>
+              {/* Title Header with Icon */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                    boxShadow: controlShadow,
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <IconComp size={14} strokeWidth={1.8} />
+                </div>
+                <h3
+                  className="text-[14px] font-bold tracking-tight leading-snug"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? step.titleId : step.titleEn}
+                </h3>
+              </div>
 
+              {/* Description Body */}
               <p
-                className="text-[12px] leading-relaxed font-normal mb-3"
+                className="text-[11.5px] leading-relaxed font-normal"
                 style={{ color: "var(--text-secondary)" }}
               >
                 {isIndonesian ? step.descId : step.descEn}
               </p>
 
-              {/* ── 3 Rich Power Highlights (Interactive Detail Pills) ── */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              {/* Micro Feature Chips */}
+              <div className="flex flex-wrap gap-1 pt-0.5">
                 {highlights.map((highlight, hIdx) => (
                   <div
                     key={hIdx}
-                    className="px-2.5 py-1 rounded-xl text-[10.5px] font-medium flex items-center gap-1.5 select-none"
+                    className="px-2 py-0.5 rounded-lg text-[9.5px] font-medium flex items-center gap-1 select-none"
                     style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(0, 0, 0, 0.03)",
+                      border: controlBorder,
                       color: "var(--text-primary)",
                     }}
                   >
                     <Sparkles
-                      size={10.5}
+                      size={9}
                       strokeWidth={2}
-                      className="text-[var(--text-secondary)] shrink-0"
+                      className="text-[var(--text-tertiary)] shrink-0"
                     />
                     <span>{highlight}</span>
                   </div>
                 ))}
               </div>
 
-              {/* ── Practical Usage & Gesture Tip Box ── */}
+              {/* Gesture / Tip Box */}
               <div
-                className="p-2.5 rounded-xl text-[11px] leading-relaxed mb-3 flex items-start gap-2 select-none"
+                className="p-2 rounded-xl text-[10px] leading-relaxed flex items-start gap-1.5 select-none"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.035)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  border: controlBorder,
                   color: "var(--text-secondary)",
                 }}
               >
                 <Compass
-                  size={14}
+                  size={12}
+                  strokeWidth={1.8}
                   className="text-[var(--text-primary)] shrink-0 mt-0.5"
                 />
-                <div>
+                <div className="leading-tight">
                   <span className="font-semibold text-[var(--text-primary)] mr-1">
-                    {isIndonesian ? "Cara Pakai & Gestur:" : "How to Use & Gestures:"}
+                    {isIndonesian ? "Tips Gestur:" : "Gesture Tip:"}
                   </span>
                   <span>{isIndonesian ? step.proTipId : step.proTipEn}</span>
                 </div>
               </div>
 
-              {/* ── Direct Interactive Inspection Button ── */}
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  setIsPeekMode(true);
-                }}
-                className="w-full py-2 px-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[11.5px] font-semibold text-[var(--text-primary)] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer mb-3.5"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Eye size={13} className="text-[var(--text-secondary)]" />
-                  <span>{isIndonesian ? step.actionLabelId : step.actionLabelEn}</span>
-                </span>
-                <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-0.5 font-medium">
-                  {isIndonesian ? "Sentuh Halaman" : "Touch Page"}
-                  <ChevronRight size={12} />
-                </span>
-              </button>
-
-              {/* Step Progress Indicators & Action Buttons */}
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--glass-border)]">
-                {/* Clickable Dots to Jump Directly */}
-                <div className="flex items-center gap-1.5">
+              {/* Step Controls Footer */}
+              <div className="flex items-center justify-between pt-1.5 border-t border-[var(--glass-border)]/40">
+                {/* Dots Indicator */}
+                <div className="flex items-center gap-1">
                   {TOUR_STEPS.map((_, idx) => (
                     <button
                       key={idx}
@@ -623,9 +695,9 @@ export function ProductTourOverlay({
                         triggerHaptic("light");
                         setCurrentStepIndex(idx);
                       }}
-                      className="h-1.5 rounded-full transition-all duration-300 cursor-pointer p-0 border-0"
+                      className="h-1 rounded-full transition-all duration-200 cursor-pointer p-0 border-0"
                       style={{
-                        width: idx === currentStepIndex ? "18px" : "6px",
+                        width: idx === currentStepIndex ? "14px" : "4px",
                         background:
                           idx === currentStepIndex
                             ? "var(--text-primary)"
@@ -636,37 +708,42 @@ export function ProductTourOverlay({
                   ))}
                 </div>
 
-                {/* Navigation Buttons */}
-                <div className="flex items-center gap-2">
+                {/* Back / Next Buttons */}
+                <div className="flex items-center gap-1.5">
                   {currentStepIndex > 0 && (
                     <button
                       type="button"
                       onClick={handlePrev}
-                      className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-transform cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
+                      className="h-7 px-2.5 rounded-full text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        color: "var(--text-secondary)",
+                      }}
                     >
-                      <ChevronLeft size={13} strokeWidth={2} />
-                      <span>{isIndonesian ? "Sebelumnya" : "Back"}</span>
+                      <ChevronLeft size={12} strokeWidth={2} />
+                      <span>{isIndonesian ? "Kembali" : "Back"}</span>
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
+                    className="h-7 px-3 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-transform cursor-pointer shadow-sm select-none"
                     style={{
-                      background: "var(--text-primary)",
-                      color: "var(--bg-base)",
+                      background: isDark ? "#ffffff" : "#18181b",
+                      color: isDark ? "#000000" : "#ffffff",
                     }}
                   >
                     {currentStepIndex === TOUR_STEPS.length - 1 ? (
                       <>
-                        <Check size={13} strokeWidth={2.5} />
+                        <Check size={11.5} strokeWidth={2.8} />
                         <span>{isIndonesian ? "Selesai" : "Done"}</span>
                       </>
                     ) : (
                       <>
                         <span>{isIndonesian ? "Lanjut" : "Next"}</span>
-                        <ChevronRight size={13} strokeWidth={2} />
+                        <ChevronRight size={12} strokeWidth={2} />
                       </>
                     )}
                   </button>

@@ -12,6 +12,7 @@ import {
 import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { IconRenderer } from "../ui/IconRenderer";
+import { useTheme } from "../../contexts/ThemeContext";
 import type { InvestmentHolding } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
 import { calculateHoldingValuation } from "../../lib/marketPriceService";
@@ -61,7 +62,7 @@ function formatNativeQuote(h: InvestmentHolding): string {
 
   if (isGold) {
     const p = h.native_price || h.current_price || 0;
-    return `${formatRupiah(p)} / g`;
+    return `${formatRupiah(p)}/g`;
   }
   if (h.native_currency === "USD" || h.currency === "USD") {
     const val =
@@ -110,19 +111,20 @@ export function PortfolioHoldingsDeck({
   onOpenHoldingDetail,
   onOpenConsolidatedDrawer,
 }: PortfolioHoldingsDeckProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
   const [categoryFilter, setCategoryFilter] = useState<PresetCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 1. Synthesize Unified Holdings Array (Core USDT integrated automatically)
+  // Synthesize Unified Holdings
   const unifiedHoldings = useMemo<DisplayHoldingItem[]>(() => {
     const items: DisplayHoldingItem[] = [];
 
-    // USDT Integration: Check if an explicit USDT holding already exists in holdings array
     const hasExplicitUsdt = holdings.some(
       (h) => h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-"),
     );
 
-    // If Core USDT preference or balance exists and not explicitly in holdings, synthesize it
     if (!hasExplicitUsdt && (usdtPref.units > 0 || recordedCryptoBalance > 0)) {
       const units = usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits;
       const rate = usdtPref.rate || 16300;
@@ -157,7 +159,6 @@ export function PortfolioHoldingsDeck({
       });
     }
 
-    // Process all other holdings
     for (const h of holdings) {
       const isUsdtItem =
         h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-");
@@ -165,8 +166,14 @@ export function PortfolioHoldingsDeck({
       items.push({
         ...h,
         valuation: {
-          marketValue: isUsdtItem && usdtMarketValue > 0 ? usdtMarketValue : val.marketValue,
-          floatingPnLPct: isUsdtItem && usdtFloatingPnLPct !== 0 ? usdtFloatingPnLPct : val.floatingPnLPct,
+          marketValue:
+            isUsdtItem && usdtMarketValue > 0
+              ? usdtMarketValue
+              : val.marketValue,
+          floatingPnLPct:
+            isUsdtItem && usdtFloatingPnLPct !== 0
+              ? usdtFloatingPnLPct
+              : val.floatingPnLPct,
           costBasis: val.costBasis,
           floatingPnL: val.floatingPnL,
         },
@@ -174,8 +181,9 @@ export function PortfolioHoldingsDeck({
       });
     }
 
-    // Sort descending by market value
-    return items.sort((a, b) => b.valuation.marketValue - a.valuation.marketValue);
+    return items.sort(
+      (a, b) => b.valuation.marketValue - a.valuation.marketValue,
+    );
   }, [
     holdings,
     usdtPref,
@@ -185,10 +193,9 @@ export function PortfolioHoldingsDeck({
     usdtFloatingPnLPct,
   ]);
 
-  // 2. Filter by Category & Search Query
+  // Filter Holdings
   const filteredHoldings = useMemo(() => {
     return unifiedHoldings.filter((h) => {
-      // Search matching
       const query = searchQuery.trim().toLowerCase();
       if (query) {
         const matchName = (h.name || "").toLowerCase().includes(query);
@@ -196,7 +203,6 @@ export function PortfolioHoldingsDeck({
         if (!matchName && !matchSymbol) return false;
       }
 
-      // Category matching
       if (categoryFilter === "all") return true;
 
       const aType = h.asset_type || "stock";
@@ -227,9 +233,7 @@ export function PortfolioHoldingsDeck({
       }
       if (categoryFilter === "fixed_asset") {
         return (
-          aType === "fixed_asset" ||
-          aType === "bond" ||
-          aType === "mutual_fund"
+          aType === "fixed_asset" || aType === "bond" || aType === "mutual_fund"
         );
       }
       return true;
@@ -239,76 +243,115 @@ export function PortfolioHoldingsDeck({
   const totalAssetCount = unifiedHoldings.length;
 
   const categoryTabs: { id: PresetCategory; label: string }[] = [
-    { id: "all", label: isIndonesian ? "Semua Aset" : "All Assets" },
+    { id: "all", label: isIndonesian ? "Semua" : "All" },
     { id: "crypto", label: isIndonesian ? "Kripto" : "Crypto" },
     { id: "stock_us", label: isIndonesian ? "Saham AS" : "US Equities" },
     { id: "stock_id", label: isIndonesian ? "Saham IDX" : "IDX Equities" },
-    { id: "gold", label: isIndonesian ? "Emas & Logam" : "Gold & Metal" },
+    { id: "gold", label: isIndonesian ? "Emas" : "Gold" },
     { id: "fixed_asset", label: isIndonesian ? "Aset Tetap" : "Fixed Assets" },
   ];
+
+  // ── Tactile Liquid Glass Tokens ──
+  const shellBg = isDark
+    ? "linear-gradient(145deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%)"
+    : "linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.88) 100%)";
+
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.028) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 247, 250, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 6px rgba(0, 0, 0, 0.2)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.03)";
 
   return (
     <section
       id="holdings-deck"
-      className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5 select-none"
+      className="relative rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-4 overflow-hidden transition-all select-none space-y-2.5"
       style={{
-        background: "var(--bg-elevated)",
-        boxShadow: "var(--shadow-card)",
+        background: shellBg,
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.11)"
+          : "1px solid rgba(0, 0, 0, 0.08)",
+        boxShadow: isDark
+          ? "0 16px 40px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15)"
+          : "0 10px 28px -6px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
-      {/* ── 1. Header Bar: Title, Count Badge & Add Asset Button ── */}
+      {/* Specular Rim Light */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[10%] right-[10%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
+      {/* ── 1. Compact Header Bar ── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
             }}
           >
             <Layers
-              size={15}
-              strokeWidth={1.75}
+              size={13.5}
+              strokeWidth={1.8}
               className="text-[var(--text-primary)]"
             />
           </div>
-          <div>
-            <h3 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
-              {isIndonesian
-                ? "Daftar Kepemilikan Portofolio"
-                : "Portfolio Holdings"}
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)] leading-none">
+              {isIndonesian ? "Portofolio Aset" : "Portfolio Holdings"}
             </h3>
-            <p className="text-[10.5px] text-[var(--text-tertiary)]">
-              {isIndonesian
-                ? "Valuasi pasar langsung & workstation aset"
-                : "Live market valuation & asset workstation"}
-            </p>
+            <span
+              className="text-[9.5px] font-semibold px-2 py-0.2 rounded-full border leading-none"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              {totalAssetCount}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
-            {totalAssetCount} {isIndonesian ? "aset" : "assets"}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("medium");
-              onOpenAddAsset();
-            }}
-            className="w-7 h-7 rounded-xl flex items-center justify-center bg-[var(--text-primary)] text-[var(--bg-base)] active:scale-95 transition-transform cursor-pointer"
-            title={isIndonesian ? "Tambah Aset" : "Add Asset"}
-            aria-label="Add Asset"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("medium");
+            onOpenAddAsset();
+          }}
+          className="w-6.5 h-6.5 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-xs select-none"
+          style={{
+            background: isDark ? "#ffffff" : "#18181b",
+            color: isDark ? "#000000" : "#ffffff",
+          }}
+          title={isIndonesian ? "Tambah Aset" : "Add Asset"}
+          aria-label="Add Asset"
+        >
+          <Plus size={13} strokeWidth={2.8} />
+        </button>
       </div>
 
-      {/* ── 2. Filter & Search Controls (Adapted from Web Workstation) ── */}
-      <div className="space-y-2.5 pt-1">
-        {/* Segmented Category Filter Track */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 glass-scrollbar -mx-1 px-1">
+      {/* ── 2. Compact Search & Filter ── */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
           {categoryTabs.map((tab) => {
             const isActive = categoryFilter === tab.id;
             return (
@@ -319,11 +362,29 @@ export function PortfolioHoldingsDeck({
                   triggerHaptic("light");
                   setCategoryFilter(tab.id);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 ${
-                  isActive
-                    ? "bg-[var(--text-primary)] text-[var(--bg-base)] shadow-sm"
-                    : "bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)]"
-                }`}
+                className="h-6.5 px-2.5 rounded-full text-[10px] font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 active:scale-[0.96] flex items-center"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)"
+                      : "#18181b"
+                    : controlBg,
+                  color: isActive
+                    ? isDark
+                      ? "#000000"
+                      : "#ffffff"
+                    : "var(--text-tertiary)",
+                  border: isActive
+                    ? isDark
+                      ? "1px solid rgba(255, 255, 255, 0.95)"
+                      : "1px solid #18181b"
+                    : controlBorder,
+                  boxShadow: isActive
+                    ? isDark
+                      ? "inset 0 1px 0 #ffffff, 0 2px 6px rgba(0, 0, 0, 0.25)"
+                      : "0 2px 6px rgba(0, 0, 0, 0.14)"
+                    : "none",
+                }}
               >
                 {tab.label}
               </button>
@@ -331,9 +392,19 @@ export function PortfolioHoldingsDeck({
           })}
         </div>
 
-        {/* Live Search Bar */}
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 text-[var(--text-tertiary)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none stroke-[1.75]" />
+        <div
+          className="flex items-center gap-2 px-3 h-8 rounded-xl transition-all"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+          }}
+        >
+          <Search
+            size={12.5}
+            className="text-[var(--text-tertiary)] shrink-0"
+            strokeWidth={1.8}
+          />
           <input
             type="text"
             value={searchQuery}
@@ -341,7 +412,7 @@ export function PortfolioHoldingsDeck({
             placeholder={
               isIndonesian ? "Cari ticker, aset..." : "Filter ticker, name..."
             }
-            className="w-full pl-9 pr-8 py-2 rounded-xl text-[11.5px] font-medium border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-secondary)] transition-all"
+            className="flex-1 bg-transparent text-[11px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
           />
           {searchQuery && (
             <button
@@ -350,63 +421,47 @@ export function PortfolioHoldingsDeck({
                 triggerHaptic("light");
                 setSearchQuery("");
               }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-0.5"
               title={isIndonesian ? "Hapus pencarian" : "Clear search"}
               aria-label="Clear Search"
             >
-              <X size={13} strokeWidth={2} />
+              <X size={11} strokeWidth={2} />
             </button>
           )}
         </div>
       </div>
 
-      {/* ── 3. Holdings Content: Empty State OR Luxury Cards + Responsive Table ── */}
+      {/* ── 3. Ultra-Sleek Holdings Cards (Dengan Metrik Lengkap) ── */}
       {filteredHoldings.length === 0 ? (
-        <div className="py-8 px-4 text-center rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-2">
-          <Coins className="w-7 h-7 mx-auto opacity-30 stroke-[1.5] text-[var(--text-primary)]" />
-          <p className="text-[12.5px] font-semibold text-[var(--text-secondary)]">
+        <div
+          className="py-8 px-4 text-center rounded-2xl space-y-1.5"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+          }}
+        >
+          <Coins className="w-5 h-5 mx-auto text-[var(--text-tertiary)] stroke-[1.6]" />
+          <p className="text-[12px] font-semibold text-[var(--text-secondary)]">
             {searchQuery
               ? isIndonesian
-                ? "Tidak ada aset yang cocok dengan pencarian"
+                ? "Tidak ada aset yang cocok"
                 : "No matching assets found"
               : isIndonesian
-                ? "Tidak ada aset di kategori ini"
+                ? "Belum ada aset di kategori ini"
                 : "No holdings in this category"}
           </p>
-          <p className="text-[10.5px] text-[var(--text-tertiary)] max-w-xs mx-auto">
-            {searchQuery
-              ? isIndonesian
-                ? "Periksa kembali ejaan ticker atau kata kunci yang dimasukkan."
-                : "Check your search keywords or ticker spelling."
-              : isIndonesian
-                ? "Ketuk tombol (+) untuk mencatat portofolio baru ke akun Anda."
-                : "Tap the (+) button to add new investment assets."}
-          </p>
-          {totalAssetCount === 0 && (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  onOpenAddAsset();
-                }}
-                className="px-3.5 py-1.5 rounded-xl text-[11px] font-semibold bg-[var(--text-primary)] text-[var(--bg-base)] active:scale-95 transition-transform cursor-pointer"
-              >
-                {isIndonesian ? "+ Tambah Aset" : "+ Add Asset"}
-              </button>
-            </div>
-          )}
         </div>
       ) : (
-        <div className="space-y-2.5">
-          {/* Mobile Dedicated Luxury Card List (Visible on screens < md) */}
-          <div className="space-y-2.5 md:hidden">
+        <div className="space-y-1.5">
+          {/* Mobile Sleek Single-Deck Cards (< md) */}
+          <div className="space-y-1.5 md:hidden">
             {filteredHoldings.map((h) => {
               const currentPrice = h.current_price || h.avg_buy_price || 0;
               const buyPrice = h.avg_buy_price || currentPrice;
               const totalVal = h.valuation.marketValue;
               const totalCost = (h.units || 0) * buyPrice;
-              const pnl = h.valuation.floatingPnL ?? (totalVal - totalCost);
+              const pnl = h.valuation.floatingPnL ?? totalVal - totalCost;
               const pnlPct = h.valuation.floatingPnLPct;
               const categoryBadge = getCategoryBadgeLabel(h, isIndonesian);
               const weightPct =
@@ -428,112 +483,117 @@ export function PortfolioHoldingsDeck({
                       onOpenHoldingDetail(h);
                     }
                   }}
-                  className="p-3.5 rounded-2xl flex flex-col gap-2.5 cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)] hover:bg-[var(--glass-fill-strong)]"
-                  style={{ background: "var(--glass-fill)" }}
+                  className="px-3 py-2 rounded-2xl flex flex-col justify-between gap-1.5 cursor-pointer active:scale-[0.985] transition-all select-none relative overflow-hidden group"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                    boxShadow: controlShadow,
+                  }}
                 >
-                  {/* Top Row: Icon, Symbol, Category Badge & Live Price */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-semibold text-xs">
+                  {/* Baris 1: Header (Ikon, Ticker, Badge, Nilai Pasar, & Harga Terkini) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div
+                        className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.06)"
+                            : "rgba(0, 0, 0, 0.04)",
+                          border: controlBorder,
+                          color: "var(--text-primary)",
+                        }}
+                      >
                         {h.isUsdt ? (
                           <span>₮</span>
                         ) : (
                           <IconRenderer
                             icon={h.icon || "TrendingUp"}
-                            size="w-4 h-4"
+                            size="w-3.5 h-3.5"
                           />
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-[13px] text-[var(--text-primary)] truncate">
+
+                      <div className="min-w-0 flex-1 pr-1">
+                        <div className="flex items-center gap-1.5 leading-none">
+                          <span className="font-bold text-[12.5px] text-[var(--text-primary)] font-mono">
                             {h.symbol}
                           </span>
-                          <span className="px-1.5 py-0.2 rounded text-[8.5px] font-semibold uppercase tracking-wider border border-[var(--glass-border)] bg-white/[0.04] text-[var(--text-tertiary)]">
+                          <span
+                            className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                            style={{
+                              background: isDark
+                                ? "rgba(255, 255, 255, 0.04)"
+                                : "rgba(0, 0, 0, 0.03)",
+                              borderColor: "var(--glass-border)",
+                              color: "var(--text-tertiary)",
+                            }}
+                          >
                             {categoryBadge}
                           </span>
                         </div>
-                        <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-1 leading-none font-medium">
                           {h.name}
                         </p>
                       </div>
                     </div>
 
-                    {/* Dual Display Native Price */}
+                    {/* Sisi Kanan Atas: Nilai Pasar & Harga Saat Ini */}
                     <div className="text-right shrink-0">
-                      <div className="flex items-center gap-1 justify-end">
-                        <span className="tabular-nums text-[12.5px] font-bold text-[var(--text-primary)]">
-                          {formatNativeQuote(h)}
-                        </span>
-                        {typeof h.change_24h_pct === "number" &&
-                          h.change_24h_pct !== 0 && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] tabular-nums font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]">
-                              {h.change_24h_pct >= 0 ? (
-                                <ArrowUpRight size={9} className="stroke-[2.2]" />
-                              ) : (
-                                <ArrowDownRight size={9} className="stroke-[2.2]" />
-                              )}
-                              <span>
-                                {h.change_24h_pct >= 0 ? "+" : ""}
-                                {h.change_24h_pct.toFixed(1)}%
-                              </span>
-                            </span>
-                          )}
-                      </div>
-                      {(h.native_currency === "USD" || h.currency === "USD") && (
-                        <div className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums">
-                          ≈ {formatRupiah(currentPrice)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Divider Hairline */}
-                  <div className="border-t border-[var(--glass-border)]" />
-
-                  {/* Bottom Row: Units, Total Market Value & Floating PnL */}
-                  <div className="flex items-center justify-between text-[11px]">
-                    <div>
-                      <span className="text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Jml: " : "Qty: "}
-                      </span>
-                      <span className="font-semibold text-[var(--text-primary)] tabular-nums">
-                        {formatHoldingUnits(h.units)}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="font-bold text-[12.5px] text-[var(--text-primary)] tabular-nums leading-tight">
+                      <div className="font-bold text-[13px] text-[var(--text-primary)] tabular-nums leading-none">
                         {isStealthMode ? "••••••••" : formatRupiah(totalVal)}
                       </div>
-                      <div className="flex items-center justify-end gap-1 text-[10px] mt-0.5 tabular-nums">
-                        <span
-                          style={{
-                            color:
-                              pnlPct >= 0
-                                ? "var(--accent)"
-                                : "var(--text-tertiary)",
-                          }}
-                        >
-                          {pnl >= 0 ? "+" : "−"}
-                          {formatRupiah(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
-                          {pnlPct.toFixed(1)}%)
-                        </span>
-                        <span className="text-[var(--text-tertiary)] opacity-60">
-                          ·
-                        </span>
-                        <span className="text-[var(--text-tertiary)]">
-                          {weightPct}%
-                        </span>
+                      <div className="text-[9.5px] text-[var(--text-secondary)] font-medium tabular-nums mt-1 leading-none">
+                        {formatNativeQuote(h)}
                       </div>
                     </div>
                   </div>
 
-                  {/* Weight Progress Bar */}
-                  <div className="w-full h-1 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                  {/* Baris 2: Micro-Telemetry Lengkap (Unit, DCA Beli, Floating PnL, & Bobot) */}
+                  <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] pt-0.5 leading-none">
+                    {/* Metrik Kiri: Jumlah Unit & Harga Beli Rata-Rata (DCA) */}
+                    <div className="flex items-center gap-1.5 tabular-nums">
+                      <span>
+                        {isIndonesian ? "Jml:" : "Qty:"}{" "}
+                        <strong className="font-semibold text-[var(--text-secondary)]">
+                          {formatHoldingUnits(h.units)}
+                        </strong>
+                      </span>
+                      <span className="opacity-30">·</span>
+                      <span>
+                        {isIndonesian ? "Beli:" : "DCA:"}{" "}
+                        <strong className="font-medium text-[var(--text-secondary)]">
+                          {formatRupiah(buyPrice)}
+                        </strong>
+                      </span>
+                    </div>
+
+                    {/* Metrik Kanan: Nominal PnL, Persentase PnL, & Bobot Portofolio */}
+                    <div className="flex items-center gap-1 tabular-nums justify-end">
+                      <span
+                        className="font-medium"
+                        style={{
+                          color:
+                            pnlPct >= 0
+                              ? "var(--text-primary)"
+                              : "var(--text-tertiary)",
+                        }}
+                      >
+                        {pnl >= 0 ? "+" : "−"}
+                        {formatRupiah(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
+                        {pnlPct.toFixed(1)}%)
+                      </span>
+                      <span className="opacity-30">·</span>
+                      <span className="font-semibold text-[var(--text-secondary)]">
+                        {weightPct}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Allocation Hairline Indicator */}
+                  <div className="w-full h-[1.5px] rounded-full bg-black/[0.04] dark:bg-white/[0.05] overflow-hidden -mb-0.5">
                     <div
                       style={{ width: `${Math.max(weightPct, 2)}%` }}
-                      className="h-full rounded-full bg-[var(--text-primary)]"
+                      className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -541,37 +601,52 @@ export function PortfolioHoldingsDeck({
             })}
           </div>
 
-          {/* Desktop/Tablet Responsive Table (Visible on screens >= md) */}
-          <div className="hidden md:block overflow-x-auto rounded-2xl border border-[var(--glass-border)]">
-            <table className="w-full text-left text-[11.5px] border-collapse">
+          {/* Desktop/Tablet Responsive Table (>= md) */}
+          <div
+            className="hidden md:block overflow-x-auto rounded-2xl transition-all"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
+            <table className="w-full text-left text-[11px] border-collapse">
               <thead>
-                <tr className="border-b border-[var(--glass-border)] bg-[var(--glass-fill)] text-[9.5px] uppercase font-bold tracking-wider text-[var(--text-tertiary)]">
-                  <th className="py-2.5 px-4">{isIndonesian ? "Aset" : "Asset"}</th>
-                  <th className="py-2.5 px-3">{isIndonesian ? "Kategori" : "Category"}</th>
-                  <th className="py-2.5 px-3 text-right">
-                    {isIndonesian ? "Kepemilikan / Unit" : "Holdings / Units"}
+                <tr className="border-b border-[var(--glass-border)]/50 text-[9px] uppercase font-semibold tracking-wider text-[var(--text-tertiary)]">
+                  <th className="py-2 px-3">
+                    {isIndonesian ? "Aset" : "Asset"}
                   </th>
-                  <th className="py-2.5 px-3 text-right">
-                    {isIndonesian ? "Harga Beli (DCA)" : "DCA / Buy Price"}
+                  <th className="py-2 px-2.5">
+                    {isIndonesian ? "Kategori" : "Category"}
                   </th>
-                  <th className="py-2.5 px-3 text-right">
+                  <th className="py-2 px-2.5 text-right">
+                    {isIndonesian ? "Kepemilikan" : "Units"}
+                  </th>
+                  <th className="py-2 px-2.5 text-right">
+                    {isIndonesian ? "Harga Beli" : "Buy Price"}
+                  </th>
+                  <th className="py-2 px-2.5 text-right">
                     {isIndonesian ? "Harga Terkini" : "Live Price"}
                   </th>
-                  <th className="py-2.5 px-3 text-right">
+                  <th className="py-2 px-2.5 text-right">
                     {isIndonesian ? "Nilai Pasar" : "Market Value"}
                   </th>
-                  <th className="py-2.5 px-3 text-right">Floating PnL</th>
-                  <th className="py-2.5 px-3 w-28">{isIndonesian ? "Bobot" : "Weight"}</th>
-                  <th className="py-2.5 px-4 text-center">{isIndonesian ? "Tindakan" : "Actions"}</th>
+                  <th className="py-2 px-2.5 text-right">Floating PnL</th>
+                  <th className="py-2 px-2.5 w-24">
+                    {isIndonesian ? "Bobot" : "Weight"}
+                  </th>
+                  <th className="py-2 px-3 text-center">
+                    {isIndonesian ? "Aksi" : "Action"}
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--glass-border)]">
+              <tbody className="divide-y divide-[var(--glass-border)]/40">
                 {filteredHoldings.map((h) => {
                   const currentPrice = h.current_price || h.avg_buy_price || 0;
                   const buyPrice = h.avg_buy_price || currentPrice;
                   const totalVal = h.valuation.marketValue;
                   const totalCost = (h.units || 0) * buyPrice;
-                  const pnl = h.valuation.floatingPnL ?? (totalVal - totalCost);
+                  const pnl = h.valuation.floatingPnL ?? totalVal - totalCost;
                   const pnlPct = h.valuation.floatingPnLPct;
                   const categoryBadge = getCategoryBadgeLabel(h, isIndonesian);
                   const weightPct =
@@ -593,99 +668,82 @@ export function PortfolioHoldingsDeck({
                           onOpenHoldingDetail(h);
                         }
                       }}
-                      className="hover:bg-[var(--glass-fill)] transition-colors cursor-pointer"
+                      className="hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
                     >
-                      {/* Asset & Ticker */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-semibold text-[10px]">
-                            {h.isUsdt ? (
-                              <span>₮</span>
-                            ) : (
-                              <IconRenderer
-                                icon={h.icon || "TrendingUp"}
-                                size="w-3.5 h-3.5"
-                              />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-[12px] text-[var(--text-primary)]">
-                              {h.symbol}
-                            </div>
-                            <div className="text-[10px] text-[var(--text-tertiary)] truncate max-w-[120px]">
-                              {h.name}
-                            </div>
-                          </div>
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[11.5px] text-[var(--text-primary)] font-mono">
+                            {h.symbol}
+                          </span>
+                          <span className="text-[9.5px] text-[var(--text-tertiary)] truncate max-w-[90px]">
+                            {h.name}
+                          </span>
                         </div>
                       </td>
 
-                      {/* Category */}
-                      <td className="py-3 px-3">
-                        <span className="px-1.5 py-0.5 rounded text-[8.5px] font-semibold uppercase tracking-wider border border-[var(--glass-border)] bg-white/[0.03] text-[var(--text-tertiary)]">
+                      <td className="py-2 px-2.5">
+                        <span
+                          className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.04)"
+                              : "rgba(0, 0, 0, 0.03)",
+                            borderColor: "var(--glass-border)",
+                            color: "var(--text-tertiary)",
+                          }}
+                        >
                           {categoryBadge}
                         </span>
                       </td>
 
-                      {/* Units */}
-                      <td className="py-3 px-3 text-right font-medium text-[var(--text-primary)] tabular-nums">
+                      <td className="py-2 px-2.5 text-right font-medium text-[var(--text-primary)] tabular-nums">
                         {formatHoldingUnits(h.units)}
                       </td>
 
-                      {/* DCA Buy Price */}
-                      <td className="py-3 px-3 text-right text-[var(--text-secondary)] tabular-nums text-[10.5px]">
+                      <td className="py-2 px-2.5 text-right text-[var(--text-secondary)] tabular-nums text-[10px]">
                         {formatRupiah(buyPrice)}
                       </td>
 
-                      {/* Live Price */}
-                      <td className="py-3 px-3 text-right">
-                        <div className="tabular-nums font-bold text-[var(--text-primary)]">
+                      <td className="py-2 px-2.5 text-right">
+                        <div className="tabular-nums font-semibold text-[var(--text-primary)]">
                           {formatNativeQuote(h)}
                         </div>
-                        {(h.native_currency === "USD" || h.currency === "USD") && (
-                          <div className="text-[9px] text-[var(--text-tertiary)] tabular-nums">
-                            ≈ {formatRupiah(currentPrice)}
-                          </div>
-                        )}
                       </td>
 
-                      {/* Market Value */}
-                      <td className="py-3 px-3 text-right font-bold text-[var(--text-primary)] tabular-nums">
+                      <td className="py-2 px-2.5 text-right font-bold text-[var(--text-primary)] tabular-nums">
                         {isStealthMode ? "••••••••" : formatRupiah(totalVal)}
                       </td>
 
-                      {/* PnL */}
-                      <td className="py-3 px-3 text-right tabular-nums">
+                      <td className="py-2 px-2.5 text-right tabular-nums">
                         <span
+                          className="font-medium text-[10px]"
                           style={{
                             color:
                               pnlPct >= 0
-                                ? "var(--accent)"
+                                ? "var(--text-primary)"
                                 : "var(--text-tertiary)",
                           }}
                         >
                           {pnl >= 0 ? "+" : "−"}
-                          {formatRupiah(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
-                          {pnlPct.toFixed(1)}%)
+                          {Math.abs(pnlPct).toFixed(1)}%
                         </span>
                       </td>
 
-                      {/* Weight */}
-                      <td className="py-3 px-3">
+                      <td className="py-2 px-2.5">
                         <div className="flex items-center gap-1.5">
-                          <div className="flex-1 h-1.5 rounded-full bg-black/[0.05] dark:bg-white/[0.08] overflow-hidden">
+                          <div className="flex-1 h-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] overflow-hidden">
                             <div
                               style={{ width: `${Math.max(weightPct, 2)}%` }}
                               className="h-full rounded-full bg-[var(--text-primary)]"
                             />
                           </div>
-                          <span className="text-[9.5px] font-semibold text-[var(--text-tertiary)] w-6 text-right">
+                          <span className="text-[8.5px] font-semibold text-[var(--text-tertiary)] w-5 text-right">
                             {weightPct}%
                           </span>
                         </div>
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2 px-3 text-center">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -697,9 +755,14 @@ export function PortfolioHoldingsDeck({
                               onOpenHoldingDetail(h);
                             }
                           }}
-                          className="px-2 py-0.5 rounded-lg text-[9.5px] font-bold border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] text-[var(--text-primary)] transition-all cursor-pointer"
+                          className="px-2 py-0.5 rounded-full text-[9px] font-semibold transition-all cursor-pointer active:scale-95"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            color: "var(--text-primary)",
+                          }}
                         >
-                          {isIndonesian ? "Periksa" : "Inspect"}
+                          {isIndonesian ? "Buka" : "Open"}
                         </button>
                       </td>
                     </tr>
@@ -711,7 +774,7 @@ export function PortfolioHoldingsDeck({
         </div>
       )}
 
-      {/* ── 4. Open Consolidated Balance Sheet Button ── */}
+      {/* ── 4. Compact Consolidated Balance Sheet Pill Button ── */}
       {totalAssetCount > 0 && (
         <button
           type="button"
@@ -719,15 +782,21 @@ export function PortfolioHoldingsDeck({
             triggerHaptic("light");
             onOpenConsolidatedDrawer();
           }}
-          className="w-full py-2.5 rounded-2xl bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] border border-[var(--glass-border)] text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99] transition-all mt-1"
+          className="w-full h-8.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold active:scale-[0.985] transition-all cursor-pointer"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+            color: "var(--text-secondary)",
+          }}
         >
-          <Layers size={13} strokeWidth={2} />
+          <Layers size={12} strokeWidth={1.8} />
           <span>
             {isIndonesian
-              ? `Buka Neraca Lengkap (${totalAssetCount} Aset & Liabilitas)`
-              : `Open Consolidated Balance Sheet (${totalAssetCount} Assets & Debt)`}
+              ? `Neraca Lengkap (${totalAssetCount} Aset & Liabilitas)`
+              : `Consolidated Balance Sheet (${totalAssetCount})`}
           </span>
-          <ChevronRight size={13} strokeWidth={2} />
+          <ChevronRight size={12} strokeWidth={2} className="opacity-60" />
         </button>
       )}
     </section>

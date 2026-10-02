@@ -41,16 +41,16 @@ const GlassTooltip = ({ active, payload, label }: any) => {
     const val = payload[0].value;
     return (
       <div
-        className="px-2.5 py-1.5 rounded-xl text-left border shadow-lg backdrop-blur-md"
+        className="px-2.5 py-1.5 rounded-xl text-left border shadow-xl backdrop-blur-md"
         style={{
           background: "var(--bg-elevated)",
           borderColor: "var(--glass-border)",
         }}
       >
-        <p className="text-[10px] text-[var(--text-tertiary)] font-medium">
+        <p className="text-[9.5px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
           {label}
         </p>
-        <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+        <p className="text-[12px] font-bold text-[var(--text-primary)] tabular-nums mt-0.5">
           {formatRupiah(val)}
         </p>
       </div>
@@ -80,28 +80,66 @@ export function LiquidPositionHorizonHero({
   onToggleHideBalance,
   isColdLoading = false,
 }: LiquidPositionHorizonHeroProps) {
+  const isPositive = assetTrendPositive(assetData.diff);
+
+  function assetTrendPositive(diff: number): boolean {
+    return diff >= 0;
+  }
+
+  // ── Liquid Glass Tactile Materials (Identik dengan WealthHistoryTrajectoryCard) ──
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const pillTrackBg = isDark
+    ? "rgba(255, 255, 255, 0.04)"
+    : "rgba(0, 0, 0, 0.035)";
+
   return (
     <section
       data-tour="net-worth"
-      className="card-contrast-hero p-4 pb-3 relative overflow-hidden"
+      className="relative overflow-hidden select-none p-4 sm:p-5 rounded-[28px] transition-all"
+      style={{
+        background: cardBg,
+        border: cardBorder,
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+      }}
     >
-      {/* Title Header */}
-      <div className="flex items-center justify-between mb-1">
-        <h2
-          className={`text-[12px] font-semibold uppercase tracking-wider leading-none ${
-            isDark ? "text-white/80" : "text-[var(--text-secondary)]"
-          }`}
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
+      {/* ── 1. Seamless Header: Title & Stealth Toggle ── */}
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "var(--text-tertiary)" }}
         >
           {isIndonesian ? "Posisi Kas Likuid" : "Liquid Position"}
-        </h2>
+        </span>
+
         <button
           type="button"
-          onClick={onToggleHideBalance}
-          className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
-            isDark
-              ? "text-white/60 hover:text-white"
-              : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-          }`}
+          onClick={() => {
+            triggerHaptic("light");
+            onToggleHideBalance();
+          }}
+          className="p-1 -mr-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors active:scale-90 cursor-pointer"
           title={
             hideBalance
               ? isIndonesian
@@ -111,13 +149,18 @@ export function LiquidPositionHorizonHero({
                 ? "Sembunyikan Saldo"
                 : "Hide Balance"
           }
+          aria-label="Toggle Stealth"
         >
-          {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+          {hideBalance ? (
+            <EyeOff size={14} strokeWidth={1.8} />
+          ) : (
+            <Eye size={14} strokeWidth={1.8} />
+          )}
         </button>
       </div>
 
-      {/* Amount */}
-      <div className="mb-1.5">
+      {/* ── 2. Hero Big Number ── */}
+      <div className="mt-1">
         {isColdLoading ? (
           <div
             className={`h-8 w-44 rounded-xl animate-pulse my-1 ${
@@ -125,20 +168,16 @@ export function LiquidPositionHorizonHero({
             }`}
           />
         ) : (
-          <span
-            className={`text-[28px] font-semibold tracking-tight amount leading-tight ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
-          >
+          <h2 className="amount text-[28px] sm:text-[32px] font-bold tracking-tight text-[var(--text-primary)] leading-none tabular-nums">
             {hideBalance
               ? "Rp ••••••••"
               : formatRupiah(assetData.currentBalance)}
-          </span>
+          </h2>
         )}
       </div>
 
-      {/* Change Line + Time Label Side by Side */}
-      <div className="flex items-center justify-between gap-2 mb-2.5">
+      {/* ── 3. Performance Rate Row (Unboxed, Pure Typography) ── */}
+      <div className="flex items-center justify-between text-[11px] mt-2 mb-3">
         {isColdLoading ? (
           <div
             className={`h-4 w-28 rounded-lg animate-pulse ${
@@ -146,28 +185,22 @@ export function LiquidPositionHorizonHero({
             }`}
           />
         ) : (
-          <div
-            className="flex items-center gap-1 text-[12px] font-semibold"
-            style={{
-              color: isDark
-                ? assetData.diff >= 0
-                  ? "#FFFFFF"
-                  : "#A1A1AA"
-                : assetData.diff >= 0
-                  ? "#121214"
-                  : "#71717a",
-            }}
-          >
+          <div className="flex items-center gap-1 tabular-nums font-semibold text-[var(--text-secondary)]">
             <ArrowUpRight
               size={13}
-              className={assetData.diff < 0 ? "rotate-90" : ""}
+              strokeWidth={2.4}
+              className={`shrink-0 ${
+                isPositive
+                  ? "text-[var(--text-primary)]"
+                  : "rotate-90 text-[var(--text-tertiary)]"
+              }`}
             />
             <span>
               {hideBalance
                 ? "••••"
-                : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
+                : `${isPositive ? "+" : ""}${formatRupiah(assetData.diff)}`}
             </span>
-            <span className="opacity-80">
+            <span className="font-normal text-[var(--text-tertiary)]">
               (
               {hideBalance
                 ? "••••"
@@ -176,74 +209,57 @@ export function LiquidPositionHorizonHero({
             </span>
           </div>
         )}
-        <span
-          className={`text-[11px] font-semibold shrink-0 ${
-            isDark ? "text-white/50" : "text-[var(--text-tertiary)]"
-          }`}
-        >
+
+        <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
           {stockRangeLabels[stockRange]} · IDR
         </span>
       </div>
 
-      {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
+      {/* ── 4. Floating Capsule Pill Range Track ── */}
       <div
-        className={`flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5 rounded-full overflow-hidden ${
-          isDark
-            ? "bg-white/[0.045] border border-white/[0.055]"
-            : "bg-black/[0.025] border border-black/[0.045]"
-        }`}
-        style={{
-          boxShadow: isDark
-            ? "inset 0 1px 0 rgba(255,255,255,0.035)"
-            : "inset 0 1px 0 rgba(255,255,255,0.8)",
-        }}
+        className="flex items-center w-full h-[28px] p-[2px] rounded-full select-none"
+        style={{ background: pillTrackBg }}
       >
-        {(
-          ["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]
-        ).map((r) => {
-          const isActive = stockRange === r;
-          return (
-            <button
-              key={r}
-              type="button"
-              onClick={() => {
-                onRangeChange(r);
-                triggerHaptic("light");
-              }}
-              className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
-              style={{
-                background: isActive
-                  ? isDark
-                    ? "rgba(255,255,255,0.25)"
-                    : "#18181b"
-                  : isDark
-                    ? "transparent"
-                    : "#f4f4f7",
-                color: isActive
-                  ? "#FFFFFF"
-                  : isDark
-                    ? "rgba(255,255,255,0.55)"
-                    : "#52525b",
-                border: isActive
-                  ? isDark
-                    ? "1px solid rgba(255,255,255,0.35)"
-                    : "1px solid #18181b"
-                  : "1px solid transparent",
-                boxShadow: isActive
-                  ? isDark
-                    ? "none"
-                    : "0 2px 6px rgba(0,0,0,0.18)"
-                  : "none",
-              }}
-            >
-              {r}
-            </button>
-          );
-        })}
+        {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
+          (r) => {
+            const isActive = stockRange === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  onRangeChange(r);
+                  triggerHaptic("light");
+                }}
+                className="flex-1 h-full min-w-0 rounded-full text-[9.5px] tracking-tight cursor-pointer select-none transition-all duration-150 active:scale-95 flex items-center justify-center truncate"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "rgba(255, 255, 255, 0.16)"
+                      : "#18181b"
+                    : "transparent",
+                  color: isActive
+                    ? isDark
+                      ? "#ffffff"
+                      : "#ffffff"
+                    : "var(--text-tertiary)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.25)"
+                      : "0 2px 6px rgba(0, 0, 0, 0.14)"
+                    : "none",
+                  fontWeight: isActive ? 700 : 500,
+                }}
+              >
+                {r}
+              </button>
+            );
+          },
+        )}
       </div>
 
-      {/* Chart with Right Y-Axis & Dotted Grid */}
-      <div className="h-[120px] w-full mt-0.5">
+      {/* ── 5. Minimalist Area Chart (Clean Open Layout) ── */}
+      <div className="h-[120px] w-full mt-1.5">
         {isColdLoading ? (
           <div
             className={`h-full w-full rounded-2xl animate-pulse ${
@@ -257,17 +273,11 @@ export function LiquidPositionHorizonHero({
               margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
             >
               <defs>
-                <linearGradient
-                  id="heroGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
+                <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop
                     offset="0%"
                     stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                    stopOpacity={isDark ? 0.25 : 0.12}
+                    stopOpacity={isDark ? 0.22 : 0.1}
                   />
                   <stop
                     offset="100%"
@@ -278,17 +288,15 @@ export function LiquidPositionHorizonHero({
               </defs>
               <CartesianGrid
                 strokeDasharray="2 3"
-                stroke={
-                  isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"
-                }
-                vertical={true}
+                stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}
+                vertical={false}
                 horizontal={true}
               />
               <XAxis
                 dataKey="label"
                 tick={{
                   fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fill: isDark ? "rgba(255,255,255,0.38)" : "#71717a",
                   fontFamily: "Urbanist",
                   fontWeight: 600,
                 }}
@@ -302,7 +310,7 @@ export function LiquidPositionHorizonHero({
                 domain={["auto", "auto"]}
                 tick={{
                   fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fill: isDark ? "rgba(255,255,255,0.38)" : "#71717a",
                   fontFamily: "Urbanist",
                   fontWeight: 700,
                 }}
@@ -316,15 +324,13 @@ export function LiquidPositionHorizonHero({
                 type="monotone"
                 dataKey="balance"
                 stroke={isDark ? "#FFFFFF" : "#18181b"}
-                strokeWidth={2}
+                strokeWidth={1.8}
                 fill="url(#heroGradient)"
                 dot={false}
                 activeDot={{
-                  r: 4,
+                  r: 3.5,
                   fill: isDark ? "#FFFFFF" : "#18181b",
-                  stroke: isDark
-                    ? "rgba(0,0,0,0.5)"
-                    : "rgba(255,255,255,0.9)",
+                  stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
                   strokeWidth: 1.5,
                 }}
               />
@@ -333,91 +339,69 @@ export function LiquidPositionHorizonHero({
         )}
       </div>
 
-      {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
+      {/* ── 6. Unboxed Open Telemetry Row (Zero Inner Boxes) ── */}
       <div
-        className={`grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t text-center ${
-          isDark ? "border-white/10" : "border-black/[0.06]"
-        }`}
+        className="grid grid-cols-4 gap-2 pt-2.5 mt-1 border-t text-left"
+        style={{
+          borderColor: isDark
+            ? "rgba(255, 255, 255, 0.07)"
+            : "rgba(0, 0, 0, 0.05)",
+        }}
       >
+        {/* High */}
         <div>
-          <p
-            className={`text-[9px] font-semibold uppercase tracking-wider ${
-              isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-            }`}
-          >
+          <span className="text-[8.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block truncate">
             {isIndonesian ? "Tertinggi" : "High"}
-          </p>
-          <p
-            className={`text-[11px] font-semibold amount mt-0.5 ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
-          >
+          </span>
+          <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
               : assetData.highBalance >= 1000
                 ? "Rp " + formatAxisY(assetData.highBalance)
                 : formatRupiah(assetData.highBalance)}
-          </p>
+          </span>
         </div>
+
+        {/* Low */}
         <div>
-          <p
-            className={`text-[9px] font-semibold uppercase tracking-wider ${
-              isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-            }`}
-          >
+          <span className="text-[8.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block truncate">
             {isIndonesian ? "Terendah" : "Low"}
-          </p>
-          <p
-            className={`text-[11px] font-semibold amount mt-0.5 ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
-          >
+          </span>
+          <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
               : assetData.lowBalance >= 1000
                 ? "Rp " + formatAxisY(assetData.lowBalance)
                 : formatRupiah(assetData.lowBalance)}
-          </p>
+          </span>
         </div>
+
+        {/* Inflow */}
         <div>
-          <p
-            className={`text-[9px] font-semibold uppercase tracking-wider ${
-              isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-            }`}
-          >
+          <span className="text-[8.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block truncate">
             {isIndonesian ? "Masuk" : "Inflow"}
-          </p>
-          <p
-            className={`text-[11px] font-semibold amount mt-0.5 ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
-          >
+          </span>
+          <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
               : assetData.periodInflow > 0
                 ? "+Rp " + formatAxisY(assetData.periodInflow)
                 : "Rp 0"}
-          </p>
+          </span>
         </div>
+
+        {/* Outflow */}
         <div>
-          <p
-            className={`text-[9px] font-semibold uppercase tracking-wider ${
-              isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-            }`}
-          >
+          <span className="text-[8.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block truncate">
             {isIndonesian ? "Keluar" : "Outflow"}
-          </p>
-          <p
-            className={`text-[11px] font-semibold amount mt-0.5 ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
-          >
+          </span>
+          <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
               : assetData.periodOutflow > 0
                 ? "-Rp " + formatAxisY(assetData.periodOutflow)
                 : "Rp 0"}
-          </p>
+          </span>
         </div>
       </div>
     </section>

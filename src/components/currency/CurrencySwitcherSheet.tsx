@@ -1,10 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Search,
-  X,
-  Check,
-  RefreshCw,
-} from "lucide-react";
+import { Search, X, Check, RefreshCw } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import {
   useCurrency,
@@ -102,12 +97,15 @@ export function CurrencySwitcherSheet({
         }}
       >
         {/* ── Top Header ────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between pb-1">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div>
               <h2 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
                 Valuation Currency
               </h2>
+              <span className="text-[12px] text-[var(--text-tertiary)]">
+                Select your preferred base currency
+              </span>
             </div>
           </div>
 
@@ -169,7 +167,7 @@ export function CurrencySwitcherSheet({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari kode atau nama mata uang..."
+              placeholder="Search currency code, name, or symbol"
               className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
             {searchQuery && (

@@ -1953,15 +1953,9 @@ export function SettingsPage({
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Kunci PIN Keamanan" : "Security PIN Lock"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Kunci aplikasi dengan PIN saat beralih aplikasi"
-                        : "Lock app with PIN when switching apps"}
+                        ? "Kunci PIN Keamanan"
+                        : "Security PIN Lock"}
                     </span>
                   </div>
                 </div>

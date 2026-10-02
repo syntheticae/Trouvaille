@@ -69,7 +69,6 @@ export function UnifiedCapitalAllocationCard({
 
   // Dataset for the 4 pillars formatted for RingChart
   const ringData = useMemo(() => {
-    // Baseline maximum for arc progress calculation
     const baselineMax = Math.max(totalGrossAssets, liabilitiesTotal, 1);
 
     return [
@@ -90,7 +89,9 @@ export function UnifiedCapitalAllocationCard({
       {
         key: "growth",
         label: isIndonesian ? "Investasi" : "Investments",
-        fullName: isIndonesian ? "Investasi & Portofolio Efek" : "Market Securities & Funds",
+        fullName: isIndonesian
+          ? "Investasi & Portofolio Efek"
+          : "Market Securities & Funds",
         value: growthAssetsTotal,
         maxValue: baselineMax,
         amount: growthAssetsTotal,
@@ -104,7 +105,9 @@ export function UnifiedCapitalAllocationCard({
       {
         key: "fixed",
         label: isIndonesian ? "Aset Riil" : "Real Assets",
-        fullName: isIndonesian ? "Aset Riil & Berwujud" : "Real & Tangible Assets",
+        fullName: isIndonesian
+          ? "Aset Riil & Berwujud"
+          : "Real & Tangible Assets",
         value: fixedAssetsTotal,
         maxValue: baselineMax,
         amount: fixedAssetsTotal,
@@ -118,7 +121,9 @@ export function UnifiedCapitalAllocationCard({
       {
         key: "debt",
         label: isIndonesian ? "Liabilitas" : "Liabilities",
-        fullName: isIndonesian ? "Liabilitas & Kewajiban" : "Liabilities & Debt Obligations",
+        fullName: isIndonesian
+          ? "Liabilitas & Kewajiban"
+          : "Liabilities & Debt Obligations",
         value: liabilitiesTotal,
         maxValue: baselineMax,
         amount: liabilitiesTotal,
@@ -148,34 +153,60 @@ export function UnifiedCapitalAllocationCard({
     onOpenDebtDetail,
   ]);
 
+  // Liquid Glass Tactile Materials
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 247, 250, 0.88) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.09)"
+    : "1px solid rgba(0, 0, 0, 0.065)";
+
+  const cardShadow = isDark
+    ? "0 16px 36px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 8px 24px -6px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
+
   return (
     <div
-      className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3 select-none"
+      className="p-3.5 sm:p-4 rounded-[26px] relative overflow-hidden transition-all select-none space-y-2.5"
       style={{
-        background: "var(--bg-elevated)",
-        boxShadow: "var(--shadow-card)",
+        background: cardBg,
+        border: cardBorder,
+        boxShadow: cardShadow,
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
-      {/* ── 1. Minimalist Header ────────────────── */}
-      <div className="flex items-center gap-2.5">
+      {/* Specular Rim Light */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
+      {/* ── 1. Compact Header Bar ────────────────── */}
+      <div className="flex items-center gap-2">
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark
+              ? "rgba(255, 255, 255, 0.06)"
+              : "rgba(0, 0, 0, 0.04)",
+            border: cardBorder,
+            color: "var(--text-primary)",
           }}
         >
-          <Layers
-            size={15}
-            strokeWidth={1.75}
-            className="text-[var(--text-primary)]"
-          />
+          <Layers size={13.5} strokeWidth={1.8} />
         </div>
         <div>
           <h3 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
             {isIndonesian ? "Struktur Neraca" : "Balance Sheet"}
           </h3>
-          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+          <p className="text-[10.5px] text-[var(--text-tertiary)] leading-none mt-0.5">
             {isIndonesian
               ? "Komposisi aset & liabilitas"
               : "Asset & liability composition"}
@@ -183,16 +214,16 @@ export function UnifiedCapitalAllocationCard({
         </div>
       </div>
 
-      {/* ── 2. Two-Column Minimalist Layout (Left: Ring Gauge with Center Stat, Right: Legend) ────────── */}
-      <div className="flex items-center justify-between gap-3 sm:gap-4 pt-1">
-        {/* Left Column: Upright Ring Gauge with Center Stat */}
-        <div className="w-[125px] sm:w-[135px] shrink-0 flex items-center justify-center relative">
+      {/* ── 2. Two-Column Compact Layout (Ring vs Legend) ────────── */}
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3.5 pt-0.5">
+        {/* Left Column: Ring Gauge */}
+        <div className="w-[115px] sm:w-[122px] shrink-0 flex items-center justify-center relative">
           <RingChart
             data={ringData}
             endAngle={(3 * Math.PI) / 2}
-            size={120}
-            strokeWidth={5.5}
-            ringGap={3.2}
+            size={114}
+            strokeWidth={5}
+            ringGap={2.8}
             startAngle={Math.PI / 2}
             hoveredIndex={hoveredIndex}
             onHoverChange={setHoveredIndex}
@@ -203,12 +234,12 @@ export function UnifiedCapitalAllocationCard({
             <RingCenter defaultLabel={`${Math.round(solvencyScore)}%`}>
               {({ isHovered }) => (
                 <div className="flex flex-col items-center justify-center text-center">
-                  <span className="text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] tabular-nums tracking-tight leading-none amount ">
+                  <span className="text-[17px] sm:text-[18px] font-bold text-[var(--text-primary)] tabular-nums tracking-tight leading-none amount">
                     {isHovered && hoveredIndex !== null
                       ? `${ringData[hoveredIndex]?.percentage}%`
                       : `${Math.round(solvencyScore)}%`}
                   </span>
-                  <span className="text-[8.5px] sm:text-[9px] uppercase tracking-wider text-[var(--text-tertiary)] font-semibold mt-0.5 truncate max-w-[80px]">
+                  <span className="text-[8px] sm:text-[8.5px] uppercase tracking-wider text-[var(--text-tertiary)] font-semibold mt-0.5 truncate max-w-[70px]">
                     {isHovered && hoveredIndex !== null
                       ? ringData[hoveredIndex]?.label
                       : isIndonesian
@@ -221,11 +252,12 @@ export function UnifiedCapitalAllocationCard({
           </RingChart>
         </div>
 
-        {/* Right Column: Financial Legend */}
+        {/* Right Column: Financial Legend Rows */}
         <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
           {ringData.map((item, index) => {
             const isHovered = hoveredIndex === index;
             const isFaded = hoveredIndex !== null && !isHovered;
+
             return (
               <button
                 key={item.key}
@@ -236,30 +268,51 @@ export function UnifiedCapitalAllocationCard({
                 }}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
-                className={`w-full py-1.5 px-2 rounded-lg transition-all text-left cursor-pointer group flex items-center justify-between border ${
-                  isHovered
-                    ? "bg-white/[0.08] dark:bg-white/[0.08] border-white/20 dark:border-white/20 shadow-xs"
-                    : isFaded
-                      ? "bg-transparent border-transparent opacity-35"
-                      : "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.04]"
+                className={`w-full py-1 px-2.5 rounded-xl transition-all text-left cursor-pointer group flex items-center justify-between active:scale-[0.985] ${
+                  isFaded ? "opacity-35" : "opacity-100"
                 }`}
+                style={{
+                  background: isHovered
+                    ? isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.05)"
+                    : isDark
+                      ? "rgba(255, 255, 255, 0.025)"
+                      : "rgba(0, 0, 0, 0.02)",
+                  border: isHovered
+                    ? isDark
+                      ? "1px solid rgba(255, 255, 255, 0.16)"
+                      : "1px solid rgba(0, 0, 0, 0.09)"
+                    : isDark
+                      ? "1px solid rgba(255, 255, 255, 0.04)"
+                      : "1px solid rgba(0, 0, 0, 0.03)",
+                  boxShadow:
+                    isHovered && isDark
+                      ? "0 2px 8px rgba(0, 0, 0, 0.3)"
+                      : "none",
+                }}
                 title={item.fullName}
               >
-                <div className="flex items-center gap-1.5 min-w-0 pr-1.5">
+                {/* Dot & Nama Kategori */}
+                <div className="flex items-center gap-1.5 min-w-0 pr-1">
                   <span
                     className="w-1.5 h-1.5 rounded-full shrink-0 transition-transform group-hover:scale-125"
                     style={{ background: item.color }}
                   />
-                  <span className="text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors truncate">
+                  <span className="text-[11px] font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors truncate leading-tight">
                     {item.label}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 text-right ">
-                  <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] tabular-nums">
+
+                {/* Persentase & Nominal Nilai */}
+                <div className="flex items-center gap-1.5 shrink-0 text-right">
+                  <span className="text-[9px] font-mono font-medium text-[var(--text-tertiary)] tabular-nums">
                     {item.percentage}%
                   </span>
-                  <span className="text-[11px] sm:text-[11.5px] font-bold text-[var(--text-primary)] tabular-nums">
-                    {isStealthMode ? "••••" : formatAxisNumber(item.amount, isIndonesian)}
+                  <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums leading-none">
+                    {isStealthMode
+                      ? "••••"
+                      : formatAxisNumber(item.amount, isIndonesian)}
                   </span>
                 </div>
               </button>

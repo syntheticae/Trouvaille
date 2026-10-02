@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, X, SlidersHorizontal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   format,
   isToday,
@@ -94,7 +95,11 @@ export function HomePage({
 }: HomePageProps) {
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
-  const { items: allDraftItems, count: draftCount, clearAll: clearAllDrafts } = useDraftTransactions();
+  const {
+    items: allDraftItems,
+    count: draftCount,
+    clearAll: clearAllDrafts,
+  } = useDraftTransactions();
   useCurrency();
 
   const [todayDate, setTodayDate] = useState(() => startOfDay(new Date()));
@@ -136,7 +141,8 @@ export function HomePage({
   const setNotifOpen = (open: boolean) => setActiveModal(open ? "notif" : null);
 
   const [stockRange, setStockRange] = useState<StockRange>("1W");
-  const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } = usePrivacy();
+  const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } =
+    usePrivacy();
 
   const { showToast } = useToast();
   const markBillPaid = useMarkBillPaid();
@@ -155,7 +161,8 @@ export function HomePage({
     isLoading: isWalletsLoading,
   } = useWallets();
   const { data: allBills = [], refetch: refetchBills } = useBills();
-  const isColdLoading = (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
+  const isColdLoading =
+    (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
 
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
@@ -171,7 +178,8 @@ export function HomePage({
   useEffect(() => {
     const handleStartTour = () => setIsTourOpen(true);
     window.addEventListener("trouvaille:start-tour", handleStartTour);
-    return () => window.removeEventListener("trouvaille:start-tour", handleStartTour);
+    return () =>
+      window.removeEventListener("trouvaille:start-tour", handleStartTour);
   }, []);
 
   const { netWorth, liquidAssets, liquidAccounts } = useWalletBalances();
@@ -284,20 +292,38 @@ export function HomePage({
 
   // Personal Baselines & Dynamic Goal Milestones
   const baselines = useMemo(
-    () => calculatePersonalBaselines(allTxs, categories, now, isIndonesian ? "id" : "en"),
+    () =>
+      calculatePersonalBaselines(
+        allTxs,
+        categories,
+        now,
+        isIndonesian ? "id" : "en",
+      ),
     [allTxs, categories, now, isIndonesian],
   );
 
   const goalMilestonesMap = useMemo(() => {
     const map = new Map<string, { label: string; isComplete: boolean }>();
     goals.forEach((g) => {
-      const res = calculateDynamicGoalMilestones(g, baselines, now, isIndonesian ? "id" : "en");
+      const res = calculateDynamicGoalMilestones(
+        g,
+        baselines,
+        now,
+        isIndonesian ? "id" : "en",
+      );
       if (res.isAlreadyCompleted) {
-        map.set(g.id, { label: isIndonesian ? "Tercapai" : "Completed", isComplete: true });
+        map.set(g.id, {
+          label: isIndonesian ? "Tercapai" : "Completed",
+          isComplete: true,
+        });
       } else {
         const est = res.velocityPaces.current.projectedCompletion;
         map.set(g.id, {
-          label: est ? `Est. ${est}` : isIndonesian ? "Sedang Berjalan" : "In Progress",
+          label: est
+            ? `Est. ${est}`
+            : isIndonesian
+              ? "Sedang Berjalan"
+              : "In Progress",
           isComplete: false,
         });
       }
@@ -613,7 +639,7 @@ export function HomePage({
         <div className="h-[10px] flex items-center justify-center mt-0.5">
           {hasTx && net !== 0 ? (
             <span
-              className="text-[9px] font-semibold tracking-tight leading-none truncate max-w-[34px]"
+              className="text-[9px] font-semibold tracking-tight leading-none truncate max-w-[34px] tabular-nums"
               style={{
                 color: isSurplus
                   ? "var(--text-primary)"
@@ -637,7 +663,9 @@ export function HomePage({
     return allTxs.filter((t) => t.occurred_on === dStr);
   }, [selectedDate, allTxs]);
 
-  const [customDisplayName, setCustomDisplayName] = useState<string | null>(null);
+  const [customDisplayName, setCustomDisplayName] = useState<string | null>(
+    null,
+  );
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
 
   const displayName =
@@ -732,7 +760,7 @@ export function HomePage({
   };
 
   return (
-    <div className="space-y-4 pb-24 px-4 pt-3 max-w-md mx-auto select-none">
+    <div className="space-y-3.5 pb-24 px-4 pt-3 max-w-md mx-auto select-none">
       <PullToRefreshIndicator
         pullDistance={pullDistance}
         isRefreshing={isRefreshing}
@@ -753,7 +781,9 @@ export function HomePage({
         activeSpace={activeSpace}
         activeSpaceId={activeSpaceId}
         defaultSpaceId={defaultSpaceId}
-        onResetActiveSpace={() => setActiveSpaceId(defaultSpaceId || "personal")}
+        onResetActiveSpace={() =>
+          setActiveSpaceId(defaultSpaceId || "personal")
+        }
         isIndonesian={isIndonesian}
         t={t}
       />
@@ -782,79 +812,113 @@ export function HomePage({
         avatarUrl={avatarUrl}
       />
 
-      {/* Draft Inbox Banner */}
-      {draftCount > 0 && (
-        <div
-          className="p-3 rounded-2xl flex items-center justify-between gap-3 border shadow-sm animate-fadeIn mb-2"
-          style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
+      {/* Draft Inbox Banner — Apple Liquid Glass Styling */}
+      <AnimatePresence>
+        {draftCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="p-3 sm:p-3.5 rounded-[22px] flex items-center justify-between gap-3 relative overflow-hidden transition-all mb-2"
+            style={{
+              background: isDark
+                ? "linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 247, 250, 0.9) 100%)",
+              border: isDark
+                ? "1px solid rgba(255, 255, 255, 0.12)"
+                : "1px solid rgba(0, 0, 0, 0.08)",
+              boxShadow: isDark
+                ? "0 12px 30px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14)"
+                : "0 6px 20px -4px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            }}
+          >
+            {/* Specular Rim Light */}
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+              aria-hidden="true"
+              className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)"
+                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
               }}
-            >
-              <Sparkles size={13} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                {isIndonesian
-                  ? `${draftCount} Transaksi Siap Ditinjau`
-                  : `${draftCount} Transactions Ready to Review`}
-              </p>
-              <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-                {isIndonesian
-                  ? "Tersimpan di draft · Saldo belum terpotong"
-                  : "Saved in drafts · Balance unchanged"}
-              </p>
-            </div>
-          </div>
+            />
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                onOpenBatchReview?.(
-                  allDraftItems,
-                  isIndonesian ? "Draft Transaksi" : "Draft Inbox",
-                );
-              }}
-              className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
-              style={{
-                background: "var(--text-primary)",
-                color: "var(--bg-base)",
-              }}
-            >
-              <span>{isIndonesian ? "Tinjau" : "Review"}</span>
-              <ArrowRight size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                clearAllDrafts();
-              }}
-              className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-colors"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-tertiary)",
-              }}
-              title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
-            >
-              <X size={12} />
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="flex items-center gap-2.5 min-w-0 relative z-10">
+              <div
+                className="w-7.5 h-7.5 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.05)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.1)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Sparkles size={13} strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
+                  {isIndonesian
+                    ? `${draftCount} Transaksi Siap Ditinjau`
+                    : `${draftCount} Transactions Ready to Review`}
+                </p>
+                <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                  {isIndonesian
+                    ? "Tersimpan di draft · Saldo belum terpotong"
+                    : "Saved in drafts · Balance unchanged"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 relative z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  onOpenBatchReview?.(
+                    allDraftItems,
+                    isIndonesian ? "Draft Transaksi" : "Draft Inbox",
+                  );
+                }}
+                className="h-7 px-3 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
+                style={{
+                  background: isDark ? "#ffffff" : "#18181b",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                <span>{isIndonesian ? "Tinjau" : "Review"}</span>
+                <ArrowRight size={11} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  clearAllDrafts();
+                }}
+                className="w-6.5 h-6.5 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.06)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                  color: "var(--text-tertiary)",
+                }}
+                title={
+                  isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"
+                }
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dynamic Reorderable iOS-Style Card Springboard */}
       <ReorderableWidgetGrid
@@ -875,15 +939,24 @@ export function HomePage({
             triggerHaptic("light");
             setCustomizeHomeOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-surface border border-[var(--glass-border)] text-[11px] font-semibold tracking-wide transition-all active:scale-95 cursor-pointer hover:opacity-80"
+          className="inline-flex items-center gap-2 h-9 px-4 rounded-full text-[11.5px] font-semibold tracking-tight transition-all active:scale-95 cursor-pointer select-none"
           style={{
-            background: "var(--glass-fill)",
-            color: "var(--text-secondary)",
+            background: isDark
+              ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%)"
+              : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 247, 250, 0.72) 100%)",
+            border: isDark
+              ? "1px solid rgba(255, 255, 255, 0.09)"
+              : "1px solid rgba(0, 0, 0, 0.065)",
+            boxShadow: isDark
+              ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 14px rgba(0, 0, 0, 0.25)"
+              : "inset 0 1px 0 #ffffff, 0 2px 8px rgba(30, 35, 50, 0.05)",
+            color: isDark ? "rgba(255, 255, 255, 0.85)" : "#27272a",
           }}
         >
           <SlidersHorizontal
-            size={12}
-            style={{ color: "var(--text-primary)" }}
+            size={13}
+            strokeWidth={1.8}
+            className="text-[var(--text-primary)]"
           />
           <span>
             {isIndonesian ? "Kustomisasi Dashboard" : "Customize Dashboard"}

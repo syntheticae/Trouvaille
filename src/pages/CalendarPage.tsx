@@ -238,7 +238,7 @@ export function CalendarPage() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startPad = getDay(monthStart);
 
-  // Selected Day Forecast & Actuals (Normalized for full ISO timestamps per Rule 8.1)
+  // Selected Day Forecast & Actuals
   const selectedDayForecast = useMemo(() => {
     if (!selectedDay) return null;
     const dStr = format(selectedDay, "yyyy-MM-dd");
@@ -285,40 +285,63 @@ export function CalendarPage() {
 
   const isCurrentMonthView = isSameMonth(currentDate, new Date());
 
+  // ── Clean Apple Liquid Glass Tokens (Zero Glow Shadows) ──
+  const buttonGlassBg = isDark
+    ? "rgba(255, 255, 255, 0.05)"
+    : "rgba(0, 0, 0, 0.035)";
+
+  const buttonGlassBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.09)"
+    : "1px solid rgba(0, 0, 0, 0.07)";
+
+  const buttonGlassShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.04)";
+
+  const segmentedTrackBg = isDark
+    ? "rgba(255, 255, 255, 0.04)"
+    : "rgba(0, 0, 0, 0.03)";
+
   return (
     <div
-      className="px-5 min-h-screen space-y-6 pb-28"
+      className="px-4 sm:px-5 min-h-screen space-y-4 pb-28 select-none max-w-md mx-auto"
       style={{
         background: "var(--bg-base)",
-        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 14px), 20px)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 12px), 18px)",
       }}
     >
-      {/* Header & View Mode Switcher */}
-      <div className="flex items-center justify-between" data-tour="calendar-header">
-        <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+      {/* ── 1. Top Header & Tactile View Mode Switcher (Clean, Zero Glow) ── */}
+      <div
+        className="flex items-center justify-between gap-3 pt-0.5"
+        data-tour="calendar-header"
+      >
+        {/* Left Side: Back Button & Title */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <button
             type="button"
             onClick={handleBack}
-            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none shrink-0 relative z-10"
+            className="w-8.5 h-8.5 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none shrink-0"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: buttonGlassBg,
+              border: buttonGlassBorder,
+              boxShadow: buttonGlassShadow,
               color: "var(--text-primary)",
             }}
             title={isIndonesian ? "Kembali" : "Back"}
             aria-label={isIndonesian ? "Kembali" : "Back"}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={17} strokeWidth={2} />
           </button>
-          <div className="min-w-0 flex-1">
+
+          <div className="min-w-0 flex-1 leading-none">
             <h1
-              className="text-[18px] font-semibold tracking-tight truncate leading-tight"
+              className="text-[17px] sm:text-[18px] font-bold tracking-tight truncate leading-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {t("calendar.title", isIndonesian ? "Kalender" : "Calendar")}
             </h1>
             <p
-              className="text-[11px] font-medium truncate"
+              className="text-[10px] sm:text-[10.5px] font-medium truncate mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
               {viewMode === "runway"
@@ -338,33 +361,46 @@ export function CalendarPage() {
           </div>
         </div>
 
-        {/* Apple Luxury Segmented Pill & Stealth Mode Toggle */}
+        {/* Right Side: Stealth Button & Apple Segmented Control */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Stealth Mode Button */}
           <button
             type="button"
             onClick={toggleStealthMode}
-            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
+              background: buttonGlassBg,
+              border: buttonGlassBorder,
+              boxShadow: buttonGlassShadow,
+              color: isStealthMode
+                ? "var(--text-primary)"
+                : "var(--text-tertiary)",
             }}
             title={
               isStealthMode
                 ? isIndonesian
-                  ? "Nonaktifkan Mode Samaran"
-                  : "Disable Stealth Mode"
+                  ? "Tampilkan Saldo"
+                  : "Show Balance"
                 : isIndonesian
-                  ? "Aktifkan Mode Samaran (atau ketuk 3 jari)"
-                  : "Enable Stealth Mode (or 3-finger tap)"
+                  ? "Sembunyikan Saldo"
+                  : "Hide Balance"
             }
+            aria-label="Toggle Stealth"
           >
-            {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
+            {isStealthMode ? (
+              <EyeOff size={13.5} strokeWidth={1.8} />
+            ) : (
+              <Eye size={13.5} strokeWidth={1.8} />
+            )}
           </button>
 
+          {/* Minimalist Tactile Segmented Track (Zero Glow) */}
           <div
-            className="flex p-0.5 rounded-full glass-surface"
-            style={{ border: "1px solid var(--glass-border)" }}
+            className="flex p-0.5 rounded-full select-none"
+            style={{
+              background: segmentedTrackBg,
+              border: buttonGlassBorder,
+            }}
           >
             <button
               type="button"
@@ -372,42 +408,47 @@ export function CalendarPage() {
                 setViewMode("activity");
                 triggerHaptic("light");
               }}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer select-none ${
+              className={`h-7 px-2.5 rounded-full text-[10.5px] font-semibold transition-all duration-150 flex items-center gap-1 cursor-pointer select-none active:scale-95 ${
                 viewMode === "activity"
                   ? isDark
-                    ? "bg-white/12 text-white shadow-sm"
-                    : "bg-black/[0.08] text-zinc-900 shadow-sm"
+                    ? "bg-white text-zinc-950 shadow-xs"
+                    : "bg-[#18181b] text-white shadow-xs"
                   : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              <CalendarDays size={12} strokeWidth={1.75} />
-              {t(
-                "calendar.activityTab",
-                isIndonesian ? "Aktivitas" : "Activity",
-              )}
+              <CalendarDays size={11.5} strokeWidth={2} />
+              <span>
+                {t(
+                  "calendar.activityTab",
+                  isIndonesian ? "Aktivitas" : "Activity",
+                )}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => {
                 setViewMode("runway");
                 triggerHaptic("light");
               }}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer select-none ${
+              className={`h-7 px-2.5 rounded-full text-[10.5px] font-semibold transition-all duration-150 flex items-center gap-1 cursor-pointer select-none active:scale-95 ${
                 viewMode === "runway"
                   ? isDark
-                    ? "bg-white/12 text-white shadow-sm"
-                    : "bg-black/[0.08] text-zinc-900 shadow-sm"
+                    ? "bg-white text-zinc-950 shadow-xs"
+                    : "bg-[#18181b] text-white shadow-xs"
                   : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              <TrendingUp size={12} strokeWidth={1.75} />
-              {t("calendar.runwayTab", isIndonesian ? "Ketahanan" : "Runway")}
+              <TrendingUp size={11.5} strokeWidth={2} />
+              <span>
+                {t("calendar.runwayTab", isIndonesian ? "Ketahanan" : "Runway")}
+              </span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 1. Runway Telemetry Bento Banner (Runway Mode) */}
+      {/* ── 2. Runway Telemetry Bento Banner (Runway Mode) ── */}
       <CalendarRunwayBento
         viewMode={viewMode}
         runwayTelemetry={runwayTelemetry}
@@ -416,7 +457,7 @@ export function CalendarPage() {
         displayRupiah={displayRupiah}
       />
 
-      {/* 2. Monthly Matrix & Heatmap Grid + Legend */}
+      {/* ── 3. Monthly Matrix & Heatmap Grid + Legend ── */}
       <CalendarMonthlyMatrix
         currentDate={currentDate}
         selectedDay={selectedDay}
@@ -437,7 +478,7 @@ export function CalendarPage() {
         t={t}
       />
 
-      {/* 3. Subscription, Recurring Bill Tracker & Detected Recurring Patterns */}
+      {/* ── 4. Subscription, Recurring Bill Tracker & Detected Recurring Patterns ── */}
       <CalendarUpcomingBillsSection
         bills={bills}
         detectedRecurringItems={detectedRecurringExpenseItems}
@@ -452,7 +493,7 @@ export function CalendarPage() {
         displayRupiah={displayRupiah}
       />
 
-      {/* 4. Daily Obligation & Transaction Drawer */}
+      {/* ── 5. Daily Obligation & Transaction Drawer ── */}
       <CalendarDayDetailSheet
         selectedDay={selectedDay}
         selectedDayForecast={selectedDayForecast}
@@ -465,7 +506,7 @@ export function CalendarPage() {
         displayRupiah={displayRupiah}
       />
 
-      {/* 5. Pay Bill Settlement Modal */}
+      {/* ── 6. Pay Bill Settlement Modal ── */}
       {payingBill && (
         <PayBillModal
           isOpen={!!payingBill}
@@ -502,20 +543,20 @@ export function CalendarPage() {
         />
       )}
 
-      {/* 6. Recurring Bill Management Sheets */}
+      {/* ── 7. Recurring Bill Management Sheets ── */}
       <BillManagementSheets
         isOpen={isManageBillsOpen}
         onClose={() => setIsManageBillsOpen(false)}
       />
 
-      {/* 7. Bill & Daily Log Reminder Settings Sheet */}
+      {/* ── 8. Bill & Daily Log Reminder Settings Sheet ── */}
       <BillDailyReminderSheet
         isOpen={isReminderSheetOpen}
         onClose={() => setIsReminderSheetOpen(false)}
         bills={bills}
       />
 
-      <div className="h-4" />
+      <div className="h-2" />
     </div>
   );
 }

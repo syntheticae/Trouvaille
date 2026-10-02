@@ -603,7 +603,10 @@ export function FinancialWrappedModal({
 
         const imgWidth = canvas.width;
         const imgHeight = canvas.height;
-        const ratio = Math.min((pdfWidth - 20) / imgWidth, (pdfHeight - 20) / imgHeight);
+        const ratio = Math.min(
+          (pdfWidth - 20) / imgWidth,
+          (pdfHeight - 20) / imgHeight,
+        );
         const renderW = imgWidth * ratio;
         const renderH = imgHeight * ratio;
         const marginX = (pdfWidth - renderW) / 2;
@@ -1707,11 +1710,7 @@ export function FinancialWrappedModal({
                   >
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         1)
                       </span>{" "}
@@ -1721,11 +1720,7 @@ export function FinancialWrappedModal({
                     </p>
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         2)
                       </span>{" "}
@@ -1735,11 +1730,7 @@ export function FinancialWrappedModal({
                     </p>
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         3)
                       </span>{" "}
@@ -1749,11 +1740,7 @@ export function FinancialWrappedModal({
                     </p>
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         4)
                       </span>{" "}
@@ -1763,11 +1750,7 @@ export function FinancialWrappedModal({
                     </p>
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         5)
                       </span>{" "}
@@ -1777,11 +1760,7 @@ export function FinancialWrappedModal({
                     </p>
                     <p>
                       <span
-                        className={
-                          isDark
-                            ? " text-zinc-500"
-                            : " text-zinc-500"
-                        }
+                        className={isDark ? " text-zinc-500" : " text-zinc-500"}
                       >
                         6)
                       </span>{" "}
