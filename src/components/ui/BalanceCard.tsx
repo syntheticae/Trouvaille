@@ -106,6 +106,19 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const { data: bills = [] } = useBills();
   const { data: wallets = [] } = useWallets();
   const { theme } = useTheme();
+  const isDark = theme !== "light";
+
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
 
   // Selected cash wallet for detail sheet (unified with Assets page)
   const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(null);
@@ -133,7 +146,6 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   );
   const safeToSpend = Math.max(0, liquidCapital - committedAmount);
 
-  const isDark = theme !== "light";
   const dividerGradient = isDark
     ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
     : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.04) 20%, rgba(0, 0, 0, 0.04) 80%, transparent 100%)";
@@ -233,16 +245,36 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   return (
     <>
       {/* Compact Main Portfolio Card */}
-      <section className="p-4 rounded-[22px] glass-surface">
+      <section
+        className="p-4 sm:p-5 rounded-[26px] relative overflow-hidden transition-all select-none"
+        style={{
+          background: cardBg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+        }}
+      >
+        {/* Specular Rim Light Reflection */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-2.5">
-          <span className="text-[12px] font-semibold tracking-wider">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[12px] font-semibold tracking-wider text-[var(--text-primary)]">
             {isIndonesian ? "Sumber Likuiditas" : "Liquidity Sources"}
           </span>
           {!isEmpty && (
             <button
               onClick={() => setDetailOpen(true)}
-              className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform"
+              className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
               style={{ color: "var(--text-secondary)" }}
             >
               {isIndonesian ? "Semua Detail" : "All Details"} <ChevronRight size={13} />
@@ -254,14 +286,14 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           <div
             className="py-5 text-center rounded-2xl"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+              border: cardBorder,
             }}
           >
             <div
               className="w-7 h-7 mx-auto rounded-full flex items-center justify-center mb-1.5"
               style={{
-                background: "var(--glass-fill-strong)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
                 color: "var(--text-tertiary)",
               }}
             >
@@ -286,10 +318,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           <>
             {/* Multi-segment Allocation Bar */}
             <div
-              className="w-full h-2.5 rounded-full overflow-hidden flex gap-[2px] mb-2.5 p-[1px]"
+              className="w-full h-2.5 rounded-full overflow-hidden flex gap-[2px] mb-3 p-[1px]"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
               }}
             >
               {items.map((item) => (
@@ -306,14 +338,14 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             </div>
 
             {/* Compact 1-Row Mini Chips Legend */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               {items.slice(0, 5).map((item) => (
                 <div
                   key={item.name}
                   className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-full"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.035)",
+                    border: cardBorder,
                   }}
                 >
                   <div
@@ -337,9 +369,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               {items.length > 5 && (
                 <button
                   onClick={() => setDetailOpen(true)}
-                  className="shrink-0 px-2 py-1 rounded-full text-[10px] font-bold"
+                  className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer"
                   style={{
-                    background: "var(--glass-fill)",
+                    background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                    border: cardBorder,
                     color: "var(--text-secondary)",
                   }}
                 >
@@ -350,7 +383,14 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
 
             {/* Balance Safety Buffer (Priority 11) */}
             {committedAmount > 0 && (
-              <div className="mt-3 pt-2 border-t border-[var(--glass-border)] flex items-center justify-between text-[11px]">
+              <div
+                className="mt-3 pt-2.5 flex items-center justify-between text-[11px]"
+                style={{
+                  borderTop: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.06)"
+                    : "1px solid rgba(0, 0, 0, 0.05)",
+                }}
+              >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span
                     className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -425,10 +465,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           {/* Trouvaille Telemetry Strip: Safe to Spend & Committed Buffer */}
           {committedAmount > 0 && (
             <div
-              className="p-3 rounded-2xl flex items-center justify-between text-[11px] border shadow-sm"
+              className="p-3 rounded-2xl flex items-center justify-between text-[11px]"
               style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+                border: cardBorder,
               }}
             >
               <div className="flex items-center gap-1.5 min-w-0">
@@ -464,10 +504,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           {items.length > 0 && (
             <div className="space-y-1.5">
               <div
-                className="w-full h-1.5 rounded-full overflow-hidden flex gap-[2px] p-[1px] border"
+                className="w-full h-1.5 rounded-full overflow-hidden flex gap-[2px] p-[1px]"
                 style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                  border: cardBorder,
                 }}
               >
                 {items.map((item) => (

@@ -101,7 +101,6 @@ export function CategoryBudgetDeck({
       };
     });
 
-    // Sort: highest percentage first (closest to or exceeding limit)
     return items.sort((a, b) => b.percentage - a.percentage);
   }, [userConfiguredCategories, allTxs, currentMonthKey]);
 
@@ -109,6 +108,18 @@ export function CategoryBudgetDeck({
   const top5Envelopes = useMemo(() => {
     return envelopes.slice(0, 5);
   }, [envelopes]);
+
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
 
   if (categories.length === 0) return null;
 
@@ -164,18 +175,32 @@ export function CategoryBudgetDeck({
       {/* Case 1: User has not configured any category budgets yet (Gentle Setup Prompt) */}
       {userConfiguredCategories.length === 0 ? (
         <div
-          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
+          className="p-4 rounded-3xl relative overflow-hidden space-y-3 transition-all"
           style={{
-            background: "var(--bg-elevated)",
-            boxShadow: "var(--shadow-card)",
+            background: cardBg,
+            border: cardBorder,
+            boxShadow: cardShadow,
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
           }}
         >
+          {/* Specular Rim Light Reflection */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+            style={{
+              background: isDark
+                ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+            }}
+          />
+
           <div className="flex items-start gap-3">
             <div
               className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
               }}
             >
               <SlidersHorizontal
@@ -207,8 +232,8 @@ export function CategoryBudgetDeck({
               }}
               className="w-full py-2.5 px-4 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform cursor-pointer"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
                 color: "var(--text-primary)",
               }}
             >
@@ -224,12 +249,26 @@ export function CategoryBudgetDeck({
       ) : (
         /* Case 2: Unified Single Card showing Top 5 Budgets Near Limit */
         <div
-          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5"
+          className="p-4 sm:p-5 rounded-3xl relative overflow-hidden space-y-3.5 transition-all"
           style={{
-            background: "var(--bg-elevated)",
-            boxShadow: "var(--shadow-card)",
+            background: cardBg,
+            border: cardBorder,
+            boxShadow: cardShadow,
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
           }}
         >
+          {/* Specular Rim Light Reflection */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+            style={{
+              background: isDark
+                ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+            }}
+          />
+
           {top5Envelopes.map((env) => {
             const clampedPct = Math.min(100, Math.max(3, env.percentage));
 
@@ -241,8 +280,8 @@ export function CategoryBudgetDeck({
                     <div
                       className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                        background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                        border: cardBorder,
                       }}
                     >
                       <IconRenderer icon={env.emoji} size="w-3.5 h-3.5" />
@@ -259,7 +298,7 @@ export function CategoryBudgetDeck({
                             ? "rgba(255, 255, 255, 0.15)"
                             : "rgba(0, 0, 0, 0.08)",
                           color: "var(--text-primary)",
-                          border: "1px solid var(--glass-border)",
+                          border: cardBorder,
                         }}
                       >
                         {isIndonesian ? "Lebih" : "Over"}
@@ -291,8 +330,8 @@ export function CategoryBudgetDeck({
                   className="h-1.5 w-full rounded-full overflow-hidden"
                   style={{
                     background: isDark
-                      ? "rgba(255, 255, 255, 0.08)"
-                      : "rgba(0, 0, 0, 0.06)",
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.05)",
                   }}
                 >
                   <div
@@ -304,10 +343,6 @@ export function CategoryBudgetDeck({
                           ? "#FFFFFF"
                           : "#18181B"
                         : "var(--text-primary)",
-                      boxShadow:
-                        env.isOverbudget && isDark
-                          ? "0 0 6px rgba(255,255,255,0.4)"
-                          : "none",
                     }}
                   />
                 </div>
@@ -352,8 +387,8 @@ export function CategoryBudgetDeck({
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
               }}
             >
               <Target
@@ -378,8 +413,11 @@ export function CategoryBudgetDeck({
 
           <div className="space-y-3 text-[12px] leading-relaxed text-[var(--text-secondary)]">
             <div
-              className="p-3.5 rounded-2xl border border-[var(--glass-border)] space-y-1.5"
-              style={{ background: "var(--bg-elevated)" }}
+              className="p-3.5 rounded-2xl space-y-1.5"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                border: cardBorder,
+              }}
             >
               <div className="flex items-center gap-2">
                 <Sparkles size={14} className="text-[var(--text-primary)]" />
@@ -397,8 +435,11 @@ export function CategoryBudgetDeck({
             </div>
 
             <div
-              className="p-3.5 rounded-2xl border border-[var(--glass-border)] space-y-1.5"
-              style={{ background: "var(--bg-elevated)" }}
+              className="p-3.5 rounded-2xl space-y-1.5"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                border: cardBorder,
+              }}
             >
               <div className="flex items-center gap-2">
                 <ShieldCheck size={14} className="text-[var(--text-primary)]" />

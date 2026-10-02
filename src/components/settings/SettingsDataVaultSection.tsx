@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   type AppReleaseInfo,
   APP_VERSION,
@@ -39,26 +40,57 @@ export function SettingsProfileCard({
   onOpenProfile,
   onExitGuestMode,
 }: SettingsProfileCardProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
+  // ── Clean Apple Inset Grouped Tokens (Zero Glow) ──
+  const groupBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const groupBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const groupShadow = isDark
+    ? "0 10px 28px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+    : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
+
+  const iconBg = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+
+  const iconBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.05)";
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 select-none">
       <button
         type="button"
         onClick={() => {
           triggerHaptic("light");
           onOpenProfile();
         }}
-        className="w-full glass-surface p-3.5 rounded-2xl flex items-center justify-between border border-[var(--glass-border)] active:scale-[0.99] transition-all cursor-pointer text-left"
+        className="w-full p-3.5 rounded-2xl flex items-center justify-between active:scale-[0.99] transition-all cursor-pointer text-left"
+        style={{
+          background: groupBg,
+          border: groupBorder,
+          boxShadow: groupShadow,
+        }}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: iconBg,
+              border: iconBorder,
             }}
           >
             {isGuest ? (
-              <Zap size={18} style={{ color: "var(--text-secondary)" }} />
+              <Zap
+                size={18}
+                strokeWidth={1.8}
+                style={{ color: "var(--text-secondary)" }}
+              />
             ) : avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -68,13 +100,14 @@ export function SettingsProfileCard({
             ) : (
               <UserIcon
                 size={18}
+                strokeWidth={1.8}
                 style={{ color: "var(--text-secondary)" }}
               />
             )}
           </div>
           <div className="min-w-0">
             <p
-              className="font-semibold text-[14px] truncate leading-tight"
+              className="font-bold text-[14px] truncate leading-tight tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {isGuest
@@ -85,7 +118,7 @@ export function SettingsProfileCard({
             </p>
             <p
               className="text-[11px] font-medium truncate mt-0.5"
-              style={{ color: "var(--text-secondary)" }}
+              style={{ color: "var(--text-tertiary)" }}
             >
               {isGuest
                 ? isIndonesian
@@ -95,30 +128,36 @@ export function SettingsProfileCard({
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-1 shrink-0">
           <span
-            className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+            className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full border"
             style={{
-              background: "var(--bg-elevated)",
-              borderColor: "var(--glass-border)",
+              background: iconBg,
+              borderColor: isDark
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(0, 0, 0, 0.06)",
               color: "var(--text-secondary)",
             }}
           >
             {isIndonesian ? "Ubah" : "Edit"}
           </span>
           <ChevronRight
-            size={16}
-            style={{ color: "var(--text-secondary)" }}
+            size={14}
+            strokeWidth={2}
+            style={{ color: "var(--text-tertiary)" }}
           />
         </div>
       </button>
 
+      {/* Guest Mode Cloud Connect Banner */}
       {isGuest && (
         <div
-          className="px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-left"
+          className="px-3.5 py-2.5 rounded-2xl flex items-center justify-between gap-3 text-left transition-all"
           style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
+            background: groupBg,
+            border: groupBorder,
+            boxShadow: groupShadow,
           }}
         >
           <p className="text-[11px] font-medium text-[var(--text-tertiary)] truncate">
@@ -132,11 +171,10 @@ export function SettingsProfileCard({
               triggerHaptic("medium");
               onExitGuestMode();
             }}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer border"
+            className="h-7 px-3 rounded-full text-[11px] font-semibold shrink-0 active:scale-95 transition-all cursor-pointer shadow-xs select-none"
             style={{
-              background: "var(--text-primary)",
-              borderColor: "var(--text-primary)",
-              color: "var(--bg-primary)",
+              background: isDark ? "#ffffff" : "#18181b",
+              color: isDark ? "#000000" : "#ffffff",
             }}
           >
             {isIndonesian ? "Hubungkan Cloud" : "Connect Cloud"}
@@ -192,41 +230,79 @@ export function SettingsDataVaultSection({
   onCheckForUpdate,
   onSignOut,
 }: SettingsDataVaultSectionProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
+  // ── Clean Apple Inset Grouped Tokens (Zero Glow) ──
+  const groupBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const groupBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const groupShadow = isDark
+    ? "0 10px 28px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+    : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
+
+  const iconBg = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+
+  const iconBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.05)";
+
+  const gradientDivider = {
+    background: isDark
+      ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 12%, rgba(255, 255, 255, 0.06) 88%, transparent 100%)"
+      : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.05) 12%, rgba(0, 0, 0, 0.05) 88%, transparent 100%)",
+    height: "1px",
+    width: "100%",
+  };
+
   return (
     <>
-      {/* 7. DATA & VAULT */}
+      {/* ── 7. DATA & VAULT SECTION ── */}
       {hasDataVault && (
-        <section className="space-y-1.5">
+        <section className="space-y-1 select-none">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian ? "Data & Brankas" : "Data & Vault"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Cloud Sync */}
+
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
+            {/* Cloud Sync Row */}
             {showCloudSync && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                     style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
+                      background: iconBg,
+                      border: iconBorder,
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Cloud size={14} strokeWidth={1.75} />
+                    <Cloud size={13.5} strokeWidth={1.8} />
                   </div>
                   <div className="min-w-0">
                     <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
+                      className="text-[12.5px] font-semibold block truncate leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian ? "Sinkronisasi Cloud" : "Cloud Sync"}
                     </span>
                     <span
-                      className="text-[10px] font-normal block truncate"
+                      className="text-[9.5px] font-medium block truncate mt-0.5"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {syncStatus === "syncing"
@@ -243,36 +319,45 @@ export function SettingsDataVaultSection({
                     </span>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={onSafeSync}
                     disabled={syncStatus === "syncing"}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border"
+                    className="h-7 px-3 rounded-full text-[10.5px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border select-none"
                     style={{
                       background:
                         syncStatus === "success"
-                          ? "var(--text-primary)"
-                          : "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
+                          ? isDark
+                            ? "#ffffff"
+                            : "#18181b"
+                          : iconBg,
+                      borderColor: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.06)",
                       color:
                         syncStatus === "success"
-                          ? "var(--bg-primary)"
+                          ? isDark
+                            ? "#000000"
+                            : "#ffffff"
                           : "var(--text-secondary)",
                     }}
                   >
                     {syncStatus === "syncing" && (
                       <Loader2 size={11} className="animate-spin" />
                     )}
-                    {syncStatus === "success" && <Check size={11} />}
+                    {syncStatus === "success" && (
+                      <Check size={11} strokeWidth={2.8} />
+                    )}
                     <span>
                       {syncStatus === "syncing"
                         ? isIndonesian
-                          ? "Menyinkronkan"
+                          ? "Sinkron"
                           : "Syncing"
                         : syncStatus === "success"
                           ? isIndonesian
-                            ? "Tersinkron"
+                            ? "Selesai"
                             : "Synced"
                           : syncStatus === "error"
                             ? isIndonesian
@@ -289,118 +374,129 @@ export function SettingsDataVaultSection({
 
             {/* Pending Offline Mutations Banner */}
             {hasAuthenticatedUser && pendingMutationsCount > 0 && (
-              <div
-                className="p-3 mx-3 mb-2 rounded-xl flex flex-col gap-2 border"
-                style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  <div
-                    className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <RotateCcw size={12} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-[12px] font-semibold block truncate"
-                        style={{ color: "var(--text-primary)" }}
+              <>
+                <div style={gradientDivider} />
+                <div
+                  className="p-3 m-2.5 rounded-xl flex flex-col gap-2 transition-all"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.03)"
+                      : "rgba(0, 0, 0, 0.025)",
+                    border: groupBorder,
+                  }}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <RotateCcw size={12} strokeWidth={1.8} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="text-[12px] font-semibold block truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {isIndonesian
+                            ? "Antrean Mutasi Tertunda"
+                            : "Pending Offline Mutations"}
+                        </span>
+                        <span
+                          className="text-[9.5px] font-mono px-1.5 py-0.2 rounded border"
+                          style={{
+                            background: iconBg,
+                            borderColor: isDark
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : "rgba(0, 0, 0, 0.06)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {pendingMutationsCount}
+                        </span>
+                      </div>
+                      <p
+                        className="text-[10.5px] font-normal leading-relaxed mt-0.5"
+                        style={{ color: "var(--text-tertiary)" }}
                       >
                         {isIndonesian
-                          ? "Antrean Mutasi Tertunda"
-                          : "Pending Offline Mutations"}
-                      </span>
-                      <span
-                        className="text-[10px]  px-1.5 py-0.5 rounded border"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {pendingMutationsCount}
-                      </span>
+                          ? "Ada transaksi uji coba atau mutasi lokal yang belum tersimpan di cloud dan sedang memotong saldo Anda. Anda dapat membatalkannya untuk memulihkan saldo dompet seketika."
+                          : "There are local test transactions not saved to cloud that deducted your balance. Discard them to restore your wallet balance immediately."}
+                      </p>
                     </div>
-                    <p
-                      className="text-[11px] font-normal leading-relaxed mt-0.5"
-                      style={{ color: "var(--text-tertiary)" }}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={onDiscardPendingAndRestore}
+                      disabled={syncStatus === "syncing"}
+                      className="flex-1 h-7.5 px-2.5 rounded-lg text-[10.5px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                      style={{
+                        background: iconBg,
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-primary)",
+                      }}
                     >
-                      {isIndonesian
-                        ? "Ada transaksi uji coba atau mutasi lokal yang belum tersimpan di cloud dan sedang memotong saldo Anda. Anda dapat membatalkannya untuk memulihkan saldo dompet seketika."
-                        : "There are local test transactions not saved to cloud that deducted your balance. Discard them to restore your wallet balance immediately."}
-                    </p>
+                      <Trash2 size={11.5} strokeWidth={1.8} />
+                      <span>
+                        {isIndonesian
+                          ? "Buang & Reset Saldo"
+                          : "Discard & Reset"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onSafeSync}
+                      disabled={syncStatus === "syncing"}
+                      className="h-7.5 px-3 rounded-lg text-[10.5px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                      style={{
+                        background: isDark ? "#ffffff" : "#18181b",
+                        borderColor: isDark ? "#ffffff" : "#18181b",
+                        color: isDark ? "#000000" : "#ffffff",
+                      }}
+                    >
+                      <Cloud size={11.5} strokeWidth={1.8} />
+                      <span>
+                        {isIndonesian ? "Kirim ke Cloud" : "Push to Cloud"}
+                      </span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={onDiscardPendingAndRestore}
-                    disabled={syncStatus === "syncing"}
-                    className="flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Trash2 size={12} strokeWidth={1.75} />
-                    <span>
-                      {isIndonesian
-                        ? "Buang Antrean & Reset Saldo"
-                        : "Discard Queue & Reset Balance"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onSafeSync}
-                    disabled={syncStatus === "syncing"}
-                    className="py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                    style={{
-                      background: "rgba(255, 255, 255, 0.05)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <Cloud size={12} strokeWidth={1.75} />
-                    <span>
-                      {isIndonesian ? "Kirim ke Cloud" : "Sync to Cloud"}
-                    </span>
-                  </button>
-                </div>
-              </div>
+              </>
             )}
 
             {/* Link Web Dashboard */}
             {showWebDashboard && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenWebDashboard();
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Laptop size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onOpenWebDashboard();
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Laptop size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
+                      className="text-[12.5px] font-semibold block truncate leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -408,51 +504,55 @@ export function SettingsDataVaultSection({
                         : "Link Web Dashboard"}
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <QrCode size={11} strokeWidth={1.75} />
-                    <span>{isIndonesian ? "Pindai" : "Scan"}</span>
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1"
+                      style={{
+                        background: iconBg,
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <QrCode size={11} strokeWidth={1.8} />
+                      <span>{isIndonesian ? "Pindai" : "Scan"}</span>
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Unified Report Export & Encrypted Vault */}
             {showExportVault && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenDataExportVault();
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <FileSpreadsheet size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onOpenDataExportVault();
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <FileSpreadsheet size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
+                      className="text-[12.5px] font-semibold block truncate leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -460,119 +560,124 @@ export function SettingsDataVaultSection({
                         : "Report & Data Vault"}
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 pl-2">
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-                    style={{
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                      background: "var(--bg-elevated)",
-                    }}
-                  >
-                    {isIndonesian ? "Ekspor & Cadangan" : "Export & Backup"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                    <span
+                      className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border"
+                      style={{
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-secondary)",
+                        background: iconBg,
+                      }}
+                    >
+                      {isIndonesian ? "Ekspor & Cadangan" : "Export & Backup"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Bank Statement Ingestion */}
             {onOpenImport && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenImport();
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <FileSpreadsheet size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onOpenImport();
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <FileSpreadsheet size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Impor Rekening Koran"
+                        : "Import Bank Statement"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Impor Rekening Koran"
-                      : "Import Bank Statement"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px]"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian ? "Bank / Mutasi" : "Bank / CSV"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {isIndonesian ? "Bank / Mutasi" : "Bank / CSV"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
           </div>
         </section>
       )}
 
-      {/* 8. ABOUT & APP UPDATES */}
+      {/* ── 8. ABOUT & APP UPDATES ── */}
       {!searchQuery.trim() && (
-        <section className="space-y-1.5 pt-1">
-          <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+        <section className="space-y-1 select-none">
+          <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
             {isIndonesian ? "Aplikasi & Pembaruan" : "App & Updates"}
           </div>
 
           <div
-            className="rounded-2xl overflow-hidden backdrop-blur-md shadow-sm"
+            className="rounded-2xl overflow-hidden transition-all"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
             }}
           >
             <button
               type="button"
               onClick={onCheckForUpdate}
               disabled={checkingUpdate}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full disabled:opacity-60"
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full disabled:opacity-60"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Sparkles size={14} strokeWidth={1.75} />
+                  <Sparkles size={13.5} strokeWidth={1.8} />
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span
-                    className="text-[13px] font-semibold truncate"
+                    className="text-[12.5px] font-semibold truncate leading-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
                     Trouvaille v{APP_VERSION}
                   </span>
-                  <span
-                    className="text-[11px] truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <span className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Rilis ${APP_BUILD_NUMBER} · Ketuk untuk periksa pembaruan`
-                      : `Build ${APP_BUILD_NUMBER} · Tap to check for updates`}
+                      ? `Rilis ${APP_BUILD_NUMBER} · Ketuk untuk periksa`
+                      : `Build ${APP_BUILD_NUMBER} · Tap to check`}
                   </span>
                 </div>
               </div>
@@ -580,31 +685,28 @@ export function SettingsDataVaultSection({
               <div className="flex items-center gap-1.5 shrink-0">
                 {checkingUpdate ? (
                   <Loader2
-                    size={14}
-                    className="animate-spin"
-                    style={{ color: "var(--text-tertiary)" }}
+                    size={13}
+                    className="animate-spin text-[var(--text-tertiary)]"
                   />
                 ) : releaseInfo?.hasUpdate ? (
                   <span
-                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full shadow-xs"
                     style={{
-                      background: "var(--text-primary)",
-                      color: "var(--bg-primary)",
+                      background: isDark ? "#ffffff" : "#18181b",
+                      color: isDark ? "#000000" : "#ffffff",
                     }}
                   >
                     {isIndonesian ? "Pembaruan" : "Update"}
                   </span>
                 ) : (
-                  <span
-                    className="text-[11px] font-medium"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
+                  <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
                     {isIndonesian ? "Periksa" : "Check"}
                   </span>
                 )}
                 <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
+                  size={14}
+                  strokeWidth={2}
+                  style={{ color: "var(--text-tertiary)" }}
                 />
               </div>
             </button>
@@ -612,20 +714,21 @@ export function SettingsDataVaultSection({
         </section>
       )}
 
-      {/* 9. SIGN OUT / EXIT GUEST */}
+      {/* ── 9. SIGN OUT / EXIT GUEST ── */}
       {!searchQuery.trim() && (
-        <div className="pt-2">
+        <div className="pt-1 select-none">
           <button
             type="button"
             onClick={onSignOut}
-            className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+            className="w-full h-11 rounded-2xl font-semibold text-[12.5px] flex items-center justify-center gap-2 active:scale-[0.985] transition-all cursor-pointer"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
               color: "var(--text-primary)",
             }}
           >
-            <LogOut size={15} strokeWidth={1.75} />
+            <LogOut size={14} strokeWidth={1.8} />
             <span>
               {isGuest
                 ? isIndonesian

@@ -10,6 +10,7 @@ import type { ActionCenterInsight } from "../../lib/financialMath";
 import type { Transaction } from "../../lib/types";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { MonthForecastSheet } from "./MonthForecastSheet";
 
 interface ActionCenterCardProps {
@@ -35,6 +36,20 @@ export function ActionCenterCard({
 }: ActionCenterCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
 
   const getIcon = () => {
     switch (insight.type) {
@@ -69,20 +84,33 @@ export function ActionCenterCard({
           setDetailOpen(true);
           triggerHaptic("light");
         }}
-        className="glass-surface p-4 rounded-[24px] relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer select-none mb-3"
+        className="p-4 rounded-[24px] relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer select-none mb-3"
         style={{
-          border: "1px solid var(--glass-border)",
-          background: "var(--bg-elevated)",
-          boxShadow: "var(--shadow-card)",
+          background: cardBg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
         }}
       >
+        {/* Specular Rim Light Reflection */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
+
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div
               className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill-strong)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
                 color: "var(--text-primary)",
               }}
             >

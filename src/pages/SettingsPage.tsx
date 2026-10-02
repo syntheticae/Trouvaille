@@ -221,6 +221,7 @@ export function SettingsPage({
   const { goals } = useGoals();
   const { session, signOut, isGuest, exitGuestMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const isDark = theme !== "light";
   const { showToast } = useToast();
   const {
     budgetTarget,
@@ -408,7 +409,7 @@ export function SettingsPage({
     useState(false);
   const [periodicDigestSheetOpen, setPeriodicDigestSheetOpen] = useState(false);
 
-  // Notification toggles (Streamlined into 2 combined switches)
+  // Notification toggles
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
     return (
       localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false"
@@ -849,7 +850,7 @@ export function SettingsPage({
     showSaveAttachments ||
     showReceivableInLiquid;
 
-  // Section 3: Automations & Shortcuts (Unified Single Setting)
+  // Section 3: Automations & Shortcuts
   const showAutomations = matches(
     "Apple Shortcuts & Automations",
     "ios accessibility double tap shortcut back tap siri dynamic island glass action button quick presets 1-tap apple pay pintasan otomatisasi",
@@ -935,19 +936,46 @@ export function SettingsPage({
     hasSecurity ||
     hasDataVault;
 
+  // ── Apple Inset Grouped Styling Tokens (Clean, Zero Glow Shadow) ──
+  const groupBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const groupBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const groupShadow = isDark
+    ? "0 10px 28px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+    : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
+
+  const iconBg = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+
+  const iconBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.05)";
+
+  const gradientDivider = {
+    background: isDark
+      ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 12%, rgba(255, 255, 255, 0.06) 88%, transparent 100%)"
+      : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.05) 12%, rgba(0, 0, 0, 0.05) 88%, transparent 100%)",
+    height: "1px",
+    width: "100%",
+  };
+
   return (
-    <div className="px-5 py-6 space-y-5 pb-36 max-w-md mx-auto">
-      {/* Header */}
-      <div>
+    <div className="px-4 sm:px-5 py-5 space-y-4.5 pb-36 max-w-md mx-auto select-none">
+      {/* ── 1. Page Header ── */}
+      <div className="pt-0.5">
         <h1
-          className="text-[22px] font-semibold tracking-tight"
+          className="text-[21px] sm:text-[22px] font-bold tracking-tight leading-tight"
           style={{ color: "var(--text-primary)" }}
         >
           {isIndonesian ? "Pengaturan" : "Settings"}
         </h1>
         <p
-          className="text-[12px] font-medium"
-          style={{ color: "var(--text-secondary)" }}
+          className="text-[11.5px] font-medium mt-0.5"
+          style={{ color: "var(--text-tertiary)" }}
         >
           {isIndonesian
             ? "Preferensi, arsitektur keuangan & keamanan"
@@ -955,15 +983,22 @@ export function SettingsPage({
         </p>
       </div>
 
-      {/* Search Bar */}
+      {/* ── 2. iOS Minimalist Search Pill (Zero Glow) ── */}
       <div
-        className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl transition-all"
+        className="flex items-center gap-2.5 px-3.5 h-10 rounded-2xl transition-all"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+          background: groupBg,
+          border: groupBorder,
+          boxShadow: isDark
+            ? "inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+            : "inset 0 1px 0 #ffffff",
         }}
       >
-        <Search size={14} style={{ color: "var(--text-tertiary)" }} />
+        <Search
+          size={14}
+          style={{ color: "var(--text-tertiary)" }}
+          className="shrink-0"
+        />
         <input
           type="text"
           value={searchQuery}
@@ -973,7 +1008,7 @@ export function SettingsPage({
               ? "Cari pengaturan, pintasan & keamanan..."
               : "Search settings, shortcuts & security..."
           }
-          className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
+          className="w-full bg-transparent text-[12.5px] font-medium outline-none placeholder:text-[var(--text-tertiary)]"
           style={{ color: "var(--text-primary)" }}
         />
         {searchQuery && (
@@ -983,16 +1018,14 @@ export function SettingsPage({
               triggerHaptic("light");
               setSearchQuery("");
             }}
-            className="p-1 rounded-full text-[var(--text-tertiary)] active:scale-90 cursor-pointer"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 cursor-pointer"
           >
-            <X size={12} />
+            <X size={12} strokeWidth={2} />
           </button>
         )}
       </div>
 
-      {/* ============================================================ */}
-      {/* 1. PROFILE & ACCOUNT CARD */}
-      {/* ============================================================ */}
+      {/* ── 3. Profile & Account Card ── */}
       {!searchQuery.trim() && (
         <SettingsProfileCard
           isGuest={isGuest}
@@ -1007,10 +1040,10 @@ export function SettingsPage({
 
       {/* Empty Search State */}
       {!hasAnyMatch && searchQuery.trim() && (
-        <div className="py-12 text-center space-y-2">
+        <div className="py-12 text-center space-y-1.5">
           <Search
-            size={24}
-            className="mx-auto text-[var(--text-tertiary)] opacity-50"
+            size={22}
+            className="mx-auto text-[var(--text-tertiary)] opacity-40"
           />
           <p
             className="text-[13px] font-semibold"
@@ -1026,434 +1059,475 @@ export function SettingsPage({
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* 2. FINANCIAL ARCHITECTURE */}
-      {/* ============================================================ */}
+      {/* ── 4. Financial Architecture ── */}
       {hasArchitecture && (
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian ? "Arsitektur Finansial" : "Financial Architecture"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Manage Ledgers */}
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
+            {/* Manage Spaces */}
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 setManageLedgersOpen(true);
               }}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <BookOpen size={14} strokeWidth={1.75} />
+                  <BookOpen size={13.5} strokeWidth={1.8} />
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Kelola Space" : "Manage Spaces"}
-                  </span>
-                </div>
+                <span
+                  className="text-[12.5px] font-semibold truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Kelola Space" : "Manage Spaces"}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span
-                  className="text-[12px] "
+                  className="text-[11.5px] font-medium"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   {activeSpace?.name ||
                     (isIndonesian ? "Space Pribadi" : "Personal Space")}
                 </span>
                 <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
+                  size={14}
+                  strokeWidth={2}
+                  style={{ color: "var(--text-tertiary)" }}
                 />
               </div>
             </button>
 
             {/* Manage Categories */}
             {showCategories && (
-              <button
-                type="button"
-                onClick={() => setCategoriesOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <FolderTree size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setCategoriesOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <FolderTree size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Kelola Kategori" : "Manage Categories"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Kelola Kategori" : "Manage Categories"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {categories.length}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium tabular-nums"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {categories.length}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Wallets */}
             {showWallets && (
-              <button
-                type="button"
-                onClick={() => setWalletsOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <CreditCard size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setWalletsOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <CreditCard size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Kelola Akun" : "Manage Accounts"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Kelola Akun" : "Manage Accounts"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {wallets.length}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium tabular-nums"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {wallets.length}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Monthly Spending Budget */}
             {showBudget && (
-              <button
-                type="button"
-                onClick={() => setBudgetTargetOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Target size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setBudgetTargetOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Target size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Anggaran Belanja Bulanan"
+                        : "Monthly Spending Budget"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Anggaran Belanja Bulanan"
-                      : "Monthly Spending Budget"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {budgetTarget > 0
-                      ? formatRupiah(budgetTarget)
-                      : isIndonesian
-                        ? "Belum Diatur"
-                        : "Not Set"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium tabular-nums"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {budgetTarget > 0
+                        ? formatRupiah(budgetTarget)
+                        : isIndonesian
+                          ? "Belum Diatur"
+                          : "Not Set"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Recurring Bills */}
             {showBills && (
-              <button
-                type="button"
-                onClick={() => setBillListOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Receipt size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setBillListOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Receipt size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Tagihan Rutin" : "Recurring Bills"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Tagihan Rutin" : "Recurring Bills"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {bills.length} {isIndonesian ? "aktif" : "active"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {bills.length} {isIndonesian ? "aktif" : "active"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Financial Goals */}
             {showGoals && (
-              <button
-                type="button"
-                onClick={() => setGoalsOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <TrendingUp size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setGoalsOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <TrendingUp size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Target Tabungan" : "Financial Goals"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Target Tabungan" : "Financial Goals"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {goals.length} {isIndonesian ? "target" : "targets"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {goals.length} {isIndonesian ? "target" : "targets"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Asset Valuation */}
             {showValuation && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setValuationOpen(true);
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Coins size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setValuationOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Coins size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Valuasi Aset" : "Asset Valuation"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Valuasi Aset" : "Asset Valuation"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px]"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian ? "Assets & Portofolio" : "Wealth & Holdings"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {isIndonesian
+                        ? "Portofolio & Saham"
+                        : "Wealth & Holdings"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Base Currency */}
             {showCurrency && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setCurrencySheetOpen(true);
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Coins size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setCurrencySheetOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Coins size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Mata Uang Utama" : "Base Currency"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Mata Uang Utama" : "Base Currency"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] "
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {preferredCurrency} ({currencyMeta.symbol})
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {preferredCurrency} ({currencyMeta.symbol})
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
 
-            {/* App Language Switcher Trigger */}
+            {/* App Language */}
             {showLanguage && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setLanguageSheetOpen(true);
-                }}
-                className="w-full flex items-center justify-between py-2.5 px-3.5 min-h-[44px] text-left active:bg-white/[0.04] transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Languages size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setLanguageSheetOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between py-2.5 px-3.5 min-h-[46px] text-left active:bg-white/[0.04] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Languages size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {t("settings.appLanguage", "App Language")}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {t("settings.appLanguage", "App Language")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px] font-medium"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {language === "id" ? "Bahasa Indonesia" : "English"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {language === "id" ? "Bahasa Indonesia" : "English"}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
             )}
           </div>
         </section>
       )}
 
-      {/* ============================================================ */}
-      {/* 3. PREFERENCES */}
-      {/* ============================================================ */}
+      {/* ── 5. Preferences ── */}
       {hasPreferences && (
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian ? "Preferensi" : "Preferences"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
             {/* Light Appearance Toggle */}
             {showTheme && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                     style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
+                      background: iconBg,
+                      border: iconBorder,
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Sun size={14} strokeWidth={1.75} />
+                    <Sun size={13.5} strokeWidth={1.8} />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Tampilan Terang" : "Light Appearance"}
-                    </span>
-                  </div>
+                  <span
+                    className="text-[12.5px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian ? "Tampilan Terang" : "Light Appearance"}
+                  </span>
                 </div>
                 <ToggleSwitch
                   checked={theme === "light"}
@@ -1468,21 +1542,22 @@ export function SettingsPage({
 
             {/* Liquid Custom Keypad Toggle */}
             {showKeypad && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Calculator size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Calculator size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -1490,32 +1565,33 @@ export function SettingsPage({
                         : "Liquid Numeric Keypad"}
                     </span>
                   </div>
+                  <ToggleSwitch
+                    checked={customKeypadEnabled}
+                    onChange={handleToggleCustomKeypad}
+                    ariaLabel="Toggle liquid numeric keypad"
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={customKeypadEnabled}
-                  onChange={handleToggleCustomKeypad}
-                  ariaLabel="Toggle liquid numeric keypad"
-                />
-              </div>
+              </>
             )}
 
             {/* Transaction Tags Toggle */}
             {showTags && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Tag size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Tag size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -1523,32 +1599,33 @@ export function SettingsPage({
                         : "Transaction Tags (#)"}
                     </span>
                   </div>
+                  <ToggleSwitch
+                    checked={tagsEnabled}
+                    onChange={handleToggleTags}
+                    ariaLabel="Toggle transaction tags"
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={tagsEnabled}
-                  onChange={handleToggleTags}
-                  ariaLabel="Toggle transaction tags"
-                />
-              </div>
+              </>
             )}
 
             {/* Save Attachment Files Toggle */}
             {showSaveAttachments && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Paperclip size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Paperclip size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -1556,32 +1633,33 @@ export function SettingsPage({
                         : "Save Attachment Files"}
                     </span>
                   </div>
+                  <ToggleSwitch
+                    checked={saveAttachmentsEnabled}
+                    onChange={handleToggleSaveAttachments}
+                    ariaLabel="Toggle save attachments"
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={saveAttachmentsEnabled}
-                  onChange={handleToggleSaveAttachments}
-                  ariaLabel="Toggle save attachments"
-                />
-              </div>
+              </>
             )}
 
             {/* Include Receivables in Liquid Cash Toggle */}
             {showReceivableInLiquid && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Coins size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Coins size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -1589,70 +1667,73 @@ export function SettingsPage({
                         : "Receivables in Liquid Cash"}
                     </span>
                   </div>
+                  <ToggleSwitch
+                    checked={includeReceivableInLiquid}
+                    onChange={handleToggleIncludeReceivable}
+                    ariaLabel="Toggle include receivables in liquid cash"
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={includeReceivableInLiquid}
-                  onChange={handleToggleIncludeReceivable}
-                  ariaLabel="Toggle include receivables in liquid cash"
-                />
-              </div>
+              </>
             )}
           </div>
         </section>
       )}
 
-      {/* ============================================================ */}
-      {/* 4. AUTOMATIONS & SIRI */}
-      {/* ============================================================ */}
+      {/* ── 6. Automations & Shortcuts ── */}
       {hasAutomations && (
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian
               ? "Otomatisasi & Pintasan"
               : "Automations & Shortcuts"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Quick Transaction Presets (In-App Shortcuts) */}
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
+            {/* Quick Presets */}
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 setShortcutSheetOpen(true);
               }}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Zap size={14} strokeWidth={1.75} />
+                  <Zap size={13.5} strokeWidth={1.8} />
                 </div>
-                <div className="min-w-0">
-                  <span
-                    className="text-[13px] font-semibold truncate block"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Pintasan Transaksi Cepat"
-                      : "Quick Transaction Presets"}
-                  </span>
-                </div>
+                <span
+                  className="text-[12.5px] font-semibold truncate block"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Pintasan Transaksi Cepat"
+                    : "Quick Transaction Presets"}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 pl-2">
                 <span
-                  className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                  className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border tabular-nums"
                   style={{
                     borderColor: "var(--glass-border)",
                     color: "var(--text-secondary)",
-                    background: "var(--bg-elevated)",
+                    background: iconBg,
                   }}
                 >
                   {shortcuts.length}{" "}
@@ -1663,66 +1744,68 @@ export function SettingsPage({
                       : "Presets"}
                 </span>
                 <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
+                  size={14}
+                  strokeWidth={2}
+                  style={{ color: "var(--text-tertiary)" }}
                 />
               </div>
             </button>
 
-            {/* Apple Shortcuts & Automations (Unified Single Setting) */}
+            {/* Apple Shortcuts & Automations */}
+            <div style={gradientDivider} />
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 openShortcutsWithTab("back_tap");
               }}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Smartphone size={14} strokeWidth={1.75} />
+                  <Smartphone size={13.5} strokeWidth={1.8} />
                 </div>
-                <div className="min-w-0">
-                  <span
-                    className="text-[13px] font-semibold truncate block"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isAndroid
-                      ? isIndonesian
-                        ? "Pintasan URL & Otomatisasi"
-                        : "URL Shortcuts & Automations"
-                      : isIndonesian
-                        ? "Pintasan & Otomatisasi"
-                        : "Shortcuts & Automations"}
-                  </span>
-                </div>
+                <span
+                  className="text-[12.5px] font-semibold truncate block"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isAndroid
+                    ? isIndonesian
+                      ? "Pintasan URL & Otomatisasi"
+                      : "URL Shortcuts & Automations"
+                    : isIndonesian
+                      ? "Pintasan & Otomatisasi"
+                      : "Shortcuts & Automations"}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 pl-2">
                 <span
-                  className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                  className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border"
                   style={{
                     borderColor: "var(--glass-border)",
                     color: "var(--text-secondary)",
-                    background: "var(--bg-elevated)",
+                    background: iconBg,
                   }}
                 >
                   {isIndonesian ? "5 Mode" : "5 Modes"}
                 </span>
                 <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
+                  size={14}
+                  strokeWidth={2}
+                  style={{ color: "var(--text-tertiary)" }}
                 />
               </div>
             </button>
 
-            {/* Replay Interactive Product Tour */}
+            {/* Replay Tour */}
+            <div style={gradientDivider} />
             <button
               type="button"
               onMouseEnter={() => {
@@ -1742,44 +1825,43 @@ export function SettingsPage({
                 window.dispatchEvent(new CustomEvent("trouvaille:start-tour"));
                 navigate("/", { replace: true });
               }}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Sparkles size={14} strokeWidth={1.75} />
+                  <Sparkles size={13.5} strokeWidth={1.8} />
                 </div>
-                <div className="min-w-0">
-                  <span
-                    className="text-[13px] font-semibold truncate block"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Panduan Fitur & Pengenalan Aplikasi"
-                      : "Interactive Feature Tour"}
-                  </span>
-                </div>
+                <span
+                  className="text-[12.5px] font-semibold truncate block"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Panduan Fitur Interaktif"
+                    : "Interactive Feature Tour"}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 pl-2">
                 <span
-                  className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                  className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border"
                   style={{
                     borderColor: "var(--glass-border)",
                     color: "var(--text-secondary)",
-                    background: "var(--bg-elevated)",
+                    background: iconBg,
                   }}
                 >
                   {isIndonesian ? "Putar" : "Replay"}
                 </span>
                 <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
+                  size={14}
+                  strokeWidth={2}
+                  style={{ color: "var(--text-tertiary)" }}
                 />
               </div>
             </button>
@@ -1787,40 +1869,45 @@ export function SettingsPage({
         </section>
       )}
 
-      {/* ============================================================ */}
-      {/* 5. NOTIFICATIONS */}
-      {/* ============================================================ */}
+      {/* ── 7. Notifications ── */}
       {hasNotifications && (
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian ? "Notifikasi" : "Notifications"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Bar 1: Bill & Daily Log Reminders */}
-            <div className="flex items-center justify-between py-2 px-3.5 min-h-[48px] group">
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
+            {/* Bill & Daily Log Reminders */}
+            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   setBillDailyReminderSheetOpen(true);
                 }}
-                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-75 transition-opacity"
+                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-70 transition-opacity"
               >
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <BellRing size={14} strokeWidth={1.75} />
+                  <BellRing size={13.5} strokeWidth={1.8} />
                 </div>
                 <span
-                  className="text-[13px] font-semibold truncate flex-1"
+                  className="text-[12.5px] font-semibold truncate flex-1"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {isIndonesian
@@ -1828,7 +1915,7 @@ export function SettingsPage({
                     : "Bill & Daily Log Reminders"}
                 </span>
               </button>
-              <div className="shrink-0 pl-1 ">
+              <div className="shrink-0 pl-1">
                 <ToggleSwitch
                   checked={billRemindersEnabled || dailyReminderEnabled}
                   onChange={handleToggleBillAndDailyReminders}
@@ -1837,28 +1924,29 @@ export function SettingsPage({
               </div>
             </div>
 
-            {/* Bar 2: Periodic Financial Digests & Reviews */}
-            <div className="flex items-center justify-between py-2 px-3.5 min-h-[48px] group">
+            {/* Periodic Financial Digests */}
+            <div style={gradientDivider} />
+            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   setPeriodicDigestSheetOpen(true);
                 }}
-                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-75 transition-opacity"
+                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-70 transition-opacity"
               >
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: iconBg,
+                    border: iconBorder,
                     color: "var(--text-primary)",
                   }}
                 >
-                  <CalendarClock size={14} strokeWidth={1.75} />
+                  <CalendarClock size={13.5} strokeWidth={1.8} />
                 </div>
                 <span
-                  className="text-[13px] font-semibold truncate flex-1"
+                  className="text-[12.5px] font-semibold truncate flex-1"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {isIndonesian
@@ -1866,7 +1954,7 @@ export function SettingsPage({
                     : "Periodic Financial Digests"}
                 </span>
               </button>
-              <div className="shrink-0 pl-1 ">
+              <div className="shrink-0 pl-1">
                 <ToggleSwitch
                   checked={weeklyDigestEnabled || monthEndReviewEnabled}
                   onChange={handleTogglePeriodicDigests}
@@ -1878,40 +1966,43 @@ export function SettingsPage({
         </section>
       )}
 
-      {/* ============================================================ */}
-      {/* 6. SECURITY & PRIVACY */}
-      {/* ============================================================ */}
+      {/* ── 8. Security & Privacy ── */}
       {hasSecurity && (
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.1em] px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian ? "Keamanan & Privasi" : "Security & Privacy"}
           </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
             {/* Privacy Shield Toggle */}
             {showPrivacyShield && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                     style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
+                      background: iconBg,
+                      border: iconBorder,
                       color: "var(--text-primary)",
                     }}
                   >
-                    <EyeOff size={14} strokeWidth={1.75} />
+                    <EyeOff size={13.5} strokeWidth={1.8} />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Privasi Saldo" : "Privacy Shield"}
-                    </span>
-                  </div>
+                  <span
+                    className="text-[12.5px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian ? "Privasi Saldo" : "Privacy Shield"}
+                  </span>
                 </div>
                 <ToggleSwitch
                   checked={isPrivacyShieldEnabled}
@@ -1934,23 +2025,24 @@ export function SettingsPage({
               </div>
             )}
 
-            {/* Require Security PIN Lock Toggle */}
+            {/* Security PIN Lock Toggle */}
             {showPinLock && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <ShieldCheck size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
+              <>
+                <div style={gradientDivider} />
+                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <ShieldCheck size={13.5} strokeWidth={1.8} />
+                    </div>
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
@@ -1958,211 +2050,226 @@ export function SettingsPage({
                         : "Security PIN Lock"}
                     </span>
                   </div>
-                </div>
-                <ToggleSwitch
-                  checked={securitySettings.enabled}
-                  onChange={async () => {
-                    if (!securitySettings.enabled) {
-                      if (!securitySettings.hasPin) {
+                  <ToggleSwitch
+                    checked={securitySettings.enabled}
+                    onChange={async () => {
+                      if (!securitySettings.enabled) {
+                        if (!securitySettings.hasPin) {
+                          showToast(
+                            isIndonesian
+                              ? "Harap atur PIN keamanan terlebih dahulu untuk mengaktifkan kunci aplikasi"
+                              : "Please set up a security PIN first to enable app lock",
+                            "info",
+                            null,
+                            3000,
+                          );
+                          setPinModalOpen(true);
+                          return;
+                        }
+                        updateSecuritySettings({ enabled: true });
+                        triggerHaptic("medium");
                         showToast(
                           isIndonesian
-                            ? "Harap atur PIN keamanan terlebih dahulu untuk mengaktifkan kunci aplikasi"
-                            : "Please set up a security PIN first to enable app lock",
-                          "info",
-                          null,
-                          3000,
+                            ? "Kunci PIN Keamanan diaktifkan"
+                            : "Security PIN Lock enabled",
+                          "update",
+                          () => {},
                         );
-                        setPinModalOpen(true);
-                        return;
+                      } else {
+                        updateSecuritySettings({ enabled: false });
+                        triggerHaptic("light");
+                        showToast(
+                          isIndonesian
+                            ? "Kunci PIN Keamanan dinonaktifkan"
+                            : "Security PIN Lock disabled",
+                          "update",
+                          () => {},
+                        );
                       }
-                      updateSecuritySettings({ enabled: true });
-                      triggerHaptic("medium");
-                      showToast(
-                        isIndonesian
-                          ? "Kunci PIN Keamanan diaktifkan"
-                          : "Security PIN Lock enabled",
-                        "update",
-                        () => {},
-                      );
-                    } else {
-                      updateSecuritySettings({ enabled: false });
-                      triggerHaptic("light");
-                      showToast(
-                        isIndonesian
-                          ? "Kunci PIN Keamanan dinonaktifkan"
-                          : "Security PIN Lock disabled",
-                        "update",
-                        () => {},
-                      );
-                    }
-                  }}
-                  ariaLabel="Toggle Security PIN lock"
-                />
-              </div>
+                    }}
+                    ariaLabel="Toggle Security PIN lock"
+                  />
+                </div>
+              </>
             )}
 
-            {/* Lock Timeout & PIN Config (shown when lock enabled) */}
+            {/* Lock Timeout & PIN Config */}
             {securitySettings.enabled && (
               <>
                 {showTimeout && (
-                  <div className="flex items-center justify-between py-2 px-3.5 min-h-[44px]">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        <Clock size={14} strokeWidth={1.75} />
+                  <>
+                    <div style={gradientDivider} />
+                    <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px]">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: iconBg,
+                            border: iconBorder,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Clock size={13.5} strokeWidth={1.8} />
+                        </div>
+                        <span
+                          className="text-[12.5px] font-semibold truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {isIndonesian ? "Batas Waktu Kunci" : "Lock Timeout"}
+                        </span>
                       </div>
-                      <span
-                        className="text-[13px] font-semibold truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Batas Waktu Kunci" : "Lock Timeout"}
-                      </span>
+                      <div className="flex gap-1.5">
+                        {[
+                          { label: "0m", value: 0 },
+                          { label: "1m", value: 1 },
+                          { label: "5m", value: 5 },
+                        ].map((opt) => {
+                          const isSelected =
+                            securitySettings.timeoutMinutes === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                updateSecuritySettings({
+                                  timeoutMinutes: opt.value,
+                                });
+                                triggerHaptic("light");
+                              }}
+                              className="py-1 px-2.5 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer select-none active:scale-95"
+                              style={{
+                                background: isSelected
+                                  ? isDark
+                                    ? "#ffffff"
+                                    : "#18181b"
+                                  : iconBg,
+                                border: isSelected
+                                  ? isDark
+                                    ? "1px solid #ffffff"
+                                    : "1px solid #18181b"
+                                  : iconBorder,
+                                color: isSelected
+                                  ? isDark
+                                    ? "#000000"
+                                    : "#ffffff"
+                                  : "var(--text-tertiary)",
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex gap-1.5">
-                      {[
-                        { label: "0m", value: 0 },
-                        { label: "1m", value: 1 },
-                        { label: "5m", value: 5 },
-                      ].map((opt) => {
-                        const isSelected =
-                          securitySettings.timeoutMinutes === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              updateSecuritySettings({
-                                timeoutMinutes: opt.value,
-                              });
-                              triggerHaptic("light");
-                            }}
-                            className="py-1 px-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
-                            style={{
-                              background: isSelected
-                                ? "var(--bg-elevated)"
-                                : "var(--glass-fill)",
-                              border: isSelected
-                                ? "1px solid var(--text-primary)"
-                                : "1px solid var(--glass-border)",
-                              color: isSelected
-                                ? "var(--text-primary)"
-                                : "var(--text-tertiary)",
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 {showPinConfig && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPinModalOpen(true);
-                      triggerHaptic("light");
-                    }}
-                    className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        <KeyRound size={14} strokeWidth={1.75} />
+                  <>
+                    <div style={gradientDivider} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPinModalOpen(true);
+                        triggerHaptic("light");
+                      }}
+                      className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: iconBg,
+                            border: iconBorder,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <KeyRound size={13.5} strokeWidth={1.8} />
+                        </div>
+                        <span
+                          className="text-[12.5px] font-semibold truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {isIndonesian
+                            ? securitySettings.hasPin
+                              ? "Ubah PIN Keamanan"
+                              : "Atur PIN Keamanan"
+                            : securitySettings.hasPin
+                              ? "Change Security PIN"
+                              : "Set Up Security PIN"}
+                        </span>
                       </div>
-                      <span
-                        className="text-[13px] font-semibold truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian
-                          ? securitySettings.hasPin
-                            ? "Ubah PIN Keamanan"
-                            : "Atur PIN Keamanan"
-                          : securitySettings.hasPin
-                            ? "Change Security PIN"
-                            : "Set Up Security PIN"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span
-                        className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {isIndonesian
-                          ? securitySettings.hasPin
-                            ? "Terkonfigurasi"
-                            : "Belum Diatur"
-                          : securitySettings.hasPin
-                            ? "Configured"
-                            : "Not Set"}
-                      </span>
-                      <ChevronRight
-                        size={15}
-                        style={{ color: "var(--text-tertiary)" }}
-                      />
-                    </div>
-                  </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border"
+                          style={{
+                            background: iconBg,
+                            borderColor: "var(--glass-border)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {isIndonesian
+                            ? securitySettings.hasPin
+                              ? "Terkonfigurasi"
+                              : "Belum Diatur"
+                            : securitySettings.hasPin
+                              ? "Configured"
+                              : "Not Set"}
+                        </span>
+                        <ChevronRight
+                          size={14}
+                          strokeWidth={2}
+                          style={{ color: "var(--text-tertiary)" }}
+                        />
+                      </div>
+                    </button>
+                  </>
                 )}
               </>
             )}
 
             {/* Camera & Photos Access */}
             {showMedia && (
-              <button
-                type="button"
-                onClick={() => setMediaPermissionsOpen(true)}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Camera size={14} strokeWidth={1.75} />
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => setMediaPermissionsOpen(true)}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Camera size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Izin Kamera & Media"
+                        : "Camera & Media Permissions"}
+                    </span>
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Izin Kamera & Media"
-                      : "Camera & Media Permissions"}
-                  </span>
-                </div>
-                <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
-                />
-              </button>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </button>
+              </>
             )}
           </div>
         </section>
       )}
 
-      {/* ============================================================ */}
-      {/* 7. DATA & VAULT + 8. APP UPDATES + 9. SIGN OUT */}
-      {/* ============================================================ */}
+      {/* ── 9. Data Vault & Sign Out ── */}
       <SettingsDataVaultSection
         hasDataVault={hasDataVault}
         showCloudSync={showCloudSync}
@@ -2192,10 +2299,7 @@ export function SettingsPage({
         onSignOut={isGuest ? exitGuestMode : handleLogout}
       />
 
-      {/* ============================================================ */}
-      {/* MODULAR BOTTOM SHEETS / MODALS (LAZY LOADED) */}
-      {/* ============================================================ */}
-
+      {/* ── 10. Lazy Loaded Sheets & Modals ── */}
       <Suspense fallback={null}>
         <ProfileSheet
           isOpen={profileOpen}

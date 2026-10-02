@@ -1,6 +1,13 @@
 import React, { memo, useMemo, useRef } from "react";
 import { motion, type PanInfo } from "framer-motion";
-import { ArrowLeftRight, Clock, Scale, Trash2, Copy, Check } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Clock,
+  Scale,
+  Trash2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { format } from "date-fns";
 import { formatRupiah } from "../../lib/utils";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -10,6 +17,7 @@ import type { Transaction, Category } from "../../lib/types";
 import { isCorrectionTx } from "../../lib/financialMath";
 import { usePrivacy } from "../../contexts/PrivacyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface TransactionItemProps {
   tx: Transaction;
@@ -44,6 +52,8 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const { isStealthMode } = usePrivacy();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const isIncome = tx.type === "income";
   const isTransfer = tx.type === "transfer";
   const isCorrection = isCorrectionTx(tx);
@@ -84,12 +94,12 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 
   const handleDragEnd = (_: any, info: PanInfo) => {
     clearLongPress();
-    // Swipe Left: Delete (Threshold -75px or velocity < -350)
+    // Swipe Left: Delete (Threshold -75px atau velocity < -350)
     if (info.offset.x < -75 || info.velocity.x < -350) {
       triggerHaptic("heavy");
       onDelete?.(tx);
     }
-    // Swipe Right: Duplicate (Threshold +75px or velocity > +350)
+    // Swipe Right: Duplicate (Threshold +75px atau velocity > +350)
     else if (info.offset.x > 75 || info.velocity.x > 350) {
       triggerHaptic("medium");
       onDuplicate?.(tx);
@@ -110,27 +120,54 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
     }
   };
 
+  // ── Clean Studio Glass Tokens (Rata, Zero Glow, Tanpa Efek Sisi Kiri) ──
+  const cardBg = isSelected
+    ? isDark
+      ? "rgba(255, 255, 255, 0.08)"
+      : "rgba(0, 0, 0, 0.05)"
+    : isDark
+      ? "linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 100%)"
+      : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isSelected
+    ? isDark
+      ? "1px solid rgba(255, 255, 255, 0.35)"
+      : "1px solid rgba(0, 0, 0, 0.25)"
+    : isDark
+      ? "1px solid rgba(255, 255, 255, 0.07)"
+      : "1px solid rgba(0, 0, 0, 0.05)";
+
+  const cardShadow = isDark
+    ? "0 4px 16px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+    : "0 2px 8px -2px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
+
+  const iconBg = isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.035)";
+
+  const iconBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.07)"
+    : "1px solid rgba(0, 0, 0, 0.05)";
+
   return (
-    <div className="relative rounded-[22px] overflow-hidden select-none touch-pan-y">
+    <div className="relative rounded-[20px] overflow-hidden select-none touch-pan-y">
       {/* Background Actions Reveal Layer */}
       {!isSelectMode && (
         <div
-          className="absolute inset-0 flex items-center justify-between px-5 rounded-[22px]"
+          className="absolute inset-0 flex items-center justify-between px-5 rounded-[20px]"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
           }}
         >
-          {/* Left Side: Duplicate (revealed on swipe right) */}
-          <div className="flex items-center gap-1.5 text-[var(--text-secondary)] font-semibold text-[12px]">
-            <Copy size={16} />
+          {/* Left Side: Duplicate */}
+          <div className="flex items-center gap-1.5 text-[var(--text-secondary)] font-semibold text-[11.5px]">
+            <Copy size={15} strokeWidth={2} />
             <span>{isIndonesian ? "Duplikasi" : "Duplicate"}</span>
           </div>
 
-          {/* Right Side: Delete (revealed on swipe left) */}
-          <div className="flex items-center gap-1.5 text-[var(--text-primary)] font-semibold text-[12px]">
+          {/* Right Side: Delete */}
+          <div className="flex items-center gap-1.5 text-[var(--text-primary)] font-semibold text-[11.5px]">
             <span>{isIndonesian ? "Hapus" : "Delete"}</span>
-            <Trash2 size={16} />
+            <Trash2 size={15} strokeWidth={2} />
           </div>
         </div>
       )}
@@ -152,20 +189,18 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
         }}
         onDragEnd={handleDragEnd}
         onTap={handleTapOrClick}
-        className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform relative z-10"
+        className="p-3 sm:p-3.5 rounded-[20px] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform relative z-10"
         style={{
           willChange: "transform",
           transform: "translateZ(0)",
-          background: isSelected
-            ? "rgba(255, 255, 255, 0.07)"
-            : "var(--bg-elevated)",
-          border: isSelected
-            ? "1px solid var(--accent)"
-            : "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: cardBg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
         }}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 pr-2">
           {/* Selection Checkbox */}
           {isSelectMode && (
             <motion.div
@@ -175,74 +210,100 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               className="shrink-0 mr-0.5"
             >
               <div
-                className="w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+                className="w-4.5 h-4.5 rounded-full flex items-center justify-center transition-colors"
                 style={{
                   background: isSelected
-                    ? "var(--accent)"
-                    : "rgba(255, 255, 255, 0.06)",
+                    ? isDark
+                      ? "#ffffff"
+                      : "#18181b"
+                    : isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.04)",
                   border: isSelected
                     ? "none"
-                    : "1.5px solid var(--glass-border)",
-                  color: "var(--accent-ink)",
+                    : isDark
+                      ? "1px solid rgba(255, 255, 255, 0.15)"
+                      : "1px solid rgba(0, 0, 0, 0.1)",
+                  color: isSelected
+                    ? isDark
+                      ? "#000000"
+                      : "#ffffff"
+                    : "transparent",
                 }}
               >
-                {isSelected && <Check size={12} strokeWidth={3} />}
+                {isSelected && <Check size={11} strokeWidth={3} />}
               </div>
             </motion.div>
           )}
 
+          {/* Squircle Icon Container (Zero Glow / Flat Clean) */}
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center relative shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: iconBg,
+              border: iconBorder,
             }}
           >
             {isCorrection ? (
-              <Scale size={18} style={{ color: "var(--text-primary)" }} />
+              <Scale
+                size={16}
+                strokeWidth={1.8}
+                style={{ color: "var(--text-primary)" }}
+              />
             ) : isTransfer ? (
               <ArrowLeftRight
-                size={18}
+                size={16}
+                strokeWidth={1.8}
                 style={{ color: "var(--text-primary)" }}
               />
             ) : (
-              <IconRenderer icon={categoryDisplayEmoji} size="w-6 h-6" />
+              <IconRenderer icon={categoryDisplayEmoji} size="w-5 h-5" />
             )}
+
+            {/* Micro Badge Corner */}
             <div
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow"
+              className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center"
               style={{
                 background: isCorrection
                   ? "var(--text-primary)"
                   : isTransfer
                     ? "var(--text-primary)"
                     : isIncome
-                      ? "var(--accent)"
-                      : "var(--bg-elevated)",
+                      ? isDark
+                        ? "#ffffff"
+                        : "#18181b"
+                      : isDark
+                        ? "#222226"
+                        : "#e4e4e7",
                 color: isCorrection
                   ? "var(--bg-base)"
                   : isTransfer
                     ? "var(--bg-base)"
                     : isIncome
-                      ? "var(--accent-ink)"
+                      ? isDark
+                        ? "#000000"
+                        : "#ffffff"
                       : "var(--text-tertiary)",
-                border: "1.5px solid var(--bg-elevated)",
+                border: isDark ? "1.5px solid #141417" : "1.5px solid #ffffff",
               }}
             >
               {isCorrection ? (
-                <Scale size={8} />
+                <Scale size={7} strokeWidth={2} />
               ) : isTransfer ? (
-                <ArrowLeftRight size={8} />
+                <ArrowLeftRight size={7} strokeWidth={2} />
               ) : (
-                <span className="text-[9px] font-semibold leading-none">
+                <span className="text-[8px] font-bold leading-none select-none">
                   {isIncome ? "+" : "−"}
                 </span>
               )}
             </div>
           </div>
+
+          {/* Title & Metadata */}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <p
-                className="font-bold text-[14px] leading-tight truncate"
+                className="font-bold text-[13.5px] leading-tight truncate tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {isCorrection
@@ -256,24 +317,29 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               </p>
               {isUnusual && (
                 <span
-                  className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+                  className="text-[7.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-full shrink-0 border"
                   style={{
-                    background: "var(--glass-fill-strong)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.05)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.06)",
+                    color: "var(--text-secondary)",
                   }}
                 >
-                  {isIndonesian ? "Lebih tinggi dari biasa" : "Higher than usual"}
+                  {isIndonesian ? "Di Atas Biasa" : "Higher"}
                 </span>
               )}
             </div>
+
             <div
-              className="flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 truncate"
+              className="flex items-center gap-1 text-[10.5px] font-medium mt-0.5 truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
               {timeLabel && (
-                <span className="flex items-center gap-0.5 font-bold amount">
-                  <Clock size={10} />
+                <span className="flex items-center gap-0.5 tabular-nums">
+                  <Clock size={9.5} />
                   {timeLabel} ·
                 </span>
               )}
@@ -283,27 +349,28 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                   : tx.note || (isTransfer ? "Transfer" : fromWalletName)}
               </span>
               {tx.created_by_name && (
-                <span className="flex items-center gap-0.5 text-[9.5px] opacity-80 font-normal shrink-0">
-                  · {isIndonesian ? "oleh" : "by"} {tx.created_by_name}
+                <span className="opacity-70 font-normal shrink-0">
+                  · {tx.created_by_name}
                 </span>
               )}
             </div>
           </div>
         </div>
 
+        {/* Right Side: Amount & Classification */}
         <div className="text-right shrink-0">
           <div
-            className="amount font-semibold text-[14px]"
+            className="amount font-bold text-[13.5px] sm:text-[14px] tabular-nums leading-tight"
             style={{
               color: isCorrection
                 ? isPositiveCorrection
-                  ? "var(--accent)"
-                  : "var(--text-primary)"
+                  ? "var(--text-primary)"
+                  : "var(--text-secondary)"
                 : isTransfer
                   ? "var(--text-primary)"
                   : isIncome
-                    ? "var(--accent)"
-                    : "var(--text-primary)",
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
             }}
           >
             {isStealthMode ? (
@@ -324,7 +391,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
             )}
           </div>
           <div
-            className="text-[10px] font-semibold uppercase tracking-wider"
+            className="text-[9px] font-semibold uppercase tracking-wider mt-0.5"
             style={{ color: "var(--text-tertiary)" }}
           >
             {isCorrection

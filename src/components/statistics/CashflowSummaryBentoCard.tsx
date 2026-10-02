@@ -45,23 +45,48 @@ export function CashflowSummaryBentoCard({
   const maskCompact = (amount: number) =>
     hideBalance ? "••••••" : formatCompactWithPreferred(amount);
 
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
+
   return (
     <div
-      className="p-5 rounded-[24px] select-none space-y-4"
+      className="p-5 rounded-[26px] select-none space-y-4 relative overflow-hidden"
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        boxShadow: "var(--shadow-card)",
+        background: cardBg,
+        border: cardBorder,
+        boxShadow: cardShadow,
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* 1-Line Header with Vector Icon */}
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: cardBorder,
               color: "var(--text-primary)",
             }}
           >
@@ -89,8 +114,8 @@ export function CashflowSummaryBentoCard({
         <div
           className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+            border: cardBorder,
           }}
         >
           <span
@@ -144,7 +169,9 @@ export function CashflowSummaryBentoCard({
       <div className="space-y-1.5 pt-1">
         <div
           className="h-2 w-full rounded-full overflow-hidden flex gap-0.5 p-0.5"
-          style={{ background: "var(--glass-fill)" }}
+          style={{
+            background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+          }}
         >
           <div
             className="h-full rounded-full transition-all duration-500"
@@ -207,8 +234,8 @@ export function CashflowSummaryBentoCard({
         <div
           className="p-2.5 rounded-2xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span
@@ -238,8 +265,8 @@ export function CashflowSummaryBentoCard({
         <div
           className="p-2.5 rounded-2xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span
@@ -269,8 +296,8 @@ export function CashflowSummaryBentoCard({
         <div
           className="p-2.5 rounded-2xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span

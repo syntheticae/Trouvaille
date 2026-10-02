@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Flame,
   ChevronRight,
@@ -26,6 +27,8 @@ export function FirePlannerCard({
   onOpenPlanner,
 }: FirePlannerCardProps) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const isIndonesian = language === "id";
 
   // SWR default 4% (25x rule)
@@ -79,21 +82,40 @@ export function FirePlannerCard({
 
   return (
     <section
-      className="p-5 rounded-[24px] glass-surface transition-all select-none"
+      className="relative overflow-hidden p-5 rounded-[24px] transition-all select-none"
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        boxShadow: "var(--shadow-card)",
+        background: isDark
+          ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+          : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: "var(--text-primary)",
             }}
           >
@@ -110,9 +132,9 @@ export function FirePlannerCard({
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
-                  background: "var(--glass-fill-strong)",
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                   color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
+                  border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
               >
                 {isIndonesian ? "Pensiun Dini" : "Retire Early"}
@@ -136,8 +158,8 @@ export function FirePlannerCard({
           }}
           className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             color: "var(--text-secondary)",
           }}
           title={isIndonesian ? "Konfigurasi Parameter FIRE" : "Configure FIRE Parameters"}
@@ -151,8 +173,8 @@ export function FirePlannerCard({
       <div
         className="p-4 rounded-[22px] mb-4"
         style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
         }}
       >
         <div className="flex justify-between items-start mb-2">
@@ -170,7 +192,13 @@ export function FirePlannerCard({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)]">
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+            style={{
+              background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
+            }}
+          >
             <Hourglass size={12} className="text-[var(--text-secondary)]" />
             <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums">
               {estimatedYears === 0
@@ -191,7 +219,7 @@ export function FirePlannerCard({
         {/* Progress Bar */}
         <div
           className="w-full h-2 rounded-full overflow-hidden mt-2"
-          style={{ background: "var(--glass-border)" }}
+          style={{ background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)" }}
         >
           <div
             className="h-full rounded-full transition-all duration-700"
@@ -210,8 +238,8 @@ export function FirePlannerCard({
             key={m.label}
             className="p-3 rounded-2xl flex flex-col justify-between"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
             }}
           >
             <div>
@@ -227,7 +255,12 @@ export function FirePlannerCard({
                 {hideBalance ? "••••••" : formatRupiah(m.target)}
               </p>
             </div>
-            <div className="mt-2 pt-1.5 border-t border-[var(--glass-border)]">
+            <div
+              className="mt-2 pt-1.5"
+              style={{
+                borderTop: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
+            >
               <span
                 className="text-[10px] font-bold block truncate tabular-nums"
                 style={{
@@ -255,8 +288,8 @@ export function FirePlannerCard({
         }}
         className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none cursor-pointer"
         style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
           color: "var(--text-primary)",
         }}
       >

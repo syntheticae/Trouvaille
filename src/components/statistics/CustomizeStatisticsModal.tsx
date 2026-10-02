@@ -7,7 +7,7 @@
 // ======================================================================
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, RotateCcw, Check, Sparkles } from "lucide-react";
+import { X, RotateCcw, Check } from "lucide-react";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";

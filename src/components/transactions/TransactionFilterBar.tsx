@@ -13,6 +13,7 @@ import { triggerHaptic } from "../../lib/haptics";
 import { formatRupiah } from "../../lib/utils";
 import type { Category } from "../../lib/types";
 import type { FilterType, TimeRangeType } from "./TransactionHorizonBarChart";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export interface TransactionFilterBarProps {
   search: string;
@@ -79,19 +80,34 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
   currentScopeCount = 0,
   allTimeScopeCount = 0,
 }: TransactionFilterBarProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
   return (
     <>
       {/* Full-Width Search Bar with Dynamic Focus Animation */}
       <div
-        className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull transition-all duration-200"
+        className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 no-pull transition-all duration-200"
         style={{
-          background: "var(--bg-elevated)",
+          background: isDark
+            ? "linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+            : "linear-gradient(160deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 247, 250, 0.88) 100%)",
           border: isSearchFocused
-            ? "1px solid rgba(255, 255, 255, 0.22)"
-            : "1px solid var(--glass-border)",
+            ? isDark
+              ? "1px solid rgba(255, 255, 255, 0.3)"
+              : "1px solid rgba(0, 0, 0, 0.25)"
+            : isDark
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.06)",
           boxShadow: isSearchFocused
-            ? "0 4px 16px rgba(0, 0, 0, 0.25)"
-            : "none",
+            ? isDark
+              ? "0 8px 24px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+              : "0 6px 20px -4px rgba(0, 0, 0, 0.08), inset 0 1px 0 #ffffff"
+            : isDark
+              ? "0 4px 16px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+              : "0 2px 10px -2px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
         }}
       >
         <Search
@@ -149,16 +165,16 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                 style={{
                   background:
                     activeFiltersCount > 0
-                      ? "var(--accent)"
-                      : "var(--glass-fill)",
+                      ? isDark ? "#FFFFFF" : "#18181B"
+                      : isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
                   color:
                     activeFiltersCount > 0
-                      ? "var(--accent-ink)"
+                      ? isDark ? "#09090c" : "#FFFFFF"
                       : "var(--text-secondary)",
                   border:
                     activeFiltersCount > 0
-                      ? "1px solid var(--accent)"
-                      : "1px solid var(--glass-border)",
+                      ? isDark ? "1px solid #FFFFFF" : "1px solid #18181B"
+                      : isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
                 title="Advanced Filters"
               >
@@ -170,8 +186,8 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                   <span
                     className="w-4 h-4 rounded-full text-[9px] font-semibold flex items-center justify-center"
                     style={{
-                      background: "var(--accent-ink)",
-                      color: "var(--accent)",
+                      background: isDark ? "#09090c" : "#FFFFFF",
+                      color: isDark ? "#FFFFFF" : "#18181B",
                     }}
                   >
                     {activeFiltersCount}
@@ -190,14 +206,14 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
                 style={{
                   background: isSelectMode
-                    ? "var(--accent)"
-                    : "var(--glass-fill)",
+                    ? isDark ? "#FFFFFF" : "#18181B"
+                    : isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
                   color: isSelectMode
-                    ? "var(--accent-ink)"
+                    ? isDark ? "#09090c" : "#FFFFFF"
                     : "var(--text-secondary)",
                   border: isSelectMode
-                    ? "1px solid var(--accent)"
-                    : "1px solid var(--glass-border)",
+                    ? isDark ? "1px solid #FFFFFF" : "1px solid #18181B"
+                    : isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
                 title={
                   isSelectMode ? "Exit Select Mode" : "Select Transactions"
@@ -286,10 +302,10 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
 
       {/* Unified Clean Filter Tabs */}
       <div
-        className="flex p-1 rounded-full glass-surface no-pull"
+        className="flex p-1 rounded-full no-pull"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
         }}
       >
         {filterTabs.map((tab) => {
@@ -304,10 +320,21 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
               }}
               className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all touch-manipulation cursor-pointer select-none no-pull"
               style={{
-                background: isSelected ? "var(--accent)" : "transparent",
+                background: isSelected
+                  ? isDark
+                    ? "#FFFFFF"
+                    : "#18181B"
+                  : "transparent",
                 color: isSelected
-                  ? "var(--accent-ink)"
+                  ? isDark
+                    ? "#09090c"
+                    : "#FFFFFF"
                   : "var(--text-secondary)",
+                boxShadow: isSelected
+                  ? isDark
+                    ? "0 2px 8px rgba(0, 0, 0, 0.4)"
+                    : "0 2px 8px rgba(0, 0, 0, 0.12)"
+                  : "none",
               }}
             >
               {tab.label}
@@ -323,9 +350,9 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
               style={{
-                background: "var(--glass-fill-strong)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                 color: "var(--text-primary)",
-                border: "1px solid var(--glass-border)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               }}
             >
               <Calendar size={11} className="opacity-70" />
@@ -347,9 +374,9 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
               style={{
-                background: "var(--glass-fill-strong)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                 color: "var(--text-primary)",
-                border: "1px solid var(--glass-border)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               }}
             >
               <Wallet size={11} className="opacity-70" />
@@ -374,9 +401,9 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                 key={cid}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
                 style={{
-                  background: "var(--glass-fill-strong)",
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                   color: "var(--text-primary)",
-                  border: "1px solid var(--glass-border)",
+                  border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
               >
                 <Tag size={11} className="opacity-70" />
@@ -399,9 +426,9 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
               style={{
-                background: "var(--glass-fill-strong)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                 color: "var(--text-primary)",
-                border: "1px solid var(--glass-border)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               }}
             >
               <span>
@@ -429,7 +456,7 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
             onClick={onResetAllFilters}
             className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
             style={{
-              color: "var(--accent)",
+              color: isDark ? "#FFFFFF" : "#18181B",
               background: "transparent",
             }}
           >

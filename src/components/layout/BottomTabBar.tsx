@@ -73,7 +73,6 @@ export function BottomTabBar({
     const deltaY = e.clientY - pointerStartPosRef.current.y;
 
     if (!isLongPressRef.current) {
-      // If moved too much before hold threshold, cancel long press
       if (Math.hypot(deltaX, deltaY) > 20) {
         clearLongPress();
       }
@@ -82,7 +81,6 @@ export function BottomTabBar({
 
     const dist = Math.hypot(deltaX, deltaY);
 
-    // Cancel selection if dragged too far down or excessively far away
     if (deltaY > 60 || dist > 180) {
       if (selectedOptionRef.current !== null) {
         setSelectedOption(null);
@@ -92,19 +90,14 @@ export function BottomTabBar({
 
     let newOption: HoldOption;
     if (dist < 15) {
-      // Close to origin -> default to Option 1 (Voice / Center)
       newOption = "voice";
     } else {
-      // Radial angle in degrees (screen Y is inverted: negative is upwards)
       const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
       if (angle < -112) {
-        // Towards Upper Left (Option 2: Manual)
         newOption = "manual";
       } else if (angle > -68 && angle < 0) {
-        // Towards Upper Right (Option 3: Scan)
         newOption = "scan";
       } else {
-        // Towards Upper Center (Option 1: Voice)
         newOption = "voice";
       }
     }
@@ -155,13 +148,6 @@ export function BottomTabBar({
     if (onOpenAdd) onOpenAdd();
   };
 
-  // Radial Arc Option Definitions matching the user's diagram:
-  //      (1)
-  //  (2)     (3)
-  // [A B  C  D E]
-  // 1: Center elevated (Voice)
-  // 2: Left (Manual)
-  // 3: Right (Scan)
   const arcOptions: {
     id: HoldOption;
     numLabel: string;
@@ -200,19 +186,34 @@ export function BottomTabBar({
     },
   ];
 
-  // Requested Tab Order:
-  // 1. Home (/) [A]
-  // 2. Assets (/assets) [B]
-  // 3. + (Add) [C]
-  // 4. Transactions (/transactions) [D]
-  // 5. Analytics (/statistics) [E]
   const tabs = [
     { path: "/", icon: Home, label: t("nav.home", "Home") },
     { path: "/assets", icon: Landmark, label: t("nav.assets", "Assets") },
     { action: "add", icon: Plus, label: t("nav.add", "Add") },
-    { path: "/transactions", icon: History, label: t("nav.transactions", "Transactions") },
-    { path: "/statistics", icon: PieChart, label: t("nav.analytics", "Analytics") },
+    {
+      path: "/transactions",
+      icon: History,
+      label: t("nav.transactions", "Transactions"),
+    },
+    {
+      path: "/statistics",
+      icon: PieChart,
+      label: t("nav.analytics", "Analytics"),
+    },
   ];
+
+  // ── Clean Apple Frosted Liquid Glass Tokens (Zero Glow Shadow) ──
+  const dockBg = isDark
+    ? "linear-gradient(180deg, rgba(22, 22, 26, 0.88) 0%, rgba(12, 12, 15, 0.94) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const dockBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.12)"
+    : "1px solid rgba(0, 0, 0, 0.08)";
+
+  const dockShadow = isDark
+    ? "0 18px 44px -8px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.16)"
+    : "0 12px 32px -8px rgba(31, 36, 48, 0.12), inset 0 1px 0 #ffffff";
 
   return (
     <>
@@ -227,21 +228,20 @@ export function BottomTabBar({
               setIsFlyoutOpen(false);
               setSelectedOption(null);
             }}
-            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] pointer-events-auto"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[4px] pointer-events-auto"
           />
         )}
       </AnimatePresence>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(10px+env(safe-area-inset-bottom))] pointer-events-none flex justify-center">
         <div
-          className="w-full max-w-[370px] rounded-full p-1.5 flex items-center justify-between pointer-events-auto transition-all relative"
+          className="w-full max-w-[360px] rounded-full p-1.5 flex items-center justify-between pointer-events-auto transition-all relative select-none"
           style={{
-            background: "var(--dock-bg)",
-            border: "1.5px solid var(--dock-border)",
-            boxShadow: "var(--dock-shadow)",
+            background: dockBg,
+            border: dockBorder,
+            boxShadow: dockShadow,
             backdropFilter: "blur(28px) saturate(190%)",
             WebkitBackdropFilter: "blur(28px) saturate(190%)",
-            borderRadius: "9999px",
           }}
         >
           {tabs.map((tab) => {
@@ -253,27 +253,30 @@ export function BottomTabBar({
                   key="add"
                   className="relative flex items-center justify-center"
                 >
-                  {/* Radial Arc Fan Menu (Buttons 2, 1, 3 above C) */}
+                  {/* Radial Arc Fan Menu */}
                   <AnimatePresence>
                     {isFlyoutOpen && (
                       <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
-                        {/* Dynamic Action Floating Title Pill above the Arc */}
+                        {/* Dynamic Action Floating Title Pill */}
                         <motion.div
-                          initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                          initial={{ opacity: 0, y: 6, scale: 0.92 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 6, scale: 0.9 }}
-                          transition={{ duration: 0.18 }}
-                          className="absolute -top-[106px] left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wide shadow-xl whitespace-nowrap pointer-events-none select-none z-20"
+                          exit={{ opacity: 0, y: 6, scale: 0.92 }}
+                          transition={{ duration: 0.16 }}
+                          className="absolute -top-[104px] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide whitespace-nowrap pointer-events-none select-none z-20"
                           style={{
                             background: isDark
-                              ? "rgba(18, 18, 22, 0.94)"
+                              ? "rgba(18, 18, 22, 0.95)"
                               : "rgba(255, 255, 255, 0.96)",
                             color: "var(--text-primary)",
-                            border: "1px solid var(--glass-border)",
-                            backdropFilter: "blur(20px)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.12)"
+                              : "1px solid rgba(0, 0, 0, 0.08)",
                             boxShadow: isDark
-                              ? "0 8px 24px rgba(0, 0, 0, 0.7)"
-                              : "0 6px 20px rgba(0, 0, 0, 0.12)",
+                              ? "0 8px 24px -4px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14)"
+                              : "0 6px 18px -4px rgba(31, 36, 48, 0.1), inset 0 1px 0 #ffffff",
+                            backdropFilter: "blur(24px) saturate(180%)",
+                            WebkitBackdropFilter: "blur(24px) saturate(180%)",
                           }}
                         >
                           {selectedOption === "manual" &&
@@ -303,7 +306,7 @@ export function BottomTabBar({
                               }}
                               animate={{
                                 opacity: 1,
-                                scale: isSelected ? 1.18 : 1,
+                                scale: isSelected ? 1.15 : 1,
                                 x: item.x,
                                 y: item.y,
                               }}
@@ -315,7 +318,7 @@ export function BottomTabBar({
                               }}
                               transition={{
                                 type: "spring",
-                                stiffness: 480,
+                                stiffness: 460,
                                 damping: 26,
                               }}
                               onClick={(e) => {
@@ -323,32 +326,38 @@ export function BottomTabBar({
                                 setIsFlyoutOpen(false);
                                 executeOption(item.id);
                               }}
-                              className={`w-11 h-11 rounded-full flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto transition-colors duration-150 cursor-pointer select-none ${
-                                isSelected ? "shadow-2xl z-10" : "shadow-lg z-0"
-                              }`}
+                              className="w-11 h-11 rounded-full flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto transition-all cursor-pointer select-none"
                               style={{
                                 background: isSelected
-                                  ? "var(--text-primary)"
+                                  ? isDark
+                                    ? "#ffffff"
+                                    : "#18181b"
                                   : isDark
-                                    ? "rgba(20, 20, 26, 0.90)"
-                                    : "rgba(255, 255, 255, 0.94)",
+                                    ? "linear-gradient(160deg, rgba(28, 28, 34, 0.95) 0%, rgba(16, 16, 20, 0.98) 100%)"
+                                    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.92) 100%)",
                                 color: isSelected
-                                  ? "var(--bg-base)"
+                                  ? isDark
+                                    ? "#000000"
+                                    : "#ffffff"
                                   : "var(--text-primary)",
                                 border: isSelected
-                                  ? "1.5px solid var(--text-primary)"
+                                  ? isDark
+                                    ? "1px solid #ffffff"
+                                    : "1px solid #18181b"
                                   : isDark
-                                    ? "1px solid rgba(255, 255, 255, 0.16)"
-                                    : "1px solid rgba(0, 0, 0, 0.1)",
+                                    ? "1px solid rgba(255, 255, 255, 0.12)"
+                                    : "1px solid rgba(0, 0, 0, 0.08)",
                                 boxShadow: isSelected
                                   ? isDark
-                                    ? "0 12px 28px rgba(255, 255, 255, 0.25)"
-                                    : "0 10px 24px rgba(0, 0, 0, 0.25)"
+                                    ? "0 10px 26px -4px rgba(0, 0, 0, 0.9), inset 0 1px 0 #ffffff"
+                                    : "0 8px 20px -4px rgba(0, 0, 0, 0.25)"
                                   : isDark
-                                    ? "0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18)"
-                                    : "0 6px 18px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
+                                    ? "0 8px 22px -4px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.14)"
+                                    : "0 6px 16px -4px rgba(31, 36, 48, 0.08), inset 0 1px 0 #ffffff",
                                 backdropFilter: "blur(24px) saturate(180%)",
-                                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                                WebkitBackdropFilter:
+                                  "blur(24px) saturate(180%)",
+                                zIndex: isSelected ? 10 : 0,
                               }}
                               title={item.label}
                               aria-label={item.label}
@@ -388,14 +397,16 @@ export function BottomTabBar({
                       isFlyoutOpen ? "scale-105" : ""
                     }`}
                     style={{
-                      background: "var(--accent)",
-                      color: "var(--accent-ink)",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                      background: isDark ? "#ffffff" : "#18181b",
+                      color: isDark ? "#000000" : "#ffffff",
+                      boxShadow: isDark
+                        ? "0 4px 14px -2px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25)"
+                        : "0 3px 10px -2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
                     }}
                   >
                     <Icon
                       size={20}
-                      strokeWidth={2.5}
+                      strokeWidth={2.4}
                       className={`transition-transform duration-200 ${
                         isFlyoutOpen ? "rotate-45" : ""
                       }`}
@@ -415,34 +426,44 @@ export function BottomTabBar({
                   tab.path === "/"
                     ? "nav-home"
                     : tab.path === "/assets"
-                    ? "nav-assets"
-                    : tab.path === "/transactions"
-                    ? "nav-transactions"
-                    : tab.path === "/statistics"
-                    ? "nav-statistics"
-                    : undefined
+                      ? "nav-assets"
+                      : tab.path === "/transactions"
+                        ? "nav-transactions"
+                        : tab.path === "/statistics"
+                          ? "nav-statistics"
+                          : undefined
                 }
                 onClick={() => triggerHaptic("light")}
-                className="w-10 h-10 flex items-center justify-center relative rounded-full"
+                className="w-10 h-10 flex items-center justify-center relative rounded-full active:scale-95 transition-transform"
               >
                 {isActive && (
                   <motion.div
                     layoutId="tab-indicator"
                     className="absolute inset-0 rounded-full"
                     style={{
-                      background: "var(--dock-active-pill)",
-                      boxShadow: "var(--dock-active-shadow, 0 2px 8px rgba(0, 0, 0, 0.15))",
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.12)"
+                        : "rgba(0, 0, 0, 0.08)",
+                      border: isDark
+                        ? "1px solid rgba(255, 255, 255, 0.14)"
+                        : "1px solid rgba(0, 0, 0, 0.06)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                        : "inset 0 1px 0 #ffffff",
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
                   />
                 )}
                 <Icon
                   size={19}
+                  strokeWidth={isActive ? 2.2 : 1.85}
                   className="relative z-10 transition-colors duration-200"
                   style={{
                     color: isActive
-                      ? "var(--dock-active-ink, #ffffff)"
-                      : "var(--dock-inactive-ink, var(--text-tertiary))",
+                      ? isDark
+                        ? "#ffffff"
+                        : "#09090b"
+                      : "var(--text-tertiary)",
                   }}
                 />
               </NavLink>

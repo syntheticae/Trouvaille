@@ -6,6 +6,7 @@ import {
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Sparkles,
   ChevronRight,
@@ -37,6 +38,8 @@ export function MonteCarloCard({
   onOpenSimulator,
 }: MonteCarloCardProps) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const isIndonesian = language === "id";
 
   const simulation: MonteCarloSimulationResult = useMemo(() => {
@@ -81,21 +84,40 @@ export function MonteCarloCard({
 
   return (
     <section
-      className="p-5 rounded-[24px] glass-surface transition-all select-none"
+      className="relative overflow-hidden p-5 rounded-[24px] transition-all select-none"
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        boxShadow: "var(--shadow-card)",
+        background: isDark
+          ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+          : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: "var(--text-primary)",
             }}
           >
@@ -115,9 +137,9 @@ export function MonteCarloCard({
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
-                  background: "var(--glass-fill-strong)",
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                   color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
+                  border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
               >
                 {isIndonesian ? "1.000 Lintasan" : "1,000 Paths"}
@@ -141,8 +163,8 @@ export function MonteCarloCard({
           }}
           className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             color: "var(--text-secondary)",
           }}
           title={isIndonesian ? "Konfigurasi Simulator Monte Carlo" : "Configure Monte Carlo Simulator"}
@@ -158,8 +180,8 @@ export function MonteCarloCard({
         <div
           className="p-3.5 rounded-2xl flex flex-col justify-between"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
           }}
         >
           <p
@@ -186,8 +208,8 @@ export function MonteCarloCard({
         <div
           className="p-3.5 rounded-2xl flex flex-col justify-between"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
           }}
         >
           <p
@@ -225,8 +247,8 @@ export function MonteCarloCard({
       <div
         className="p-3 rounded-2xl mb-4"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.02)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
         }}
       >
         <div className="flex justify-between items-center mb-2 px-1">
@@ -278,8 +300,8 @@ export function MonteCarloCard({
                     <div
                       className="p-2.5 rounded-xl text-[11px] font-medium"
                       style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
+                        background: isDark ? "#121214" : "#ffffff",
+                        border: isDark ? "1px solid rgba(255, 255, 255, 0.12)" : "1px solid rgba(0, 0, 0, 0.08)",
                         boxShadow: "0 8px 24px var(--shadow-strength)",
                       }}
                     >
@@ -333,8 +355,8 @@ export function MonteCarloCard({
         <div
           className="p-2.5 rounded-2xl"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
           }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mb-0.5">
@@ -347,8 +369,8 @@ export function MonteCarloCard({
         <div
           className="p-2.5 rounded-2xl"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
           }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block mb-0.5">
@@ -368,8 +390,8 @@ export function MonteCarloCard({
         }}
         className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none cursor-pointer"
         style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
           color: "var(--text-primary)",
         }}
       >

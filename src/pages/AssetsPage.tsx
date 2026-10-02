@@ -982,11 +982,11 @@ export function AssetsPage() {
           type="button"
           onClick={handleRefreshPrices}
           disabled={isRefreshing}
-          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer h-7.5"
+          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
-            background: "var(--bg-elevated)",
+            background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             color: "var(--text-secondary)",
-            boxShadow: "var(--shadow-card)",
           }}
         >
           <RefreshCw
@@ -1006,11 +1006,11 @@ export function AssetsPage() {
             triggerHaptic("light");
             setIsStakingModalOpen(true);
           }}
-          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer h-7.5"
+          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
-            background: "var(--bg-elevated)",
+            background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             color: "var(--text-secondary)",
-            boxShadow: "var(--shadow-card)",
           }}
         >
           <TrendingUp size={12} strokeWidth={1.75} />
@@ -1028,8 +1028,8 @@ export function AssetsPage() {
           }}
           className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-semibold active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
-            background: "var(--text-primary)",
-            color: "var(--bg-base)",
+            background: isDark ? "#FFFFFF" : "#18181B",
+            color: isDark ? "#0A0A0B" : "#FFFFFF",
           }}
         >
           <Plus size={12} strokeWidth={2.5} />
@@ -1064,15 +1064,28 @@ export function AssetsPage() {
                 handleDismissReconciliation(info.offset.x > 0 ? 1 : -1);
               }
             }}
-            className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] cursor-grab active:cursor-grabbing select-none"
+            className="p-3.5 rounded-3xl flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing select-none"
             style={{
-              background: "var(--bg-elevated)",
-              boxShadow: "var(--shadow-card)",
+              background: isDark
+                ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
+              boxShadow: isDark
+                ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+              backdropFilter: "blur(24px) saturate(180%)",
+              WebkitBackdropFilter: "blur(24px) saturate(180%)",
               touchAction: "pan-y",
             }}
           >
             <div className="flex items-start gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                  border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
                 <Sparkles size={14} className="text-[var(--text-primary)]" />
               </div>
               <div className="min-w-0 space-y-0.5">
@@ -1097,8 +1110,8 @@ export function AssetsPage() {
                 onClick={handleApplyReconciliation}
                 className="px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer"
                 style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
+                  background: isDark ? "#FFFFFF" : "#18181B",
+                  color: isDark ? "#0A0A0B" : "#FFFFFF",
                 }}
               >
                 {isIndonesian ? "Sinkronkan" : "Sync Now"}
@@ -1123,14 +1136,27 @@ export function AssetsPage() {
       {/* ── Unlinked Legacy Crypto Wallet Smart Banner ── */}
       {unlinkedCryptoWallet && (
         <div
-          className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] animate-in fade-in"
+          className="p-3.5 rounded-3xl flex items-center justify-between gap-3 animate-in fade-in"
           style={{
-            background: "var(--bg-elevated)",
-            boxShadow: "var(--shadow-card)",
+            background: isDark
+              ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+              : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
+            boxShadow: isDark
+              ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+              : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
           }}
         >
           <div className="flex items-start gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0 border border-[var(--glass-border)]">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
+              }}
+            >
               <Coins size={14} className="text-[var(--text-primary)]" />
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -1154,8 +1180,8 @@ export function AssetsPage() {
             }}
             className="px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer"
             style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
+              background: isDark ? "#FFFFFF" : "#18181B",
+              color: isDark ? "#0A0A0B" : "#FFFFFF",
             }}
           >
             {isIndonesian ? "Tautkan Aset" : "Link Asset"}

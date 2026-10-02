@@ -6,8 +6,6 @@ import {
   Search,
   X,
   Coins,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";

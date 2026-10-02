@@ -55,21 +55,40 @@ export function ExpenseStructureCard({
 
   return (
     <section
-      className="glass-surface rounded-[24px] p-5 transition-all select-none space-y-4"
+      className="relative overflow-hidden rounded-[24px] p-5 transition-all select-none space-y-4"
       style={{
-        border: "1px solid var(--glass-border)",
-        background: "var(--bg-elevated)",
-        boxShadow: "var(--shadow-card)",
+        background: isDark
+          ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+          : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* ── 1. Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: "var(--text-primary)",
             }}
           >
@@ -91,8 +110,8 @@ export function ExpenseStructureCard({
         <div
           className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
           style={{
-            background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
           }}
         >
           <span
@@ -111,8 +130,8 @@ export function ExpenseStructureCard({
       <div
         className="p-3.5 rounded-2xl space-y-2.5"
         style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.02)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
         }}
       >
         <div className="flex items-center justify-between text-[11px] font-medium">
@@ -173,10 +192,10 @@ export function ExpenseStructureCard({
         {buckets.map((b) => (
           <div
             key={b.key}
-            className="p-3 rounded-2xl flex flex-col justify-between border"
+            className="p-3 rounded-2xl flex flex-col justify-between"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
             }}
           >
             <div>
@@ -205,10 +224,10 @@ export function ExpenseStructureCard({
 
       {/* ── 4. Strategic Financial Insight ──────────────────────────────────── */}
       <div
-        className="p-3 rounded-2xl flex items-center justify-between border text-[11px]"
+        className="p-3 rounded-2xl flex items-center justify-between text-[11px]"
         style={{
-          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-          borderColor: "var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
         }}
       >
         <div className="flex items-center gap-2">

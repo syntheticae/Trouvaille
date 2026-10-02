@@ -108,7 +108,11 @@ export function TransactionsPage({
   onOpenBatchReview,
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
-  const { items: allDraftItems, count: draftCount, clearAll: clearAllDrafts } = useDraftTransactions();
+  const {
+    items: allDraftItems,
+    count: draftCount,
+    clearAll: clearAllDrafts,
+  } = useDraftTransactions();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
@@ -128,7 +132,9 @@ export function TransactionsPage({
     setSearchScope("current");
   }, []);
   const [filter, setFilter] = useState<FilterType>("all");
-  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(null);
+  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
+    null,
+  );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
@@ -160,7 +166,12 @@ export function TransactionsPage({
   const { showToast } = useToast();
   useCurrency();
   const { t, isIndonesian } = useLanguage();
-  const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
+  const {
+    activeSpace,
+    activeSpaceId,
+    setActiveSpaceId,
+    filterTransactionsBySpace,
+  } = useSpace();
 
   // Selection Mode State for Bulk Actions
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -190,32 +201,35 @@ export function TransactionsPage({
   const { checkUnusual } = useUnusualSpending(visibleTxs);
 
   // 5-second Undo Grace Period for single deletion
-  const handleDeleteTransaction = useCallback((tx: Transaction) => {
-    setPendingDeletedIds((prev) => new Set(prev).add(tx.id));
-    showToast(
-      "Transaction deleted",
-      "delete",
-      () => {
-        deleteTx.mutate(tx.id, {
-          onSuccess: () => {
-            setPendingDeletedIds((prev) => {
-              const next = new Set(prev);
-              next.delete(tx.id);
-              return next;
-            });
-          },
-        });
-      },
-      5000,
-      () => {
-        setPendingDeletedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(tx.id);
-          return next;
-        });
-      },
-    );
-  }, [deleteTx, showToast]);
+  const handleDeleteTransaction = useCallback(
+    (tx: Transaction) => {
+      setPendingDeletedIds((prev) => new Set(prev).add(tx.id));
+      showToast(
+        isIndonesian ? "Transaksi dihapus" : "Transaction deleted",
+        "delete",
+        () => {
+          deleteTx.mutate(tx.id, {
+            onSuccess: () => {
+              setPendingDeletedIds((prev) => {
+                const next = new Set(prev);
+                next.delete(tx.id);
+                return next;
+              });
+            },
+          });
+        },
+        5000,
+        () => {
+          setPendingDeletedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(tx.id);
+            return next;
+          });
+        },
+      );
+    },
+    [deleteTx, showToast, isIndonesian],
+  );
 
   const handleToggleSelect = useCallback((tx: Transaction) => {
     setSelectedTxIds((prev) => {
@@ -267,7 +281,9 @@ export function TransactionsPage({
     handleExitSelectMode();
 
     showToast(
-      `${count} transactions deleted`,
+      isIndonesian
+        ? `${count} transaksi dihapus`
+        : `${count} transactions deleted`,
       "delete",
       () => {
         batchDeleteTx.mutate(idsToDelete, {
@@ -289,7 +305,13 @@ export function TransactionsPage({
         });
       },
     );
-  }, [selectedTxIds, handleExitSelectMode, showToast, batchDeleteTx]);
+  }, [
+    selectedTxIds,
+    handleExitSelectMode,
+    showToast,
+    batchDeleteTx,
+    isIndonesian,
+  ]);
 
   const handleDuplicateTransaction = useCallback((tx: Transaction) => {
     setEditingTx({
@@ -361,9 +383,15 @@ export function TransactionsPage({
     }
 
     return txs;
-  }, [visibleTxs, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
+  }, [
+    visibleTxs,
+    timeRange,
+    selectedCustomMonth,
+    customStartDate,
+    customEndDate,
+  ]);
 
-  // Filter & Search transactions within the active timeframe (or all time if searchScope === 'all')
+  // Filter & Search transactions within the active timeframe
   const filteredTxs = useMemo(() => {
     let txs =
       searchScope === "all" && deferredSearch.trim()
@@ -449,7 +477,7 @@ export function TransactionsPage({
     categories,
   ]);
 
-  // Count matching transactions across all time when search query is active
+  // Count matching transactions across all time
   const allTimeMatchCount = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
     if (!q) return 0;
@@ -462,9 +490,7 @@ export function TransactionsPage({
         t.categories?.name ||
         categories.find((c) => c.id === t.category_id)?.name ||
         "";
-      const formattedAmount = formatRupiah(
-        Number(t.amount || 0),
-      ).toLowerCase();
+      const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
       const amountStr = String(t.amount || "");
 
       const matchesText =
@@ -482,7 +508,7 @@ export function TransactionsPage({
     }).length;
   }, [deferredSearch, visibleTxs, resolveWalletNames, categories]);
 
-  // Count matching transactions in the currently active period
+  // Count matching transactions in current period
   const currentPeriodMatchCount = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
     if (!q) return 0;
@@ -494,9 +520,7 @@ export function TransactionsPage({
         t.categories?.name ||
         categories.find((c) => c.id === t.category_id)?.name ||
         "";
-      const formattedAmount = formatRupiah(
-        Number(t.amount || 0),
-      ).toLowerCase();
+      const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
       const amountStr = String(t.amount || "");
 
       const matchesText =
@@ -539,7 +563,11 @@ export function TransactionsPage({
     const points: ChartPoint[] = [];
 
     if (timeRange === "custom_range") {
-      if (customStartDate && customEndDate && customStartDate <= customEndDate) {
+      if (
+        customStartDate &&
+        customEndDate &&
+        customStartDate <= customEndDate
+      ) {
         try {
           const start = parseISO(customStartDate);
           const end = parseISO(customEndDate);
@@ -556,12 +584,18 @@ export function TransactionsPage({
             });
             return points;
           } else if (intervalDays.length <= 180) {
-            const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+            const weeks = eachWeekOfInterval(
+              { start, end },
+              { weekStartsOn: 1 },
+            );
             weeks.forEach((weekStart) => {
               const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
               const actualEnd = weekEnd > end ? end : weekEnd;
               const actualStart = weekStart < start ? start : weekStart;
-              const weekDays = eachDayOfInterval({ start: actualStart, end: actualEnd });
+              const weekDays = eachDayOfInterval({
+                start: actualStart,
+                end: actualEnd,
+              });
               const weekTxs: Transaction[] = [];
               weekDays.forEach((d) => {
                 const dateStr = format(d, "yyyy-MM-dd");
@@ -681,7 +715,15 @@ export function TransactionsPage({
     }
 
     return points;
-  }, [filteredTxs, filteredTxsByDay, filter, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
+  }, [
+    filteredTxs,
+    filteredTxsByDay,
+    filter,
+    timeRange,
+    selectedCustomMonth,
+    customStartDate,
+    customEndDate,
+  ]);
 
   const totalPeriodAmount = useMemo(() => {
     return dynamicChartData.reduce((s, d) => s + d.activeValue, 0);
@@ -722,9 +764,12 @@ export function TransactionsPage({
   const maxBar = Math.max(...dynamicChartData.map((d) => d.activeValue), 1);
 
   const selectedMonthLabel = useMemo(() => {
-    if (timeRange === "this_month") return isIndonesian ? "Bulan Ini" : "This Month";
-    if (timeRange === "last_month") return isIndonesian ? "Bulan Lalu" : "Last Month";
-    if (timeRange === "last_30") return isIndonesian ? "30 Hari Terakhir" : "Last 30 Days";
+    if (timeRange === "this_month")
+      return isIndonesian ? "Bulan Ini" : "This Month";
+    if (timeRange === "last_month")
+      return isIndonesian ? "Bulan Lalu" : "Last Month";
+    if (timeRange === "last_30")
+      return isIndonesian ? "30 Hari Terakhir" : "Last 30 Days";
     if (timeRange === "all") return isIndonesian ? "Semua Waktu" : "All Time";
     if (timeRange === "custom_range") {
       if (customStartDate && customEndDate) {
@@ -744,7 +789,13 @@ export function TransactionsPage({
     } catch {
       return isIndonesian ? "Bulan Kustom" : "Custom Month";
     }
-  }, [timeRange, selectedCustomMonth, customStartDate, customEndDate, isIndonesian]);
+  }, [
+    timeRange,
+    selectedCustomMonth,
+    customStartDate,
+    customEndDate,
+    isIndonesian,
+  ]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -781,10 +832,7 @@ export function TransactionsPage({
 
   const handleSelectAllOrNone = useCallback(() => {
     triggerHaptic("light");
-    if (
-      selectedTxIds.size === visibleTxs.length &&
-      visibleTxs.length > 0
-    ) {
+    if (selectedTxIds.size === visibleTxs.length && visibleTxs.length > 0) {
       setSelectedTxIds(new Set());
     } else {
       setSelectedTxIds(new Set(visibleTxs.map((t) => t.id)));
@@ -793,7 +841,7 @@ export function TransactionsPage({
 
   return (
     <div
-      className="min-h-screen relative"
+      className="min-h-screen relative select-none"
       style={{ background: "var(--bg-base)" }}
     >
       <PullToRefreshIndicator
@@ -803,7 +851,7 @@ export function TransactionsPage({
       />
 
       {/* ====== HEADER & FILTERS ====== */}
-      <div className="px-5 pt-3 pb-3">
+      <div className="px-4 sm:px-5 pt-2 pb-2">
         <AnimatePresence initial={false}>
           {!isSearchFocused && !search.trim() && (
             <motion.div
@@ -839,10 +887,11 @@ export function TransactionsPage({
           )}
         </AnimatePresence>
 
+        {/* Dynamic Sticky Search & Filter Container (Zero Glow, Liquid Glass) */}
         <div
           className={`transition-all duration-200 ${
             isSearchFocused || search.trim()
-              ? "sticky top-0 z-30 pt-2 pb-1 bg-[var(--bg-base)]/90 backdrop-blur-xl"
+              ? "sticky top-0 z-30 pt-2 pb-1.5 backdrop-blur-2xl bg-[var(--bg-base)]/85 border-b border-[var(--glass-border)]/40"
               : ""
           }`}
         >
@@ -904,7 +953,7 @@ export function TransactionsPage({
 
       {/* ====== TRANSACTION LIST ====== */}
       <div
-        className="px-5 pb-36 space-y-5"
+        className="px-4 sm:px-5 pb-36 space-y-4"
         onTouchMove={() => {
           if (document.activeElement instanceof HTMLElement) {
             document.activeElement.blur();
@@ -917,42 +966,66 @@ export function TransactionsPage({
         }}
       >
         {isLoading || !shouldRenderHeavy ? (
-          <div className="space-y-3 pt-2">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="space-y-2 pt-1">
+            {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="h-16 rounded-[22px] animate-pulse"
-                style={{ background: "var(--bg-elevated)" }}
+                className="h-15 rounded-2xl animate-pulse"
+                style={{
+                  background: isDark
+                    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                    : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
               />
             ))}
           </div>
         ) : groupKeys.length === 0 ? (
           <div className="py-14 px-4 flex flex-col items-center justify-center text-center">
             <div
-              className="w-14 h-14 rounded-3xl flex items-center justify-center mb-3.5 glass-surface"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                  : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
+                boxShadow: isDark
+                  ? "0 8px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+                  : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff",
+                color: "var(--text-tertiary)",
               }}
             >
-              <Inbox size={24} strokeWidth={1.5} />
+              <Inbox size={22} strokeWidth={1.75} />
             </div>
             <p
-              className="text-[14px] font-semibold"
+              className="text-[13.5px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {search
-                ? (isIndonesian ? "Tidak ada transaksi yang cocok" : "No matching transactions found")
-                : (isIndonesian ? "Tidak ada transaksi pada periode ini" : "No transactions recorded in this period")}
+                ? isIndonesian
+                  ? "Tidak ada transaksi yang cocok"
+                  : "No matching transactions found"
+                : isIndonesian
+                  ? "Tidak ada transaksi pada periode ini"
+                  : "No transactions recorded in this period"}
             </p>
             <p
-              className="text-[12px] mt-1 max-w-[260px] leading-relaxed"
+              className="text-[11.5px] mt-0.5 max-w-[260px] leading-relaxed"
               style={{ color: "var(--text-tertiary)" }}
             >
               {search
-                ? t("transactions.emptySearch", "Try searching with different keywords or adjust your filters.")
-                : t("transactions.emptyFresh", "Start managing your finances by logging your expenses and income.")}
+                ? t(
+                    "transactions.emptySearch",
+                    "Try searching with different keywords or adjust your filters.",
+                  )
+                : t(
+                    "transactions.emptyFresh",
+                    "Start managing your finances by logging your expenses and income.",
+                  )}
             </p>
             {search && searchScope === "current" && allTimeMatchCount > 0 && (
               <button
@@ -961,16 +1034,19 @@ export function TransactionsPage({
                   triggerHaptic("light");
                   setSearchScope("all");
                 }}
-                className="mt-3.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 cursor-pointer select-none"
+                className="mt-3.5 h-8 px-4 rounded-full text-[11.5px] font-semibold transition-all active:scale-95 cursor-pointer select-none"
                 style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
+                  background: isDark
+                    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                    : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
               >
                 {isIndonesian
-                  ? `Cari di Semua Waktu (${allTimeMatchCount} ditemukan)`
-                  : `Search All Time (${allTimeMatchCount} found)`}
+                  ? `Cari di Semua Waktu (${allTimeMatchCount})`
+                  : `Search All Time (${allTimeMatchCount})`}
               </button>
             )}
           </div>
@@ -988,15 +1064,18 @@ export function TransactionsPage({
                 return s;
               }, 0);
               return (
-                <div className="flex justify-between items-center px-1 pb-2 pt-4 bg-[var(--bg-base)]">
+                <div
+                  className="flex justify-between items-center px-1 pb-1.5 pt-3.5"
+                  style={{ background: "var(--bg-base)" }}
+                >
                   <span
-                    className="text-[12px] font-semibold"
-                    style={{ color: "var(--text-secondary)" }}
+                    className="text-[11px] font-semibold uppercase tracking-wider"
+                    style={{ color: "var(--text-tertiary)" }}
                   >
                     {getDateLabel(dateKey)}
                   </span>
                   <span
-                    className="text-[12px] font-bold amount"
+                    className="text-[11.5px] font-bold amount tabular-nums"
                     style={{
                       color:
                         dayTotal >= 0
@@ -1015,7 +1094,7 @@ export function TransactionsPage({
               const { from, to } = resolveWalletNames(tx);
               const isUnusual = checkUnusual(tx).isUnusual;
               return (
-                <div className="pb-2">
+                <div className="pb-1.5">
                   <TransactionItem
                     tx={tx}
                     categories={categories}

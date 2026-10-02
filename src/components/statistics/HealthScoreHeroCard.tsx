@@ -30,23 +30,48 @@ export function HealthScoreHeroCard({
 }: HealthScoreHeroCardProps) {
   const netFlow = totalIncome - totalExpense;
 
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
+
   return (
     <section
-      className="glass-surface rounded-[24px] p-5 select-none space-y-4"
+      className="rounded-[26px] p-5 select-none space-y-4 relative overflow-hidden"
       style={{
-        border: "1px solid var(--glass-border)",
-        background: "var(--bg-elevated)",
-        boxShadow: "var(--shadow-card)",
+        background: cardBg,
+        border: cardBorder,
+        boxShadow: cardShadow,
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* ── 1. Header (Single Line) ────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: cardBorder,
               color: "var(--text-primary)",
             }}
           >
@@ -79,7 +104,7 @@ export function HealthScoreHeroCard({
             background: isDark
               ? "rgba(255,255,255,0.05)"
               : "rgba(0,0,0,0.04)",
-            border: "1px solid var(--glass-border)",
+            border: cardBorder,
           }}
         >
           <span
@@ -151,8 +176,8 @@ export function HealthScoreHeroCard({
         className="w-full h-2 rounded-full overflow-hidden p-0.5"
         style={{
           background: isDark
-            ? "rgba(255,255,255,0.08)"
-            : "rgba(0,0,0,0.06)",
+            ? "rgba(255,255,255,0.06)"
+            : "rgba(0,0,0,0.05)",
         }}
       >
         <div
@@ -167,10 +192,10 @@ export function HealthScoreHeroCard({
       {/* ── 4. Key 3-Pillar Telemetry Summary ────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2 pt-0.5">
         <div
-          className="p-2.5 rounded-xl border text-center"
+          className="p-2.5 rounded-xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            borderColor: "var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span
@@ -188,10 +213,10 @@ export function HealthScoreHeroCard({
         </div>
 
         <div
-          className="p-2.5 rounded-xl border text-center"
+          className="p-2.5 rounded-xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            borderColor: "var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span
@@ -211,10 +236,10 @@ export function HealthScoreHeroCard({
         </div>
 
         <div
-          className="p-2.5 rounded-xl border text-center"
+          className="p-2.5 rounded-xl text-center"
           style={{
-            background: "var(--glass-fill)",
-            borderColor: "var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: cardBorder,
           }}
         >
           <span

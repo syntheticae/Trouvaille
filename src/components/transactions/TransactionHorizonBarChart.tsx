@@ -131,9 +131,35 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
   })();
 
   return (
-    <>
+    <div
+      className="relative overflow-hidden p-5 rounded-[24px] select-none space-y-3.5 mb-2"
+      style={{
+        background: isDark
+          ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+          : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+      }}
+    >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* Header Metrics */}
-      <div className="flex items-start justify-between mb-3 gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] truncate leading-none mb-1.5">
             {activityLabel}
@@ -156,8 +182,8 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
             onClick={toggleStealthMode}
             className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
             }}
             title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode"}
@@ -173,9 +199,8 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull shrink-0 whitespace-nowrap"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)",
+              background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             }}
           >
             <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
@@ -193,19 +218,18 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
       {/* Draft Inbox Banner */}
       {draftCount > 0 && (
         <div
-          className="p-3 rounded-2xl flex items-center justify-between gap-3 border shadow-sm animate-fadeIn mb-3"
+          className="p-3 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn"
           style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
           }}
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 color: "var(--text-primary)",
               }}
             >
@@ -232,10 +256,10 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
                 triggerHaptic("medium");
                 onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draft Transaksi" : "Draft Inbox");
               }}
-              className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
               style={{
-                background: "var(--text-primary)",
-                color: "var(--bg-base)",
+                background: isDark ? "#FFFFFF" : "#18181B",
+                color: isDark ? "#09090c" : "#FFFFFF",
               }}
             >
               <span>{isIndonesian ? "Tinjau" : "Review"}</span>
@@ -249,8 +273,8 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
               }}
               className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-colors"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 color: "var(--text-tertiary)",
               }}
               title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
@@ -264,10 +288,10 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
       {/* Active Space Segregation Notice */}
       {activeSpaceId !== "all" && activeSpaceId !== "personal" && (
         <div
-          className="mb-3 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
+          className="px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
             color: "var(--text-secondary)",
           }}
         >
@@ -300,7 +324,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
       )}
 
       {/* DYNAMIC TIMEFRAME GRADIENT BAR CHART */}
-      <div className="h-[95px] w-full mb-3.5 flex items-end">
+      <div className="h-[95px] w-full pt-1 flex items-end">
         {!shouldRenderHeavy ? (
           <div className="w-full flex justify-around items-end h-full px-2 pb-5">
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
@@ -415,6 +439,6 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
           </ResponsiveContainer>
         )}
       </div>
-    </>
+    </div>
   );
 });

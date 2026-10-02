@@ -390,17 +390,42 @@ export function WealthTacticalInsightsDeck({
     growthVolatile,
   ]);
 
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
+
   return (
     <section className="select-none">
       {/* ── Wealth Intelligence & Actionable Insights Card (Pinned at Bottom) ── */}
       <div
-        className="p-4 rounded-[22px] space-y-3"
+        className="p-4 sm:p-5 rounded-[24px] space-y-3 relative overflow-hidden select-none"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: cardBg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
         }}
       >
+        {/* Specular Rim Light Reflection */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
+
         <div className="flex items-center gap-2">
           <Sparkles size={15} strokeWidth={1.75} style={{ color: "var(--text-tertiary)" }} />
           <h3
@@ -423,8 +448,8 @@ export function WealthTacticalInsightsDeck({
                   <span
                     className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider"
                     style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                      border: cardBorder,
                       color: "var(--text-tertiary)",
                     }}
                   >

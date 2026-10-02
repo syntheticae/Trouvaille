@@ -62,7 +62,6 @@ async function seedOnboardingCategories(
     created_at: new Date().toISOString(),
   }));
 
-  // 1. Immediately persist to local categories backup
   try {
     localStorage.setItem(
       "TROUVAILLE_CATEGORIES_BACKUP_V1",
@@ -70,7 +69,6 @@ async function seedOnboardingCategories(
     );
   } catch {}
 
-  // 2. For authenticated cloud accounts, replace default categories with chosen regional taxonomy
   if (!isGuest && userId) {
     try {
       const { count: txCount } = await supabase
@@ -101,7 +99,6 @@ async function seedOnboardingCategories(
     }
   }
 
-  // 3. Prime QueryClient so UI reflects the newly selected regional taxonomy immediately
   qc.setQueryData(
     ["categories", isGuest ? "guest_local_user" : userId, null],
     fullCategories,
@@ -136,13 +133,12 @@ interface AccountOption {
 }
 
 const ACCOUNT_OPTIONS: AccountOption[] = [
-  // --- LOKAL (IDR) ---
   {
     id: "cash",
     nameEn: "Physical Cash",
     nameId: "Uang Tunai",
-    subEn: "Cash notes & physical wallet",
-    subId: "Uang tunai & dompet fisik",
+    subEn: "Physical wallet",
+    subId: "Dompet fisik",
     icon: Banknote,
     iconName: "Banknote",
     classification: "liquid",
@@ -152,8 +148,8 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
     id: "bca",
     nameEn: "BCA",
     nameId: "BCA",
-    subEn: "Checking account & daily operations",
-    subId: "Rekening perbankan & operasional harian",
+    subEn: "Primary bank",
+    subId: "Rekening utama",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -161,10 +157,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "mandiri",
-    nameEn: "Bank Mandiri / BNI",
-    nameId: "Bank Mandiri / BNI",
-    subEn: "Payroll account & domestic transfers",
-    subId: "Rekening gaji & transfer nasional",
+    nameEn: "Mandiri / BNI",
+    nameId: "Mandiri / BNI",
+    subEn: "Payroll & transfers",
+    subId: "Rekening operasional",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -172,10 +168,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "jago",
-    nameEn: "Bank Jago / SeaBank",
-    nameId: "Bank Jago / SeaBank",
-    subEn: "Digital banking & interest pockets",
-    subId: "Bank digital & kantong bunga harian",
+    nameEn: "Jago / SeaBank",
+    nameId: "Jago / SeaBank",
+    subEn: "Digital pockets",
+    subId: "Bank digital",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -185,8 +181,8 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
     id: "gopay",
     nameEn: "GoPay",
     nameId: "GoPay",
-    subEn: "QRIS payments & everyday outlays",
-    subId: "Pembayaran QRIS & transaksi harian",
+    subEn: "Everyday outlays",
+    subId: "Dompet digital",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -196,8 +192,8 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
     id: "dana_ovo",
     nameEn: "DANA / OVO",
     nameId: "DANA / OVO",
-    subEn: "Digital wallet & online marketplace",
-    subId: "Dompet digital & belanja daring",
+    subEn: "Digital wallet",
+    subId: "Dompet digital",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -205,23 +201,21 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "saham_idx",
-    nameEn: "IDX Stocks & Mutual Funds",
-    nameId: "Saham IDX & Reksa Dana",
-    subEn: "Domestic capital market investments",
-    subId: "Investasi pasar modal domestik",
+    nameEn: "IDX Stocks",
+    nameId: "Saham IDX",
+    subEn: "Capital market",
+    subId: "Pasar modal",
     icon: TrendingUp,
     iconName: "TrendingUp",
     classification: "investment",
     region: "local",
   },
-
-  // --- GLOBAL & MULTI-CURRENCY (USD/EUR/SGD) ---
   {
     id: "wise",
     nameEn: "Wise",
     nameId: "Wise",
-    subEn: "Multi-currency borderless balance (USD/EUR/SGD)",
-    subId: "Saldo multi-mata uang lintas batas (USD/EUR/SGD)",
+    subEn: "Multi-currency",
+    subId: "Saldo valuta asing",
     icon: Globe,
     iconName: "Globe",
     classification: "liquid",
@@ -231,8 +225,8 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
     id: "paypal",
     nameEn: "PayPal",
     nameId: "PayPal",
-    subEn: "Global checkout & freelance earnings",
-    subId: "Pembayaran global & pendapatan lepas",
+    subEn: "Global earnings",
+    subId: "Pembayaran global",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -242,8 +236,8 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
     id: "revolut",
     nameEn: "Revolut",
     nameId: "Revolut",
-    subEn: "Global debit card & travel spending",
-    subId: "Kartu debit global & pengeluaran perjalanan",
+    subEn: "Travel & cards",
+    subId: "Kartu debit global",
     icon: Globe,
     iconName: "Globe",
     classification: "liquid",
@@ -251,10 +245,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "global_broker",
-    nameEn: "Global Brokerage",
+    nameEn: "Global Broker",
     nameId: "Sekuritas Global",
-    subEn: "US Equities, ETFs & index funds",
-    subId: "Saham AS, ETF & reksa dana indeks",
+    subEn: "US Equities & ETFs",
+    subId: "Saham global & ETF",
     icon: TrendingUp,
     iconName: "TrendingUp",
     classification: "investment",
@@ -262,10 +256,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "crypto_vault",
-    nameEn: "Crypto / USDT Vault",
-    nameId: "Brankas Kripto / USDT",
-    subEn: "Decentralized wallets & stablecoins",
-    subId: "Dompet desentralisasi & koin stabil",
+    nameEn: "Crypto / USDT",
+    nameId: "Kripto / USDT",
+    subEn: "Digital assets",
+    subId: "Aset kripto",
     icon: Coins,
     iconName: "Coins",
     classification: "investment",
@@ -279,22 +273,22 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const { language, setLanguage, isIndonesian } = useLanguage();
   const [step, setStep] = useState<number>(1);
 
-  // Step 1: Focus
+  // Step 1: Identity & Preset
   const [selectedFocus, setSelectedFocus] = useState<FocusKey>("expenses");
-
-  // Step 2: Name & Preset mode
   const [userName, setUserName] = useState<string>(() => {
     return (
-      user?.user_metadata?.display_name ||
-      user?.email?.split("@")[0] ||
-      ""
+      user?.user_metadata?.display_name || user?.email?.split("@")[0] || ""
     );
   });
   const [presetMode, setPresetMode] = useState<"default" | "custom">("default");
 
-  // Step 3: Accounts & Region Tab
-  const [accountRegionTab, setAccountRegionTab] = useState<"local" | "global">("local");
-  const [selectedAccounts, setSelectedAccounts] = useState<Record<string, boolean>>({
+  // Step 3: Accounts
+  const [accountRegionTab, setAccountRegionTab] = useState<"local" | "global">(
+    "local",
+  );
+  const [selectedAccounts, setSelectedAccounts] = useState<
+    Record<string, boolean>
+  >({
     cash: true,
     bca: true,
     gopay: true,
@@ -309,16 +303,18 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     crypto_vault: false,
   });
 
-  // Step 4: Starting Balance
+  // Step 4: Balance
   const [startingBalance, setStartingBalance] = useState<number>(0);
-  const [startingBalanceDisplay, setStartingBalanceDisplay] = useState<string>("");
+  const [startingBalanceDisplay, setStartingBalanceDisplay] =
+    useState<string>("");
 
-  // Step 5: Daily Reminder
+  // Step 5: Routine
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(true);
-  const [reminderHour, setReminderHour] = useState<number>(20); // 20:00 (8 PM)
+  const [reminderHour, setReminderHour] = useState<number>(20);
 
-  // Base Currency Integration
-  const { preferredCurrency, setPreferredCurrency, convertToIdr } = useCurrency();
+  // Currency
+  const { preferredCurrency, setPreferredCurrency, convertToIdr } =
+    useCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
     () => preferredCurrency || "IDR",
   );
@@ -344,7 +340,9 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const quickIncrements = useMemo(() => {
     if (selectedCurrency === "IDR") return [250000, 500000, 1000000, 5000000];
     if (selectedCurrency === "JPY") return [5000, 10000, 50000, 100000];
-    if (["USD", "EUR", "SGD", "GBP", "AUD", "USDT"].includes(selectedCurrency)) {
+    if (
+      ["USD", "EUR", "SGD", "GBP", "AUD", "USDT"].includes(selectedCurrency)
+    ) {
       return [100, 500, 1000, 5000];
     }
     return [500, 1000, 5000, 10000];
@@ -454,11 +452,9 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     setStartingBalanceDisplay("");
   };
 
-  // 1-Tap Quick Start: Instant zero-friction entry for users
   const handleQuickStart = async () => {
     triggerSuccessHaptic();
 
-    // 1. Seed standard accounts (adaptive to currency)
     const standardWallets: OnboardingWalletChoice[] = getCuratedWallets(
       selectedCurrency,
       isIndonesian,
@@ -470,7 +466,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed quick seeding wallets:", err);
     }
 
-    // 2. Seed standard categories (adaptive to currency & region)
     try {
       await seedOnboardingCategories(
         user?.id,
@@ -482,7 +477,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed quick seeding categories:", err);
     }
 
-    // 3. Set preferred currency
     try {
       setPreferredCurrency(selectedCurrency);
       localStorage.setItem("trouvaille_preferred_currency", selectedCurrency);
@@ -490,7 +484,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed setting preferred currency:", e);
     }
 
-    // 3. Apply standard widget preset
     try {
       const stored = loadStoredWidgets(
         localStorage.getItem(STORAGE_KEY),
@@ -502,20 +495,17 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed setting widgets:", e);
     }
 
-    // 4. Set default reminder (20:00)
     try {
       localStorage.setItem("trouvaille_streak_reminder_enabled", "true");
       localStorage.setItem("trouvaille_streak_reminder_hour", "20");
     } catch {}
 
-    // 5. Set user name if entered
     if (userName.trim()) {
       try {
         localStorage.setItem("trouvaille_user_name", userName.trim());
       } catch {}
     }
 
-    // 6. Mark onboarded and queue product tour
     try {
       localStorage.setItem("trouvaille_preset_mode", "default");
       localStorage.setItem("trouvaille_onboarding_focus", "expenses");
@@ -588,7 +578,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const handleComplete = async () => {
     triggerSuccessHaptic();
 
-    // 1. Build and seed selected accounts
     let chosenAccountConfigs: OnboardingWalletChoice[];
     if (presetMode === "default") {
       chosenAccountConfigs = getCuratedWallets(selectedCurrency, isIndonesian);
@@ -602,7 +591,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       }));
     }
 
-    // Fallback if user unselected everything
     if (chosenAccountConfigs.length === 0) {
       chosenAccountConfigs.push({
         name: isIndonesian ? "Akun Utama" : "Main Account",
@@ -611,7 +599,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       });
     }
 
-    // Convert starting balance to base IDR
     const convertedStartingBalance =
       startingBalance > 0
         ? Math.round(convertToIdr(startingBalance, selectedCurrency))
@@ -627,7 +614,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed to seed wallets:", err);
     }
 
-    // 2. Seed standard categories (adaptive to currency & region)
     try {
       await seedOnboardingCategories(
         user?.id,
@@ -639,7 +625,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed seeding categories:", err);
     }
 
-    // 3. Set preferred currency
     try {
       setPreferredCurrency(selectedCurrency);
       localStorage.setItem("trouvaille_preferred_currency", selectedCurrency);
@@ -647,7 +632,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed setting preferred currency:", e);
     }
 
-    // 2. Apply widget preset based on chosen focus
     try {
       const stored = loadStoredWidgets(
         localStorage.getItem(STORAGE_KEY),
@@ -659,7 +643,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed to write widget preset:", e);
     }
 
-    // 3. Persist reminder preferences & request notification permission if enabled
     if (
       reminderEnabled &&
       typeof window !== "undefined" &&
@@ -672,11 +655,16 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     }
 
     try {
-      localStorage.setItem("trouvaille_streak_reminder_enabled", String(reminderEnabled));
-      localStorage.setItem("trouvaille_streak_reminder_hour", String(reminderHour));
+      localStorage.setItem(
+        "trouvaille_streak_reminder_enabled",
+        String(reminderEnabled),
+      );
+      localStorage.setItem(
+        "trouvaille_streak_reminder_hour",
+        String(reminderHour),
+      );
     } catch {}
 
-    // 4. Persist user name and preset mode
     if (userName.trim()) {
       try {
         localStorage.setItem("trouvaille_user_name", userName.trim());
@@ -686,7 +674,6 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       localStorage.setItem("trouvaille_preset_mode", presetMode);
     } catch {}
 
-    // 5. Mark onboarded and queue product tour
     try {
       localStorage.setItem("trouvaille_onboarding_focus", selectedFocus);
       localStorage.setItem("trouvaille_onboarded", "true");
@@ -696,330 +683,265 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     onComplete();
   };
 
+  const totalSteps = presetMode === "default" ? 4 : 5;
+  const currentStepNumber =
+    presetMode === "default" && step >= 4 ? step - 1 : step;
+
   return (
     <div
       className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden select-none px-4 sm:px-6"
       style={{
-        background: `
-          radial-gradient(ellipse 90% 55% at 50% 15%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 75%),
-          radial-gradient(ellipse 70% 40% at 50% 90%, rgba(255, 255, 255, 0.05) 0%, transparent 60%),
-          #060608
-        `,
+        background: "#08080a",
         fontFamily: "'Urbanist', sans-serif",
-        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)",
-        paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 14px), 20px)",
+        paddingBottom:
+          "max(calc(env(safe-area-inset-bottom, 0px) + 14px), 20px)",
       }}
     >
-      {/* ============================================================ */}
-      {/* 1. CINEMATIC MONOCHROME AURORA BLOOM                         */}
-      {/* ============================================================ */}
+      {/* ── Subtle Ambient Backdrop (Zero Glow) ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-32 w-[400px] h-[400px] rounded-full bg-white/[0.05] blur-[120px]" />
-        <div className="absolute bottom-1/4 -right-32 w-[360px] h-[360px] rounded-full bg-white/[0.04] blur-[110px]" />
+        <div className="absolute top-1/4 -left-32 w-[380px] h-[380px] rounded-full bg-white/[0.03] blur-[120px]" />
+        <div className="absolute bottom-1/4 -right-32 w-[340px] h-[340px] rounded-full bg-white/[0.025] blur-[100px]" />
       </div>
 
-      {/* ============================================================ */}
-      {/* 2. TOP NAV: STEP INDICATOR & BACK BUTTON                     */}
-      {/* ============================================================ */}
-      <div className="px-3 relative z-10 flex items-center justify-between pt-1">
+      {/* ── Top Navigation & Step Indicator ── */}
+      <div className="px-2 relative z-10 flex items-center justify-between pt-1">
         {step > 1 ? (
           <button
             type="button"
             onClick={handlePrevStep}
-            className="w-9 h-9 rounded-full flex items-center justify-center border active:scale-95 transition-all cursor-pointer text-white/70 hover:text-white"
+            className="w-8 h-8 rounded-full flex items-center justify-center border active:scale-95 transition-all cursor-pointer text-white/60 hover:text-white"
             style={{
-              background: "rgba(255, 255, 255, 0.04)",
-              borderColor: "rgba(255, 255, 255, 0.12)",
+              background: "rgba(255, 255, 255, 0.05)",
+              borderColor: "rgba(255, 255, 255, 0.1)",
             }}
           >
-            <ArrowLeft size={16} strokeWidth={1.75} />
+            <ArrowLeft size={15} strokeWidth={2} />
           </button>
         ) : (
-          <div className="w-9" />
+          <div className="w-8" />
         )}
 
-        {/* Step Progress Dots */}
-        {(() => {
-          const totalSteps = presetMode === "default" ? 4 : 5;
-          const currentStepNumber =
-            presetMode === "default" && step >= 4 ? step - 1 : step;
-          return (
-            <>
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-                  <div
-                    key={s}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      s === currentStepNumber
-                        ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                        : s < currentStepNumber
-                        ? "w-1.5 bg-white/40"
-                        : "w-1.5 bg-white/15"
-                    }`}
-                  />
-                ))}
-              </div>
+        {/* Step Indicator */}
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
+            <div
+              key={s}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                s === currentStepNumber
+                  ? "w-5 bg-white"
+                  : s < currentStepNumber
+                    ? "w-1.5 bg-white/40"
+                    : "w-1.5 bg-white/15"
+              }`}
+            />
+          ))}
+        </div>
 
-              <div className="w-9 text-right">
-                <span className="text-[11px] font-semibold text-white/40 amount">
-                  0{currentStepNumber}/0{totalSteps}
-                </span>
-              </div>
-            </>
-          );
-        })()}
+        <div className="w-8 text-right">
+          <span className="text-[11px] font-mono text-white/40">
+            {currentStepNumber}/{totalSteps}
+          </span>
+        </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* 3. STEP CONTENT CONTAINER (AIRY, UNCLUTTERED, FLUID)         */}
-      {/* ============================================================ */}
-      <div className="px-3 sm:px-4 flex-1 overflow-y-auto no-scrollbar py-3 relative z-10 flex flex-col justify-center max-w-md mx-auto w-full">
+      {/* ── Step Content Container ── */}
+      <div className="px-2 flex-1 overflow-y-auto no-scrollbar py-2 relative z-10 flex flex-col justify-center max-w-sm mx-auto w-full">
         <AnimatePresence mode="wait">
-          {/* ======================================================== */}
-          {/* STEP 1: IDENTITY & WORKSPACE ARCHITECTURE PRESET         */}
-          {/* ======================================================== */}
+          {/* STEP 1: IDENTITY & ARCHITECTURE */}
           {step === 1 && (
             <motion.div
               key="step-1"
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-4 w-full text-left"
             >
-              {/* Editorial Header */}
-              <div className="space-y-1 text-left">
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {isIndonesian ? "Langkah 01" : "Step 01"}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-white/25" />
-                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {isIndonesian ? "Identitas & Pengaturan" : "Identity & Setup"}
-                  </span>
-                </div>
-                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+              {/* Header */}
+              <div className="space-y-0.5">
+                <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
                   {isIndonesian ? "Selamat Datang di " : "Welcome to "}
-                  <span className="font-semibold">Trouvaille</span>
+                  <span>Trouvaille</span>
                 </h1>
-                <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
+                <p className="text-[12px] text-white/50">
                   {isIndonesian
-                    ? "Personalisasikan nama panggilan, bahasa tampilan, dan arsitektur awal space Anda."
-                    : "Personalize your caller identity, interface language, and starting space architecture."}
+                    ? "Konfigurasi awal ruang finansial Anda."
+                    : "Set up your financial workspace."}
                 </p>
               </div>
 
-              {/* 1. Name Input */}
+              {/* Name Input */}
               <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
-                  {isIndonesian ? "Nama / Identitas Anda" : "Your Name / Identity"}
+                <label className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                  {isIndonesian ? "Nama Panggilan" : "Display Name"}
                 </label>
-                <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-1">
+                <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-0.5">
                   <input
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    placeholder={isIndonesian ? "misal: Alexander" : "e.g. Alexander"}
-                    className="w-full bg-transparent text-[17px] sm:text-[18px] font-medium text-white placeholder:text-white/25 outline-none pr-8 transition-colors"
+                    placeholder={isIndonesian ? "Nama Anda" : "Your Name"}
+                    className="w-full bg-transparent text-[16px] font-medium text-white placeholder:text-white/20 outline-none pr-7"
                   />
                   {userName.trim() && (
                     <button
                       type="button"
                       onClick={() => setUserName("")}
-                      className="text-white/30 hover:text-white/70 transition-colors p-1"
+                      className="text-white/30 hover:text-white/70 p-1 cursor-pointer"
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* 2. Interface Language Customization (Rule 6 Strict Non-Mixed) */}
+              {/* Language Switcher */}
               <div className="space-y-1 pt-0.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {isIndonesian ? "Bahasa Antarmuka" : "Interface Language"}
-                  </label>
-                  <span className="text-[10.5px] text-white/40">
-                    {isIndonesian ? "Bahasa Indonesia (Aktif)" : "English (Default)"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setLanguage("en");
-                    }}
-                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
-                      language === "en"
-                        ? "bg-white text-zinc-950 shadow-sm"
-                        : "text-white/60 hover:text-white"
-                    }`}
-                  >
-                    <span>English</span>
-                  </button>
+                <label className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                  {isIndonesian ? "Bahasa" : "Language"}
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
                   <button
                     type="button"
                     onClick={() => {
                       triggerHaptic("light");
                       setLanguage("id");
                     }}
-                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                    className={`py-1.5 px-3 rounded-xl text-[11.5px] font-semibold transition-all cursor-pointer ${
                       language === "id"
-                        ? "bg-white text-zinc-950 shadow-sm"
-                        : "text-white/60 hover:text-white"
+                        ? "bg-white text-black shadow-xs"
+                        : "text-white/50 hover:text-white"
                     }`}
                   >
-                    <span>Bahasa Indonesia</span>
+                    Bahasa Indonesia
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLanguage("en");
+                    }}
+                    className={`py-1.5 px-3 rounded-xl text-[11.5px] font-semibold transition-all cursor-pointer ${
+                      language === "en"
+                        ? "bg-white text-black shadow-xs"
+                        : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    English
                   </button>
                 </div>
               </div>
 
-              {/* 3. Base Currency Selection */}
+              {/* Base Currency */}
               <div className="space-y-1 pt-0.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {isIndonesian ? "Mata Uang Dasar" : "Base Currency"}
-                  </label>
-                  <span className="text-[10.5px] text-white/40 ">
-                    {activeCurrencyMeta.code} ({activeCurrencyMeta.symbol})
-                  </span>
-                </div>
+                <label className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                  {isIndonesian ? "Mata Uang Utama" : "Base Currency"}
+                </label>
                 <button
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
                     setCurrencyPickerOpen(true);
                   }}
-                  className="w-full py-2.5 px-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 active:scale-[0.99] transition-all flex items-center justify-between cursor-pointer group text-left"
+                  className="w-full py-2 px-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 active:scale-[0.99] transition-all flex items-center justify-between cursor-pointer"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white text-[12px] font-bold shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-6.5 h-6.5 rounded-xl bg-white/10 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                       {activeCurrencyMeta.symbol}
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-semibold text-white tracking-tight flex items-center gap-1.5 truncate">
-                        <span>{activeCurrencyMeta.code}</span>
-                        <span className="text-white/40 font-normal">·</span>
-                        <span className="text-white/80 font-normal text-[12px] truncate">{activeCurrencyMeta.name}</span>
-                      </div>
-                      <div className="text-[10.5px] text-white/40 truncate">
-                        {isIndonesian ? "Ketuk untuk memilih dari 13 mata uang" : "Tap to choose from 13 currencies"}
-                      </div>
-                    </div>
+                    <span className="text-[12.5px] font-medium text-white truncate">
+                      {activeCurrencyMeta.code} · {activeCurrencyMeta.name}
+                    </span>
                   </div>
-                  <ChevronRight size={15} className="text-white/40 group-hover:text-white/80 transition-colors shrink-0 ml-2" />
+                  <ChevronRight size={14} className="text-white/40 shrink-0" />
                 </button>
               </div>
 
-              {/* 4. Preset Selection (Default vs Custom) */}
-              <div className="space-y-2 pt-0.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {isIndonesian ? "Arsitektur Ruang Kerja" : "Workspace Architecture"}
-                  </label>
-                  <span className="text-[10.5px] text-white/40">
-                    {presetMode === "default"
-                      ? isIndonesian
-                        ? "Pilihan Standar"
-                        : "Standard Curated"
-                      : isIndonesian
-                      ? "Rancangan Kustom"
-                      : "Custom Blueprint"}
-                  </span>
-                </div>
+              {/* Preset Mode Selection */}
+              <div className="space-y-1.5 pt-0.5">
+                <label className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                  {isIndonesian
+                    ? "Arsitektur Ruang Kerja"
+                    : "Workspace Architecture"}
+                </label>
 
-                <div className="space-y-2">
-                  {/* Option A: Preset Default */}
+                <div className="space-y-1.5">
                   <div
                     onClick={() => {
                       triggerHaptic("light");
                       setPresetMode("default");
                     }}
-                    className={`group p-3.5 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                    className={`p-3 rounded-2xl text-left transition-all border cursor-pointer ${
                       presetMode === "default"
-                        ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
-                        : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
+                        ? "bg-white/[0.06] border-white/25 shadow-xs"
+                        : "bg-white/[0.02] border-white/[0.06] opacity-60 hover:opacity-80"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13.5px] font-semibold text-white tracking-tight">
-                            {isIndonesian ? "Preset Standar Pilihan" : "Default Curated Preset"}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12.5px] font-semibold text-white">
+                            {isIndonesian
+                              ? "Preset Standar"
+                              : "Curated Default"}
                           </span>
-                          <span className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/80">
                             {isIndonesian ? "Rekomendasi" : "Recommended"}
                           </span>
                         </div>
-                        <p className="text-[11.5px] text-white/50 leading-relaxed">
+                        <p className="text-[11px] text-white/50">
                           {isIndonesian
-                            ? "Pengaturan instan tanpa hambatan. Menyiapkan 3 akun likuid dan 14 kategori utama secara otomatis."
-                            : "Instant zero-friction setup. Auto-provisions 3 liquid accounts and 14 essential categories."}
+                            ? "Siap pakai dengan 3 akun likuid & 14 kategori."
+                            : "Ready-to-use with 3 liquid accounts & 14 categories."}
                         </p>
                       </div>
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all mt-0.5 ${
+                        className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
                           presetMode === "default"
-                            ? "bg-white border-white text-zinc-950"
+                            ? "bg-white border-white text-black"
                             : "border-white/20 bg-transparent"
                         }`}
                       >
-                        {presetMode === "default" && <Check size={11} strokeWidth={3} />}
+                        {presetMode === "default" && (
+                          <Check size={10} strokeWidth={3} />
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2 border-t border-white/[0.06]">
-                      {(selectedCurrency === "IDR"
-                        ? isIndonesian
-                          ? ["Uang Tunai", "BCA (Bank)", "GoPay (Dompet Digital)", "+14 Kategori Utama"]
-                          : ["Physical Cash", "BCA (Bank)", "GoPay (E-Wallet)", "+14 Core Categories"]
-                        : isIndonesian
-                          ? ["Uang Tunai", "Rekening Utama", "Dompet Digital (Wise)", "+14 Kategori Utama"]
-                          : ["Physical Cash", "Main Bank Account", "Digital Wallet (Wise)", "+14 Core Categories"]
-                      ).map((item, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10"
-                        >
-                          {item}
-                        </span>
-                      ))}
                     </div>
                   </div>
 
-                  {/* Option B: Custom */}
                   <div
                     onClick={() => {
                       triggerHaptic("light");
                       setPresetMode("custom");
                     }}
-                    className={`group p-3.5 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                    className={`p-3 rounded-2xl text-left transition-all border cursor-pointer ${
                       presetMode === "custom"
-                        ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
-                        : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
+                        ? "bg-white/[0.06] border-white/25 shadow-xs"
+                        : "bg-white/[0.02] border-white/[0.06] opacity-60 hover:opacity-80"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <span className="text-[13.5px] font-semibold text-white tracking-tight block">
-                          {isIndonesian ? "Arsitektur Kustom" : "Custom Architecture"}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-[12.5px] font-semibold text-white block">
+                          {isIndonesian ? "Kustom Mandiri" : "Custom Setup"}
                         </span>
-                        <p className="text-[11.5px] text-white/50 leading-relaxed">
+                        <p className="text-[11px] text-white/50">
                           {isIndonesian
-                            ? "Pilih saluran pembayaran dan rekening Anda sendiri. Akun bank dan kategori personal dapat disesuaikan kapan saja."
-                            : "Handpick your starting channels in the next step. Custom bank accounts, credit lines, and personal categories can be tailored anytime in Settings."}
+                            ? "Pilih akun dan saluran keuangan sendiri."
+                            : "Handpick accounts and channels manually."}
                         </p>
                       </div>
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all mt-0.5 ${
+                        className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
                           presetMode === "custom"
-                            ? "bg-white border-white text-zinc-950"
+                            ? "bg-white border-white text-black"
                             : "border-white/20 bg-transparent"
                         }`}
                       >
-                        {presetMode === "custom" && <Check size={11} strokeWidth={3} />}
+                        {presetMode === "custom" && (
+                          <Check size={10} strokeWidth={3} />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1028,37 +950,24 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
             </motion.div>
           )}
 
-          {/* ======================================================== */}
-          {/* STEP 2: LUXURY ARCHETYPE TELEMETRY CARD SELECTOR         */}
-          {/* ======================================================== */}
+          {/* STEP 2: FINANCIAL FOCUS */}
           {step === 2 && (
             <motion.div
               key="step-2"
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-3 w-full text-left"
             >
-              {/* Editorial Header */}
-              <div className="space-y-1.5 text-left mb-1">
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {isIndonesian ? "Langkah 02" : "Step 02"}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-white/25" />
-                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {isIndonesian ? "Fokus Finansial" : "Financial Focus"}
-                  </span>
-                </div>
-                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  {isIndonesian ? "Pilih fokus " : "Choose your "}
-                  <span className="font-semibold">{isIndonesian ? "finansial Anda" : "archetype"}</span>
+              <div className="space-y-0.5">
+                <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
+                  {isIndonesian ? "Fokus Finansial" : "Financial Focus"}
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                <p className="text-[12px] text-white/50">
                   {isIndonesian
-                    ? "Kalibrasikan widget dasbor utama, metrik, dan prioritas pencatatan Anda."
-                    : "Calibrate your home dashboard widgets, metrics, and tracking priority."}
+                    ? "Prioritaskan metrik dan widget dasbor Anda."
+                    : "Calibrate your primary dashboard priority."}
                 </p>
               </div>
 
@@ -1068,63 +977,49 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   0,
                   archetypeItems.findIndex((f) => f.key === selectedFocus),
                 )}
-                onActiveChange={(item) => setSelectedFocus(item.key as FocusKey)}
+                onActiveChange={(item) =>
+                  setSelectedFocus(item.key as FocusKey)
+                }
               />
             </motion.div>
           )}
 
-          {/* ======================================================== */}
-          {/* STEP 3: ACTIVE ACCOUNTS (CUSTOM MODE ONLY)               */}
-          {/* ======================================================== */}
+          {/* STEP 3: ACCOUNTS (CUSTOM MODE) */}
           {step === 3 && (
             <motion.div
               key="step-3"
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-4 w-full text-left"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3 w-full text-left"
             >
-              {/* Editorial Header */}
-              <div className="space-y-1 text-left">
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {isIndonesian ? "Langkah 03" : "Step 03"}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-white/25" />
-                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {isIndonesian ? "Saluran Aktif" : "Active Channels"}
-                  </span>
-                </div>
-                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  {isIndonesian ? "Pilih saluran " : "Select active "}
-                  <span className="font-semibold">{isIndonesian ? "pembayaran" : "accounts"}</span>
+              <div className="space-y-0.5">
+                <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
+                  {isIndonesian ? "Saluran Akun" : "Active Channels"}
                 </h1>
-                <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
+                <p className="text-[12px] text-white/50">
                   {isIndonesian
-                    ? "Pilih saluran pembayaran yang sering Anda gunakan untuk space yang rapi."
-                    : "Toggle the payment channels you transact with regularly for a noise-free space."}
+                    ? "Pilih akun aktif untuk pencatatan harian."
+                    : "Select accounts you transact with."}
                 </p>
               </div>
 
-              {/* Regional Tabs: Lokal (IDR) vs Global (USD/EUR) */}
-              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] w-full">
+              {/* Tabs */}
+              <div className="flex items-center gap-1 p-0.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] w-full">
                 <button
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
                     setAccountRegionTab("local");
                   }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`flex-1 py-1.5 rounded-xl text-[11.5px] font-semibold transition-all cursor-pointer ${
                     accountRegionTab === "local"
-                      ? "bg-white/[0.12] text-white shadow-sm border border-white/20"
-                      : "text-white/50 hover:text-white/80"
+                      ? "bg-white text-black shadow-xs"
+                      : "text-white/50 hover:text-white"
                   }`}
                 >
-                  <span>Lokal (IDR)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
-                    {ACCOUNT_OPTIONS.filter((a) => a.region === "local" && selectedAccounts[a.id]).length}
-                  </span>
+                  Lokal (IDR)
                 </button>
                 <button
                   type="button"
@@ -1132,22 +1027,21 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     triggerHaptic("light");
                     setAccountRegionTab("global");
                   }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`flex-1 py-1.5 rounded-xl text-[11.5px] font-semibold transition-all cursor-pointer ${
                     accountRegionTab === "global"
-                      ? "bg-white/[0.12] text-white shadow-sm border border-white/20"
-                      : "text-white/50 hover:text-white/80"
+                      ? "bg-white text-black shadow-xs"
+                      : "text-white/50 hover:text-white"
                   }`}
                 >
-                  <span>Global (USD/EUR)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
-                    {ACCOUNT_OPTIONS.filter((a) => a.region === "global" && selectedAccounts[a.id]).length}
-                  </span>
+                  Global (USD/EUR)
                 </button>
               </div>
 
-              {/* Open, unboxed vertical list with hairline dividers */}
-              <div className="divide-y divide-white/[0.07] border-y border-white/[0.08]">
-                {ACCOUNT_OPTIONS.filter((acc) => acc.region === accountRegionTab).map((acc) => {
+              {/* Account List */}
+              <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
+                {ACCOUNT_OPTIONS.filter(
+                  (acc) => acc.region === accountRegionTab,
+                ).map((acc) => {
                   const isChecked = Boolean(selectedAccounts[acc.id]);
                   const Icon = acc.icon;
                   const accName = isIndonesian ? acc.nameId : acc.nameEn;
@@ -1157,40 +1051,40 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       key={acc.id}
                       type="button"
                       onClick={() => handleToggleAccount(acc.id)}
-                      className="w-full py-3 px-1 flex items-center justify-between text-left transition-all active:scale-[0.99] cursor-pointer group"
+                      className="w-full py-2.5 px-1 flex items-center justify-between text-left transition-all active:scale-[0.99] cursor-pointer"
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all ${
                             isChecked
-                              ? "bg-white/10 border-white/25 text-white"
-                              : "bg-white/[0.03] border-white/10 text-white/40 group-hover:text-white/70"
+                              ? "bg-white/10 border-white/20 text-white"
+                              : "bg-white/[0.03] border-white/10 text-white/40"
                           }`}
                         >
-                          <Icon size={16} strokeWidth={1.75} />
+                          <Icon size={15} strokeWidth={1.8} />
                         </div>
                         <div>
                           <div
-                            className={`text-[13px] font-medium tracking-tight transition-colors ${
+                            className={`text-[12.5px] font-medium ${
                               isChecked ? "text-white" : "text-white/50"
                             }`}
                           >
                             {accName}
                           </div>
-                          <div className="text-[11px] text-white/40 mt-0.5">
+                          <div className="text-[10px] text-white/40 leading-none mt-0.5">
                             {accSub}
                           </div>
                         </div>
                       </div>
 
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                        className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border transition-all ${
                           isChecked
-                            ? "bg-white border-white text-zinc-950"
-                            : "border-white/20 bg-transparent group-hover:border-white/40"
+                            ? "bg-white border-white text-black"
+                            : "border-white/20 bg-transparent"
                         }`}
                       >
-                        {isChecked && <Check size={11} strokeWidth={3} />}
+                        {isChecked && <Check size={10} strokeWidth={3} />}
                       </div>
                     </button>
                   );
@@ -1199,56 +1093,34 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
             </motion.div>
           )}
 
-          {/* ======================================================== */}
-          {/* STEP 4: STARTING BASELINE (OPEN FLUID NUMBER DISPLAY)     */}
-          {/* ======================================================== */}
+          {/* STEP 4: STARTING BALANCE */}
           {step === 4 && (
             <motion.div
               key="step-4"
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-6 w-full text-left"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5 w-full text-left"
             >
-              {/* Editorial Header */}
-              <div className="space-y-1.5 text-left">
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {presetMode === "default"
-                      ? isIndonesian
-                        ? "Langkah 03"
-                        : "Step 03"
-                      : isIndonesian
-                      ? "Langkah 04"
-                      : "Step 04"}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-white/25" />
-                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {isIndonesian ? "Saldo Awal" : "Starting Baseline"}
-                  </span>
-                </div>
-                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  {isIndonesian ? "Saldo kas " : "Initial "}
-                  <span className="font-semibold">{isIndonesian ? "cadangan awal" : "cash reserve"}</span>
+              <div className="space-y-0.5">
+                <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
+                  {isIndonesian ? "Saldo Awal" : "Initial Balance"}
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                <p className="text-[12px] text-white/50">
                   {isIndonesian
-                    ? "Masukkan saldo kas awal Anda untuk menghitung Kekayaan Bersih secara akurat."
-                    : "Input your starting liquid balance to calibrate Net Worth calculations accurately."}
+                    ? "Estimasi cadangan kas saat ini."
+                    : "Your current liquid reserve."}
                 </p>
               </div>
 
-              {/* Unboxed fluid balance input */}
-              <div className="space-y-6">
-                <div className="space-y-2 border-b border-white/15 pb-3 focus-within:border-white transition-colors">
-                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {isIndonesian
-                      ? `Saldo Kas Likuid (${activeCurrencyMeta.code})`
-                      : `Liquid Balance (${activeCurrencyMeta.code})`}
-                  </label>
+              <div className="space-y-4">
+                <div className="space-y-1.5 border-b border-white/15 pb-2.5 focus-within:border-white transition-colors">
+                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                    {activeCurrencyMeta.code}
+                  </span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-[20px] sm:text-[22px] font-light text-white/40 select-none">
+                    <span className="text-[20px] font-light text-white/40 select-none">
                       {activeCurrencyMeta.symbol}
                     </span>
                     <input
@@ -1268,95 +1140,68 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                         setStartingBalanceDisplay(formatted);
                       }}
                       placeholder="0"
-                      className="w-full text-[34px] sm:text-[40px] font-light tracking-tight text-white amount leading-none bg-transparent outline-none placeholder:text-white/20"
+                      className="w-full text-[32px] sm:text-[36px] font-light tracking-tight text-white amount leading-none bg-transparent outline-none placeholder:text-white/20"
                     />
                   </div>
                 </div>
 
-                {/* Quick Increment Chips */}
-                <div className="space-y-2">
-                  <span className="text-[11px] text-white/40 font-medium block">
-                    {isIndonesian ? "Pilihan nominal cepat" : "Quick additive chips"}
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {quickIncrements.map((inc) => (
-                      <button
-                        key={inc}
-                        type="button"
-                        onClick={() => handleQuickAddBalance(inc)}
-                        className="py-1.5 px-3 rounded-full text-[12px] font-medium amount border active:scale-95 transition-all cursor-pointer text-white/80 border-white/15 hover:border-white/40 hover:text-white bg-white/[0.04]"
-                      >
-                        +{inc >= 1000000 ? `${inc / 1000000}M` : inc >= 1000 ? `${inc / 1000}K` : inc}
-                      </button>
-                    ))}
-                    {startingBalance > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearBalance}
-                        className="py-1.5 px-3 rounded-full text-[12px] font-medium text-white/40 hover:text-white/80 transition-colors cursor-pointer"
-                      >
-                        {isIndonesian ? "Setel ulang ke 0" : "Reset to 0"}
-                      </button>
-                    )}
-                  </div>
+                {/* Quick Increments */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {quickIncrements.map((inc) => (
+                    <button
+                      key={inc}
+                      type="button"
+                      onClick={() => handleQuickAddBalance(inc)}
+                      className="py-1 px-2.5 rounded-full text-[11px] font-medium amount border active:scale-95 transition-all cursor-pointer text-white/80 border-white/15 hover:border-white/30 bg-white/[0.04]"
+                    >
+                      +
+                      {inc >= 1000000
+                        ? `${inc / 1000000}M`
+                        : inc >= 1000
+                          ? `${inc / 1000}K`
+                          : inc}
+                    </button>
+                  ))}
+                  {startingBalance > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearBalance}
+                      className="py-1 px-2.5 rounded-full text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* ======================================================== */}
-          {/* STEP 5: DAILY LOGGING ROUTINE (HABIT FORMATION)           */}
-          {/* ======================================================== */}
+          {/* STEP 5: DAILY ROUTINE */}
           {step === 5 && (
             <motion.div
               key="step-5"
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-6 w-full text-left"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5 w-full text-left"
             >
-              {/* Editorial Header */}
-              <div className="space-y-1.5 text-left">
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {presetMode === "default"
-                      ? isIndonesian
-                        ? "Langkah 04"
-                        : "Step 04"
-                      : isIndonesian
-                      ? "Langkah 05"
-                      : "Step 05"}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-white/25" />
-                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {isIndonesian ? "Ritme Kebiasaan" : "Habit Rhythm"}
-                  </span>
-                </div>
-                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  {isIndonesian ? "Pengingat " : "Daily "}
-                  <span className="font-semibold">{isIndonesian ? "petang harian" : "evening nudge"}</span>
+              <div className="space-y-0.5">
+                <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
+                  {isIndonesian ? "Pengingat Harian" : "Daily Reminder"}
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                <p className="text-[12px] text-white/50">
                   {isIndonesian
-                    ? "Pengingat lembut untuk mencatat pengeluaran harian dalam 5 detik agar rekor tetap terjaga."
-                    : "A subtle prompt to record your day's outlays under 5 seconds so streaks stay unbroken."}
+                    ? "Notifikasi singkat setiap petang untuk mencatat transaksi."
+                    : "Brief evening prompt to capture daily outlays."}
                 </p>
               </div>
 
-              {/* Feature Toggle Row (Strictly adheres to GEMINI.md Rule 3) */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-b border-white/[0.08]">
-                  <div className="space-y-0.5 pr-4">
-                    <div className="text-[14px] font-semibold text-white">
-                      {isIndonesian ? "Pengingat Rutinitas Harian" : "Daily Routine Reminder"}
-                    </div>
-                    <div className="text-[11px] text-white/45 leading-relaxed">
-                      {isIndonesian
-                        ? "Pemberitahuan hening setiap petang untuk mencatat transaksi"
-                        : "Silent prompt each evening to capture transactions"}
-                    </div>
-                  </div>
+                  <span className="text-[13px] font-semibold text-white">
+                    {isIndonesian ? "Pengingat Rutin" : "Routine Reminder"}
+                  </span>
 
                   <button
                     type="button"
@@ -1374,27 +1219,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   >
                     <motion.div
                       animate={{ x: reminderEnabled ? 20 : 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      className={`w-5 h-5 rounded-full shadow-sm ${
-                        reminderEnabled ? "bg-zinc-950" : "bg-white/60"
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30,
+                      }}
+                      className={`w-5 h-5 rounded-full shadow-xs ${
+                        reminderEnabled ? "bg-black" : "bg-white/60"
                       }`}
                     />
                   </button>
                 </div>
 
-                {/* Schedule Selector */}
-                <div className={`space-y-3 transition-opacity duration-300 ${reminderEnabled ? "opacity-100" : "opacity-30 pointer-events-none"}`}>
-                  <div className="flex items-baseline justify-between">
-                    <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                      {isIndonesian ? "Waktu Terjadwal" : "Scheduled Time"}
-                    </label>
-                    <span className="text-[12px] font-medium text-white/60 amount">
-                      {reminderHour}:00 {isIndonesian ? "Waktu Lokal" : "Local Time"}
-                    </span>
-                  </div>
+                {/* Hour Selector */}
+                <div
+                  className={`space-y-2 transition-opacity ${reminderEnabled ? "opacity-100" : "opacity-30 pointer-events-none"}`}
+                >
+                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">
+                    {isIndonesian ? "Jam Pengingat" : "Reminder Time"}
+                  </span>
 
-                  {/* Hour Pills */}
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                     {[18, 19, 20, 21, 22].map((h) => (
                       <button
                         key={h}
@@ -1403,22 +1248,16 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                           triggerHaptic("light");
                           setReminderHour(h);
                         }}
-                        className={`py-2 px-3.5 rounded-full text-[12px] font-medium amount border transition-all cursor-pointer shrink-0 ${
+                        className={`py-1.5 px-3 rounded-full text-[11.5px] font-semibold amount border transition-all cursor-pointer ${
                           reminderHour === h
-                            ? "bg-white text-zinc-950 border-white font-semibold shadow-md"
-                            : "bg-white/[0.04] text-white/60 border-white/10 hover:border-white/30 hover:text-white"
+                            ? "bg-white text-black border-white shadow-xs"
+                            : "bg-white/[0.04] text-white/60 border-white/10 hover:border-white/30"
                         }`}
                       >
                         {h}:00
                       </button>
                     ))}
                   </div>
-
-                  <p className="text-[11px] text-white/40 leading-relaxed pt-1">
-                    {isIndonesian
-                      ? "Trouvaille berjalan hening di latar belakang tanpa mengganggu mode fokus perangkat Anda."
-                      : "Trouvaille runs silently in the background without disturbing your device focus mode."}
-                  </p>
                 </div>
               </div>
             </motion.div>
@@ -1426,39 +1265,39 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
         </AnimatePresence>
       </div>
 
-      {/* ============================================================ */}
-      {/* 4. BOTTOM ACTION BAR: 1-TAP QUICK START OR STEPPED CONTINUE  */}
-      {/* ============================================================ */}
-      <div className="px-3 sm:px-4 relative z-10 pt-2 max-w-md mx-auto w-full space-y-2">
+      {/* ── Bottom Action Dock (Zero Glow) ── */}
+      <div className="px-2 relative z-10 pt-2 max-w-sm mx-auto w-full space-y-1.5">
         {step === 1 && presetMode === "default" ? (
-          <div className="space-y-2">
-            {/* Primary Action: 1-Tap Quick Start */}
+          <div className="space-y-1.5">
             <button
               type="button"
               onClick={handleQuickStart}
-              className="w-full py-3.5 rounded-full font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:bg-white/95"
+              className="w-full h-11 rounded-full font-semibold text-[13px] active:scale-[0.985] transition-all cursor-pointer bg-white text-black flex items-center justify-center gap-1.5 shadow-sm"
             >
-              <Zap size={15} strokeWidth={2.5} className="fill-zinc-950 text-zinc-950" />
-              <span>{isIndonesian ? "Mulai Cepat 1-Ketukan" : "1-Tap Quick Start"}</span>
+              <Zap
+                size={14}
+                strokeWidth={2.5}
+                className="fill-black text-black"
+              />
+              <span>{isIndonesian ? "Mulai Cepat" : "Quick Start"}</span>
             </button>
 
-            {/* Secondary Action: Customize Step-by-Step */}
-            <div className="text-center pt-0.5">
-              <button
-                type="button"
-                onClick={handleNextStep}
-                className="text-[11.5px] font-medium text-white/50 hover:text-white transition-colors cursor-pointer"
-              >
-                {isIndonesian ? "Sesuaikan Langkah demi Langkah" : "Customize Step-by-Step"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className="w-full py-1 text-center text-[11px] font-medium text-white/45 hover:text-white transition-colors cursor-pointer"
+            >
+              {isIndonesian
+                ? "Sesuaikan Langkah demi Langkah"
+                : "Customize Step-by-Step"}
+            </button>
           </div>
         ) : (
           <>
             <button
               type="button"
               onClick={handleNextStep}
-              className="w-full py-3.5 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-white/95"
+              className="w-full h-11 rounded-full font-semibold text-[13px] active:scale-[0.985] transition-all cursor-pointer bg-white text-black flex items-center justify-center gap-1.5 shadow-sm"
             >
               <span>
                 {step === 5
@@ -1466,26 +1305,24 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     ? "Buka Trouvaille"
                     : "Enter Trouvaille"
                   : isIndonesian
-                  ? "Lanjutkan"
-                  : "Continue"}
+                    ? "Lanjutkan"
+                    : "Continue"}
               </span>
-              <ArrowRight size={15} strokeWidth={2} />
+              <ArrowRight size={14} strokeWidth={2} />
             </button>
 
             {step === 4 && (
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setStartingBalance(0);
-                    setStep(5);
-                  }}
-                  className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
-                >
-                  {isIndonesian ? "Lewati saldo awal" : "Skip baseline balance"}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setStartingBalance(0);
+                  setStep(5);
+                }}
+                className="w-full py-1 text-center text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+              >
+                {isIndonesian ? "Lewati saldo awal" : "Skip initial balance"}
+              </button>
             )}
           </>
         )}
@@ -1500,34 +1337,20 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
         }}
         zIndex={1100}
       >
-        <div className="p-5 pb-8 space-y-4 text-left">
-          {/* Header */}
+        <div className="p-4 pb-6 space-y-3 text-left max-w-sm mx-auto select-none">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Coins size={16} strokeWidth={1.75} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white shrink-0">
+                <Coins size={15} strokeWidth={1.8} />
               </div>
               <div>
-                <h2
-                  className="text-[16px] font-semibold tracking-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {isIndonesian ? "Pilih Mata Uang Dasar" : "Select Base Currency"}
+                <h2 className="text-[15px] font-bold tracking-tight text-[var(--text-primary)]">
+                  {isIndonesian ? "Pilih Mata Uang" : "Select Currency"}
                 </h2>
-                <p
-                  className="text-[11px] font-medium"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
+                <p className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian
-                    ? "Mata uang utama untuk seluruh pembukuan"
-                    : "Primary currency for all financial tracking"}
+                    ? "Mata uang utama pembukuan"
+                    : "Primary currency"}
                 </p>
               </div>
             </div>
@@ -1537,55 +1360,37 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 setCurrencyPickerOpen(false);
                 setCurrencySearch("");
               }}
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-tertiary)",
-              }}
+              className="w-6.5 h-6.5 rounded-full flex items-center justify-center bg-white/[0.05] border border-white/10 text-white/50 hover:text-white"
             >
-              <X size={13} />
+              <X size={12} strokeWidth={2} />
             </button>
           </div>
 
           {/* Search Box */}
-          <div
-            className="relative flex items-center rounded-xl px-3 py-2 border"
-            style={{
-              background: "var(--bg-elevated)",
-              borderColor: "var(--glass-border)",
-            }}
-          >
-            <Search
-              size={14}
-              style={{ color: "var(--text-tertiary)" }}
-              className="mr-2 shrink-0"
-            />
+          <div className="relative flex items-center rounded-xl px-3 h-9 border bg-white/[0.04] border-white/10">
+            <Search size={13} className="text-white/40 mr-2 shrink-0" />
             <input
               type="text"
               value={currencySearch}
               onChange={(e) => setCurrencySearch(e.target.value)}
               placeholder={
-                isIndonesian
-                  ? "Cari nama, kode (mis. USD), atau simbol..."
-                  : "Search name, code (e.g. USD), or symbol..."
+                isIndonesian ? "Cari mata uang..." : "Search currency..."
               }
-              className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
-              style={{ color: "var(--text-primary)" }}
+              className="w-full bg-transparent text-[12.5px] outline-none text-white placeholder:text-white/30"
             />
             {currencySearch && (
               <button
                 type="button"
                 onClick={() => setCurrencySearch("")}
-                className="p-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+                className="text-white/40 hover:text-white"
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             )}
           </div>
 
           {/* Currency List */}
-          <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
+          <div className="divide-y divide-white/[0.06] border-y border-white/[0.08] max-h-[45vh] overflow-y-auto no-scrollbar">
             {filteredCurrencies.map((curr) => {
               const isSelected = curr.code === selectedCurrency;
               return (
@@ -1593,29 +1398,28 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   key={curr.code}
                   type="button"
                   onClick={() => handleSelectCurrency(curr.code)}
-                  className={`w-full py-3 px-2 flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer text-left ${
+                  className={`w-full py-2.5 px-1.5 flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer text-left ${
                     isSelected ? "bg-white/[0.05]" : "hover:bg-white/[0.02]"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[12px] border ${
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-[11px] border shrink-0 ${
                         isSelected
-                          ? "bg-white text-zinc-950 border-white"
+                          ? "bg-white text-black border-white"
                           : "bg-white/[0.06] border-white/10 text-white/80"
                       }`}
                     >
                       {curr.symbol}
                     </div>
-                    <div>
-                      <div className="text-[13px] font-semibold text-white flex items-center gap-2">
-                        <span>{curr.code}</span>
-                        <span className="text-white/40 font-normal">·</span>
-                        <span className="text-white/70 font-normal text-[12px]">
+                    <div className="min-w-0">
+                      <div className="text-[12.5px] font-semibold text-white truncate">
+                        {curr.code} ·{" "}
+                        <span className="font-normal text-white/60">
                           {curr.name}
                         </span>
                       </div>
-                      <div className="text-[10.5px] text-white/40">
+                      <div className="text-[9.5px] text-white/40">
                         {curr.countryCode} · {curr.decimals}{" "}
                         {isIndonesian ? "desimal" : "decimals"}
                       </div>
@@ -1623,24 +1427,17 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   </div>
 
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                    className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all shrink-0 ${
                       isSelected
-                        ? "bg-white border-white text-zinc-950"
+                        ? "bg-white border-white text-black"
                         : "border-white/20 bg-transparent"
                     }`}
                   >
-                    {isSelected && <Check size={11} strokeWidth={3} />}
+                    {isSelected && <Check size={9} strokeWidth={3} />}
                   </div>
                 </button>
               );
             })}
-            {filteredCurrencies.length === 0 && (
-              <div className="py-8 text-center text-[12px] text-white/40">
-                {isIndonesian
-                  ? "Mata uang tidak ditemukan"
-                  : "No currency found matching search"}
-              </div>
-            )}
           </div>
         </div>
       </BottomSheet>

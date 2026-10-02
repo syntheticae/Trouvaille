@@ -53,21 +53,40 @@ export function CategoryBreakdownCard({
 
   return (
     <div
-      className="p-5 rounded-[24px] select-none space-y-3"
+      className="relative overflow-hidden p-5 rounded-[24px] select-none space-y-3"
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        boxShadow: "var(--shadow-card)",
+        background: isDark
+          ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+          : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+        border: isDark
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: isDark
+          ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+          : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
       }}
     >
+      {/* Specular Rim Light Reflection */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+        style={{
+          background: isDark
+            ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+        }}
+      />
+
       {/* 1-Line Header with Vector Icon and All Categories action */}
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: "var(--text-primary)",
             }}
           >
@@ -123,8 +142,8 @@ export function CategoryBreakdownCard({
       <div
         className="flex p-0.5 rounded-xl self-start w-fit"
         style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
+          background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+          border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
         }}
       >
         <button

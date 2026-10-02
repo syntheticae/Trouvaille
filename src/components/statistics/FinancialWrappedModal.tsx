@@ -5,13 +5,13 @@ import {
   X,
   Check,
   Sparkles,
-  FileText,
   TrendingUp,
   Calendar,
   ShieldCheck,
   Activity,
   Loader2,
   Pause,
+  Share2,
 } from "lucide-react";
 import type { Transaction, Category } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
@@ -65,12 +65,17 @@ export function FinancialWrappedModal({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState<number>(1);
   const [isPaused, setIsPaused] = useState(false);
+  const [showPauseHUD, setShowPauseHUD] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
+  const [isPhotoSaved, setIsPhotoSaved] = useState(false);
   const totalSlides = 10;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pauseHUDTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideContainerRef = useRef<HTMLDivElement>(null);
+  const cachedSlideFilesRef = useRef<Map<number, File>>(new Map());
   const pointerDownTime = useRef<number>(0);
   const wasHolding = useRef<boolean>(false);
 
@@ -84,6 +89,11 @@ export function FinancialWrappedModal({
     if (duration > 350) {
       wasHolding.current = true;
       setIsPaused(false);
+      setShowPauseHUD(false);
+      if (pauseHUDTimerRef.current) {
+        clearTimeout(pauseHUDTimerRef.current);
+        pauseHUDTimerRef.current = null;
+      }
     }
   };
 
@@ -94,7 +104,24 @@ export function FinancialWrappedModal({
       return;
     }
     triggerHaptic("light");
-    setIsPaused((p) => !p);
+    setIsPaused((prev) => {
+      const next = !prev;
+      if (pauseHUDTimerRef.current) {
+        clearTimeout(pauseHUDTimerRef.current);
+        pauseHUDTimerRef.current = null;
+      }
+      if (next) {
+        // Paused: Show pause HUD overlay for exactly 2 seconds, then fade out while remaining paused
+        setShowPauseHUD(true);
+        pauseHUDTimerRef.current = setTimeout(() => {
+          setShowPauseHUD(false);
+        }, 2000);
+      } else {
+        // Resumed: immediately hide pause HUD
+        setShowPauseHUD(false);
+      }
+      return next;
+    });
   };
 
   const totalAssetVal =
@@ -492,6 +519,11 @@ export function FinancialWrappedModal({
   const handleNext = useCallback(() => {
     triggerHaptic("light");
     setDirection(1);
+    if (pauseHUDTimerRef.current) {
+      clearTimeout(pauseHUDTimerRef.current);
+      pauseHUDTimerRef.current = null;
+    }
+    setShowPauseHUD(false);
     if (currentSlide < totalSlides - 1) {
       setCurrentSlide((s) => s + 1);
     } else {
@@ -502,6 +534,11 @@ export function FinancialWrappedModal({
   const handlePrev = useCallback(() => {
     triggerHaptic("light");
     setDirection(-1);
+    if (pauseHUDTimerRef.current) {
+      clearTimeout(pauseHUDTimerRef.current);
+      pauseHUDTimerRef.current = null;
+    }
+    setShowPauseHUD(false);
     if (currentSlide > 0) {
       setCurrentSlide((s) => s - 1);
     }
@@ -554,16 +591,192 @@ export function FinancialWrappedModal({
     if (isOpen) {
       setCurrentSlide(0);
       setDirection(1);
+      setIsPaused(false);
+      setShowPauseHUD(false);
       setIsCopied(false);
+      setIsPhotoSaved(false);
+      setIsSharingPhoto(false);
       setExportProgress(0);
+      cachedSlideFilesRef.current.clear();
+      if (pauseHUDTimerRef.current) {
+        clearTimeout(pauseHUDTimerRef.current);
+        pauseHUDTimerRef.current = null;
+      }
     }
   }, [isOpen]);
+
+  // Background pre-render current slide image into cache for instant zero-latency sharing
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timer = setTimeout(async () => {
+      const element = slideContainerRef.current;
+      if (!element) return;
+
+      try {
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
+          logging: false,
+          ignoreElements: (node) => {
+            if (
+              node instanceof HTMLElement &&
+              (node.dataset.html2canvasIgnore === "true" ||
+                node.getAttribute("data-ignore-export") === "true")
+            ) {
+              return true;
+            }
+            return false;
+          },
+        });
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const fileName = `Trouvaille-Wrapped-Slide-${currentSlide + 1}.png`;
+            const file = new File([blob], fileName, { type: "image/png" });
+            cachedSlideFilesRef.current.set(currentSlide, file);
+          }
+        }, "image/png");
+      } catch {
+        // Silently ignore background pre-render error
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [currentSlide, isOpen, isDark]);
+
+  // Handle sharing active slide as high-res photo (Slide 1 to 9)
+  const handleShareSlidePhoto = async () => {
+    triggerHaptic("medium");
+    if (isSharingPhoto) return;
+
+    setIsSharingPhoto(true);
+    setIsPaused(true);
+    setShowPauseHUD(false);
+    if (pauseHUDTimerRef.current) {
+      clearTimeout(pauseHUDTimerRef.current);
+      pauseHUDTimerRef.current = null;
+    }
+
+    try {
+      const fileName = `Trouvaille-Wrapped-Slide-${currentSlide + 1}.png`;
+      let file = cachedSlideFilesRef.current.get(currentSlide);
+      let dataUrl = "";
+
+      if (!file) {
+        const element = slideContainerRef.current;
+        if (!element) throw new Error("Slide element not found");
+
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
+          logging: false,
+          ignoreElements: (node) => {
+            if (
+              node instanceof HTMLElement &&
+              (node.dataset.html2canvasIgnore === "true" ||
+                node.getAttribute("data-ignore-export") === "true")
+            ) {
+              return true;
+            }
+            return false;
+          },
+        });
+
+        dataUrl = canvas.toDataURL("image/png");
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/png"),
+        );
+        if (blob) {
+          file = new File([blob], fileName, { type: "image/png" });
+          cachedSlideFilesRef.current.set(currentSlide, file);
+        }
+      }
+
+      let sharedViaNavigator = false;
+      if (
+        file &&
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: isIndonesian
+              ? `Kilas Balik Finansial - Slide ${currentSlide + 1}`
+              : `Financial Wrapped - Slide ${currentSlide + 1}`,
+            text: isIndonesian
+              ? `Kilas Balik Finansial Trouvaille ${periodTitle} (Slide ${currentSlide + 1})`
+              : `Trouvaille Financial Wrapped ${periodTitle} (Slide ${currentSlide + 1})`,
+          });
+          sharedViaNavigator = true;
+        } catch (err: any) {
+          if (err?.name === "AbortError") {
+            sharedViaNavigator = true;
+          }
+        }
+      }
+
+      // Fallback: download PNG file directly and copy to clipboard
+      if (!sharedViaNavigator) {
+        if (!dataUrl && file) {
+          dataUrl = URL.createObjectURL(file);
+        }
+        if (dataUrl) {
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          if (dataUrl.startsWith("blob:")) {
+            setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
+          }
+        }
+
+        if (
+          file &&
+          typeof navigator !== "undefined" &&
+          navigator.clipboard &&
+          typeof ClipboardItem !== "undefined"
+        ) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": file }),
+            ]);
+          } catch {
+            // Silently ignore clipboard write failures
+          }
+        }
+      }
+
+      setIsPhotoSaved(true);
+      setTimeout(() => setIsPhotoSaved(false), 2500);
+    } catch (err) {
+      console.error("Failed to share slide photo:", err);
+    } finally {
+      setIsSharingPhoto(false);
+    }
+  };
 
   const handleDownloadPDF = async () => {
     triggerHaptic("medium");
     if (isExporting) return;
     setIsExporting(true);
     setIsPaused(true);
+    setShowPauseHUD(false);
+    if (pauseHUDTimerRef.current) {
+      clearTimeout(pauseHUDTimerRef.current);
+      pauseHUDTimerRef.current = null;
+    }
     setExportProgress(1);
     const originalSlide = currentSlide;
 
@@ -594,6 +807,16 @@ export function FinancialWrappedModal({
           allowTaint: false,
           backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
           logging: false,
+          ignoreElements: (node) => {
+            if (
+              node instanceof HTMLElement &&
+              (node.dataset.html2canvasIgnore === "true" ||
+                node.getAttribute("data-ignore-export") === "true")
+            ) {
+              return true;
+            }
+            return false;
+          },
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -627,7 +850,40 @@ export function FinancialWrappedModal({
           ? format(targetDate, "yyyy-MM")
           : format(targetDate, "yyyy");
       const fileName = `Trouvaille-Financial-Wrapped-${periodLabel}.pdf`;
-      pdf.save(fileName);
+
+      const pdfBlob = pdf.output("blob");
+      let sharedViaNavigator = false;
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function"
+      ) {
+        try {
+          const pdfFile = new File([pdfBlob], fileName, {
+            type: "application/pdf",
+          });
+          if (navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+              files: [pdfFile],
+              title: isIndonesian
+                ? "Laporan Kilas Balik Finansial Trouvaille"
+                : "Trouvaille Financial Wrapped Report",
+              text: isIndonesian
+                ? `Laporan Finansial Lengkap ${periodTitle} (10 Slide)`
+                : `Complete Financial Report ${periodTitle} (10 Slides)`,
+            });
+            sharedViaNavigator = true;
+          }
+        } catch (err: any) {
+          if (err?.name === "AbortError") {
+            sharedViaNavigator = true;
+          }
+        }
+      }
+
+      if (!sharedViaNavigator) {
+        pdf.save(fileName);
+      }
 
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 3000);
@@ -790,48 +1046,50 @@ export function FinancialWrappedModal({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownloadPDF();
-                  }}
-                  disabled={isExporting}
-                  className={`h-8 px-3 rounded-full border flex items-center gap-1.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer backdrop-blur-xl ${
-                    isDark
-                      ? "bg-white/[0.08] border-white/15 text-white/90 hover:text-white hover:bg-white/[0.14] shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
-                      : "bg-black/[0.05] border-black/10 text-black/90 hover:text-black hover:bg-black/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
-                  }`}
-                  title={
-                    isIndonesian
-                      ? "Unduh Laporan PDF (10 Slide)"
-                      : "Download PDF Report (10 Slides)"
-                  }
-                >
-                  {isExporting ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : isCopied ? (
-                    <Check
-                      size={12}
-                      className={isDark ? "text-white" : "text-black"}
-                    />
-                  ) : (
-                    <FileText size={12} />
-                  )}
-                  <span>
-                    {isExporting
-                      ? isIndonesian
-                        ? `Membuat (${exportProgress}/10)...`
-                        : `Building (${exportProgress}/10)...`
-                      : isCopied
+                {currentSlide < totalSlides - 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShareSlidePhoto();
+                    }}
+                    disabled={isSharingPhoto}
+                    className={`h-8 px-3 rounded-full border flex items-center gap-1.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer backdrop-blur-xl ${
+                      isDark
+                        ? "bg-white/[0.08] border-white/15 text-white/90 hover:text-white hover:bg-white/[0.14] shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
+                        : "bg-black/[0.05] border-black/10 text-black/90 hover:text-black hover:bg-black/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+                    }`}
+                    title={
+                      isIndonesian
+                        ? `Bagikan Foto Slide ${currentSlide + 1}`
+                        : `Share Slide ${currentSlide + 1} Photo`
+                    }
+                  >
+                    {isSharingPhoto ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : isPhotoSaved ? (
+                      <Check
+                        size={12}
+                        className={isDark ? "text-white" : "text-black"}
+                      />
+                    ) : (
+                      <Share2 size={12} />
+                    )}
+                    <span>
+                      {isSharingPhoto
                         ? isIndonesian
-                          ? "Tersimpan"
-                          : "Saved"
-                        : isIndonesian
-                          ? "Unduh PDF"
-                          : "Download PDF"}
-                  </span>
-                </button>
+                          ? "Menyiapkan..."
+                          : "Preparing..."
+                        : isPhotoSaved
+                          ? isIndonesian
+                            ? "Foto Tersimpan"
+                            : "Photo Saved"
+                          : isIndonesian
+                            ? "Bagikan"
+                            : "Share"}
+                    </span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -856,7 +1114,7 @@ export function FinancialWrappedModal({
           {/* CENTERED LIQUID GLASS PAUSE HUD OVERLAY                     */}
           {/* ============================================================ */}
           <AnimatePresence>
-            {isPaused && (
+            {showPauseHUD && (
               <motion.div
                 data-html2canvas-ignore="true"
                 data-ignore-export="true"
@@ -3577,7 +3835,7 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Download PDF Action Button */}
+                  {/* Download & Share Full PDF Report Button */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -3596,7 +3854,7 @@ export function FinancialWrappedModal({
                     ) : isCopied ? (
                       <Check size={16} />
                     ) : (
-                      <FileText size={16} />
+                      <Share2 size={16} />
                     )}
                     <span>
                       {isExporting
@@ -3605,11 +3863,11 @@ export function FinancialWrappedModal({
                           : `Generating PDF Dossier (${exportProgress}/10)...`
                         : isCopied
                           ? isIndonesian
-                            ? "Laporan PDF Berhasil Diunduh!"
+                            ? "Laporan PDF Berhasil Disimpan!"
                             : "PDF Report Successfully Saved!"
                           : isIndonesian
-                            ? "Unduh Laporan Lengkap PDF (10 Slide)"
-                            : "Download Complete 10-Slide PDF Report"}
+                            ? "Bagikan Laporan PDF (10 Slide)"
+                            : "Share Full PDF Report (10 Slides)"}
                     </span>
                   </button>
                 </motion.div>

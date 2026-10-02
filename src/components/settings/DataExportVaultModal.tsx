@@ -34,13 +34,19 @@ export function DataExportVaultModal({
         <div className="space-y-1 text-left">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Sparkles size={13} strokeWidth={1.5} />
-            <span>{isIndonesian ? "Ekspor & Cadangan Data" : "Data Export & Vault Backup"}</span>
+            <span>
+              {isIndonesian
+                ? "Ekspor & Cadangan Data"
+                : "Data Export & Vault Backup"}
+            </span>
           </div>
           <h3
             className="text-xl font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Ekspor Laporan & Cadangan Brankas" : "Report Export & Data Vault"}
+            {isIndonesian
+              ? "Ekspor Laporan & Cadangan Brankas"
+              : "Report Export & Data Vault"}
           </h3>
           <p
             className="text-[13px] leading-relaxed font-normal"
@@ -76,7 +82,9 @@ export function DataExportVaultModal({
               <div className="flex-1 min-w-0 space-y-0.5">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Report Export"}
+                    {isIndonesian
+                      ? "Ekspor Laporan Keuangan"
+                      : "Financial Report Export"}
                   </h4>
                   <span className="text-[10px]  px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
                     PDF / CSV
@@ -99,7 +107,11 @@ export function DataExportVaultModal({
               }}
               className="w-full py-2.5 px-3.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:scale-[0.99] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-between cursor-pointer transition-colors"
             >
-              <span>{isIndonesian ? "Buka Pengaturan Ekspor Laporan" : "Configure Report Export"}</span>
+              <span>
+                {isIndonesian
+                  ? "Buka Pengaturan Ekspor Laporan"
+                  : "Configure Report Export"}
+              </span>
               <ChevronRight size={14} className="text-[var(--text-tertiary)]" />
             </button>
           </div>
@@ -126,7 +138,9 @@ export function DataExportVaultModal({
               <div className="flex-1 min-w-0 space-y-0.5">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Brankas Terenkripsi AES-256" : "AES-256 Encrypted Vault"}
+                    {isIndonesian
+                      ? "Brankas Terenkripsi AES-256"
+                      : "AES-256 Encrypted Vault"}
                   </h4>
                   <span className="text-[10px]  px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
                     {isIndonesian ? "Database" : "Database"}
@@ -151,7 +165,9 @@ export function DataExportVaultModal({
                 className="py-2.5 px-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:scale-[0.99] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Download size={13} strokeWidth={1.75} />
-                <span>{isIndonesian ? "Cadangkan Berkas" : "Backup Vault"}</span>
+                <span>
+                  {isIndonesian ? "Cadangkan Berkas" : "Backup Vault"}
+                </span>
               </button>
               <button
                 type="button"

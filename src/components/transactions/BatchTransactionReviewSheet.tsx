@@ -49,7 +49,7 @@ export function BatchTransactionReviewSheet({
 }: BatchTransactionReviewSheetProps) {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = theme !== "light";
 
   const { data: bills = [] } = useBills();
   const markBillPaid = useMarkBillPaid();
@@ -59,7 +59,9 @@ export function BatchTransactionReviewSheet({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Category picker sheet state
-  const [activeItemForCategory, setActiveItemForCategory] = useState<string | null>(null);
+  const [activeItemForCategory, setActiveItemForCategory] = useState<
+    string | null
+  >(null);
 
   // Sync state when initialItems change or sheet opens
   useEffect(() => {
@@ -67,7 +69,7 @@ export function BatchTransactionReviewSheet({
       setItems(initialItems);
       const selMap: Record<string, boolean> = {};
       initialItems.forEach((it) => {
-        selMap[it.id] = it.selected; // Duplicates are already false by default!
+        selMap[it.id] = it.selected;
       });
       setSelectedMap(selMap);
     }
@@ -79,7 +81,11 @@ export function BatchTransactionReviewSheet({
       setItems((prev) =>
         prev.map((it) => {
           if (it.matchedBill) return it;
-          const match = findBestMatchingBill(it.cleanDescription, it.amount, bills);
+          const match = findBestMatchingBill(
+            it.cleanDescription,
+            it.amount,
+            bills,
+          );
           if (match) {
             return {
               ...it,
@@ -93,7 +99,7 @@ export function BatchTransactionReviewSheet({
             };
           }
           return it;
-        })
+        }),
       );
     }
   }, [bills]);
@@ -138,7 +144,7 @@ export function BatchTransactionReviewSheet({
         else if (it.type === "income") nextType = "transfer";
         else nextType = "expense";
         return { ...it, type: nextType };
-      })
+      }),
     );
   };
 
@@ -154,7 +160,7 @@ export function BatchTransactionReviewSheet({
             confirmedPaid: !it.matchedBill.confirmedPaid,
           },
         };
-      })
+      }),
     );
   };
 
@@ -176,8 +182,8 @@ export function BatchTransactionReviewSheet({
               needsReview: false,
               confidence: 0.95,
             }
-          : it
-      )
+          : it,
+      ),
     );
     setActiveItemForCategory(null);
   };
@@ -190,7 +196,6 @@ export function BatchTransactionReviewSheet({
       setIsSubmitting(true);
       triggerSuccessHaptic();
 
-      // Auto-settle matched bills if confirmed by user
       for (const item of selectedItems) {
         if (item.matchedBill?.confirmedPaid && bills.length > 0) {
           const targetBill = bills.find((b) => b.id === item.matchedBill?.id);
@@ -199,10 +204,13 @@ export function BatchTransactionReviewSheet({
               await markBillPaid.mutateAsync({
                 bill: targetBill,
                 paid: true,
-                recordTransaction: false, // Already being recorded in this batch
+                recordTransaction: false,
               });
             } catch (billErr) {
-              console.warn("[BatchReview] Failed to auto-settle bill:", billErr);
+              console.warn(
+                "[BatchReview] Failed to auto-settle bill:",
+                billErr,
+              );
             }
           }
         }
@@ -225,30 +233,52 @@ export function BatchTransactionReviewSheet({
     onClose();
   };
 
+  // ── Clean Apple Liquid Glass Tokens (Zero Glow) ──
+  const buttonGlassBg = isDark
+    ? "rgba(255, 255, 255, 0.05)"
+    : "rgba(0, 0, 0, 0.035)";
+
+  const buttonGlassBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const hairlineDivider = isDark
+    ? "rgba(255, 255, 255, 0.08)"
+    : "rgba(0, 0, 0, 0.06)";
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div
-        className="px-4 pt-3 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-lg mx-auto select-none font-sans"
+        className="px-4 pt-2.5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-lg mx-auto select-none font-sans"
         style={{ color: "var(--text-primary)" }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--glass-border)] mb-3">
+        {/* ── 1. Header Bar ── */}
+        <div
+          className="flex items-center justify-between pb-3 mb-3 border-b"
+          style={{ borderColor: hairlineDivider }}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: buttonGlassBg,
+                border: buttonGlassBorder,
+                color: "var(--text-primary)",
               }}
             >
-              <Sparkles size={15} className="text-[var(--text-primary)]" />
+              <Sparkles size={14} strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)] truncate">
-                {isIndonesian ? "Tinjau Transaksi Massal" : "Review Batch Transactions"}
+              <h3 className="text-[14.5px] font-bold tracking-tight text-[var(--text-primary)] truncate leading-tight">
+                {isIndonesian
+                  ? "Tinjau Transaksi Massal"
+                  : "Review Batch Transactions"}
               </h3>
-              <p className="text-[11px] text-[var(--text-tertiary)] truncate">
-                {sourceTitle || (isIndonesian ? "Tangkapan Layar Riwayat" : "Screenshot History")}
+              <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {sourceTitle ||
+                  (isIndonesian
+                    ? "Tangkapan Layar Riwayat"
+                    : "Statement History")}
                 {" · "}
                 {items.length} {isIndonesian ? "terdeteksi" : "detected"}
               </p>
@@ -258,29 +288,37 @@ export function BatchTransactionReviewSheet({
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors active:scale-90"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: buttonGlassBg,
+              border: buttonGlassBorder,
               color: "var(--text-tertiary)",
             }}
           >
-            <X size={14} />
+            <X size={13} strokeWidth={2} />
           </button>
         </div>
 
-        {/* Multi-Select Control Bar */}
-        <div className="flex items-center justify-between mb-3 px-1">
+        {/* ── 2. Multi-Select Control Bar ── */}
+        <div className="flex items-center justify-between mb-2.5 px-1">
           <button
             type="button"
             onClick={handleToggleAll}
-            className="flex items-center gap-1.5 text-[12px] font-medium transition-opacity cursor-pointer hover:opacity-80"
+            className="flex items-center gap-1.5 text-[11.5px] font-semibold transition-opacity cursor-pointer hover:opacity-80 active:scale-95"
             style={{ color: "var(--text-secondary)" }}
           >
             {allSelected ? (
-              <CheckSquare size={14} className="text-[var(--text-primary)]" />
+              <CheckSquare
+                size={14}
+                strokeWidth={2}
+                className="text-[var(--text-primary)]"
+              />
             ) : (
-              <Square size={14} className="text-[var(--text-tertiary)]" />
+              <Square
+                size={14}
+                strokeWidth={2}
+                className="text-[var(--text-tertiary)]"
+              />
             )}
             <span>
               {allSelected
@@ -288,20 +326,22 @@ export function BatchTransactionReviewSheet({
                   ? "Batal Pilih Semua"
                   : "Deselect All"
                 : isIndonesian
-                ? "Pilih Semua"
-                : "Select All"}
+                  ? "Pilih Semua"
+                  : "Select All"}
             </span>
           </button>
 
-          <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
+          <span className="text-[10.5px] font-medium text-[var(--text-tertiary)] tabular-nums">
             {selectedCount} {isIndonesian ? "dari" : "of"} {items.length}{" "}
             {isIndonesian ? "dipilih" : "selected"}
-            {totalSelectedAmount > 0 ? ` · ${formatRupiah(totalSelectedAmount)}` : ""}
+            {totalSelectedAmount > 0
+              ? ` · ${formatRupiah(totalSelectedAmount)}`
+              : ""}
           </span>
         </div>
 
-        {/* Transaction List Cards */}
-        <div className="space-y-2.5 mb-4">
+        {/* ── 3. Transaction List Cards (Clean Studio Glass, Zero Glow) ── */}
+        <div className="space-y-2 mb-3.5 max-h-[56vh] overflow-y-auto no-scrollbar">
           {items.map((it) => {
             const isSelected = Boolean(selectedMap[it.id]);
             const isOutflow = it.type === "expense";
@@ -311,62 +351,79 @@ export function BatchTransactionReviewSheet({
               <div
                 key={it.id}
                 onClick={() => handleToggleItem(it.id)}
-                className="p-3 rounded-2xl transition-all border cursor-pointer select-none"
+                className="p-3 rounded-2xl transition-all cursor-pointer select-none active:scale-[0.99]"
                 style={{
                   background: isSelected
                     ? isDark
-                      ? "rgba(255, 255, 255, 0.05)"
-                      : "rgba(0, 0, 0, 0.03)"
-                    : "transparent",
-                  borderColor: isSelected
-                    ? "var(--glass-border)"
+                      ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                      : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)"
                     : isDark
-                    ? "rgba(255, 255, 255, 0.04)"
-                    : "rgba(0, 0, 0, 0.04)",
-                  opacity: isSelected ? 1 : 0.55,
+                      ? "rgba(255, 255, 255, 0.02)"
+                      : "rgba(0, 0, 0, 0.015)",
+                  border: isSelected
+                    ? isDark
+                      ? "1px solid rgba(255, 255, 255, 0.12)"
+                      : "1px solid rgba(0, 0, 0, 0.09)"
+                    : isDark
+                      ? "1px solid rgba(255, 255, 255, 0.05)"
+                      : "1px solid rgba(0, 0, 0, 0.04)",
+                  boxShadow: isSelected
+                    ? isDark
+                      ? "0 4px 16px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+                      : "0 2px 8px -2px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff"
+                    : "none",
+                  opacity: isSelected ? 1 : 0.5,
                 }}
               >
                 <div className="flex items-start gap-2.5">
-                  {/* Checkbox */}
+                  {/* Apple Tactile Checkbox */}
                   <div
-                    className="mt-0.5 w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all"
+                    className="mt-0.5 w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 transition-colors"
                     style={{
                       background: isSelected
-                        ? "var(--text-primary)"
+                        ? isDark
+                          ? "#ffffff"
+                          : "#18181b"
                         : "transparent",
-                      borderColor: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--text-tertiary)",
-                      color: isSelected ? "var(--bg-base)" : "transparent",
+                      border: isSelected
+                        ? "none"
+                        : isDark
+                          ? "1.5px solid rgba(255, 255, 255, 0.25)"
+                          : "1.5px solid rgba(0, 0, 0, 0.2)",
+                      color: isSelected
+                        ? isDark
+                          ? "#000000"
+                          : "#ffffff"
+                        : "transparent",
                     }}
                   >
-                    {isSelected && <Check size={12} strokeWidth={2.5} />}
+                    {isSelected && <Check size={11} strokeWidth={3} />}
                   </div>
 
                   {/* Transaction Content */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p
-                        className="text-[13px] font-semibold truncate leading-snug"
+                        className="text-[12.5px] font-bold truncate leading-tight tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {it.cleanDescription || it.description}
                       </p>
                       <span
-                        className="text-[13px] font-bold shrink-0 tracking-tight"
+                        className="text-[13px] font-bold shrink-0 tracking-tight tabular-nums"
                         style={{
                           color: isOutflow
                             ? "var(--text-primary)"
-                            : "var(--accent, #ffffff)",
+                            : "var(--text-secondary)",
                         }}
                       >
-                        {isOutflow ? "-" : "+"}
+                        {isOutflow ? "−" : "+"}
                         {formatRupiah(it.amount)}
                       </span>
                     </div>
 
-                    {/* Metadata & Quick Pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {/* Metadata & Quick Micro-Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                       {/* Type Toggle Pill */}
                       <button
                         type="button"
@@ -374,30 +431,30 @@ export function BatchTransactionReviewSheet({
                           e.stopPropagation();
                           handleToggleType(it.id);
                         }}
-                        className="h-5 px-2 rounded-full text-[10px] font-semibold flex items-center gap-1 border cursor-pointer active:scale-95 transition-transform"
+                        className="h-5 px-2 rounded-full text-[9.5px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
                         style={{
-                          background: "var(--glass-fill)",
-                          borderColor: "var(--glass-border)",
+                          background: buttonGlassBg,
+                          border: buttonGlassBorder,
                           color: "var(--text-secondary)",
                         }}
                       >
                         {isTransfer ? (
-                          <ArrowLeftRight size={10} />
+                          <ArrowLeftRight size={9.5} strokeWidth={2} />
                         ) : isOutflow ? (
-                          <ArrowUpRight size={10} />
+                          <ArrowUpRight size={9.5} strokeWidth={2} />
                         ) : (
-                          <ArrowDownLeft size={10} />
+                          <ArrowDownLeft size={9.5} strokeWidth={2} />
                         )}
                         <span>
                           {isTransfer
                             ? "Transfer"
                             : isOutflow
-                            ? isIndonesian
-                              ? "Keluar"
-                              : "Expense"
-                            : isIndonesian
-                            ? "Masuk"
-                            : "Income"}
+                              ? isIndonesian
+                                ? "Keluar"
+                                : "Outflow"
+                              : isIndonesian
+                                ? "Masuk"
+                                : "Inflow"}
                         </span>
                       </button>
 
@@ -408,10 +465,10 @@ export function BatchTransactionReviewSheet({
                           e.stopPropagation();
                           setActiveItemForCategory(it.id);
                         }}
-                        className="h-5 px-2 rounded-full text-[10px] font-medium flex items-center gap-1 border cursor-pointer active:scale-95 transition-transform"
+                        className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
                         style={{
-                          background: "var(--glass-fill)",
-                          borderColor: "var(--glass-border)",
+                          background: buttonGlassBg,
+                          border: buttonGlassBorder,
                           color: "var(--text-secondary)",
                         }}
                       >
@@ -421,7 +478,7 @@ export function BatchTransactionReviewSheet({
                             size="w-3 h-3"
                           />
                         )}
-                        <span className="truncate max-w-[90px]">
+                        <span className="truncate max-w-[85px]">
                           {it.suggestedCategoryName ||
                             (isIndonesian ? "Kategori" : "Category")}
                         </span>
@@ -430,92 +487,119 @@ export function BatchTransactionReviewSheet({
                       {/* Wallet Pill */}
                       {wallets.length > 0 && (
                         <div
-                          className="h-5 px-2 rounded-full text-[10px] font-medium flex items-center gap-1 border"
+                          className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1"
                           style={{
-                            background: "var(--glass-fill)",
-                            borderColor: "var(--glass-border)",
+                            background: buttonGlassBg,
+                            border: buttonGlassBorder,
                             color: "var(--text-tertiary)",
                           }}
                         >
-                          <span className="truncate max-w-[80px]">
-                            {wallets.find((w) => w.id === it.walletId)?.name || it.walletName || wallets[0].name}
+                          <span className="truncate max-w-[75px]">
+                            {wallets.find((w) => w.id === it.walletId)?.name ||
+                              it.walletName ||
+                              wallets[0].name}
                           </span>
                         </div>
                       )}
 
                       {/* Date & Time */}
-                      <div
-                        className="h-5 px-1.5 rounded-md text-[10px] flex items-center gap-1"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        <Calendar size={10} />
+                      <div className="h-5 px-1.5 rounded-md text-[9.5px] font-mono flex items-center gap-1 text-[var(--text-tertiary)]">
+                        <Calendar size={9.5} />
                         <span>{it.date}</span>
                         {it.time && (
                           <>
                             <span>·</span>
-                            <Clock size={10} />
+                            <Clock size={9.5} />
                             <span>{it.time}</span>
                           </>
                         )}
                       </div>
 
-                      {/* Needs Review Badge (Pilar 3) */}
-                      {(it.needsReview || (it.confidence !== undefined && it.confidence < 0.65)) && (
+                      {/* Needs Review Badge */}
+                      {(it.needsReview ||
+                        (it.confidence !== undefined &&
+                          it.confidence < 0.65)) && (
                         <div
-                          className="h-5 px-2 rounded-full text-[10px] font-medium flex items-center gap-1 border border-dashed"
+                          className="h-5 px-2 rounded-full text-[9px] font-medium flex items-center gap-1 border border-dashed"
                           style={{
-                            borderColor: "var(--glass-border)",
+                            borderColor: isDark
+                              ? "rgba(255, 255, 255, 0.12)"
+                              : "rgba(0, 0, 0, 0.12)",
                             color: "var(--text-tertiary)",
-                            background: isDark
-                              ? "rgba(255, 255, 255, 0.03)"
-                              : "rgba(0, 0, 0, 0.02)",
+                            background: buttonGlassBg,
                           }}
                         >
-                          <AlertCircle size={9} className="shrink-0 text-[var(--text-tertiary)]" />
-                          <span>{isIndonesian ? "Perlu Ditinjau" : "Needs Review"}</span>
+                          <AlertCircle size={9} className="shrink-0" />
+                          <span>
+                            {isIndonesian ? "Perlu Ditinjau" : "Review"}
+                          </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Bill Auto-Matching Badge (Pilar 2) */}
+                    {/* Bill Auto-Matching Inset Sub-Row */}
                     {it.matchedBill && (
                       <div
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleBillPaid(it.id);
                         }}
-                        className="mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium border cursor-pointer active:scale-[0.99] transition-transform select-none"
+                        className="mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl text-[10.5px] font-medium border cursor-pointer active:scale-[0.985] transition-all select-none"
                         style={{
                           background: it.matchedBill.confirmedPaid
                             ? isDark
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : "rgba(0, 0, 0, 0.04)"
+                              ? "rgba(255, 255, 255, 0.05)"
+                              : "rgba(0, 0, 0, 0.03)"
                             : "transparent",
-                          borderColor: "var(--glass-border)",
+                          borderColor: buttonGlassBorder,
                           color: "var(--text-primary)",
                         }}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Bookmark size={11} className="shrink-0 text-[var(--text-secondary)]" />
+                          <Bookmark
+                            size={11}
+                            strokeWidth={2}
+                            className="shrink-0 text-[var(--text-secondary)]"
+                          />
                           <span className="truncate">
-                            {isIndonesian ? `Tagihan: ${it.matchedBill.title}` : `Bill: ${it.matchedBill.title}`}
+                            {isIndonesian
+                              ? `Tagihan: ${it.matchedBill.title}`
+                              : `Bill: ${it.matchedBill.title}`}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-[var(--text-secondary)] font-medium">
+                        <div className="flex items-center gap-1.5 shrink-0 text-[9.5px] text-[var(--text-secondary)] font-semibold">
                           <span>
                             {it.matchedBill.confirmedPaid
-                              ? (isIndonesian ? "Tandai Lunas" : "Mark as Paid")
-                              : (isIndonesian ? "Jangan Tandai" : "Keep Unpaid")}
+                              ? isIndonesian
+                                ? "Tandai Lunas"
+                                : "Mark Paid"
+                              : isIndonesian
+                                ? "Lewati"
+                                : "Skip"}
                           </span>
                           <div
                             className="w-3.5 h-3.5 rounded flex items-center justify-center border transition-all"
                             style={{
-                              background: it.matchedBill.confirmedPaid ? "var(--text-primary)" : "transparent",
-                              borderColor: it.matchedBill.confirmedPaid ? "var(--text-primary)" : "var(--text-tertiary)",
-                              color: it.matchedBill.confirmedPaid ? "var(--bg-base)" : "transparent",
+                              background: it.matchedBill.confirmedPaid
+                                ? isDark
+                                  ? "#ffffff"
+                                  : "#18181b"
+                                : "transparent",
+                              borderColor: it.matchedBill.confirmedPaid
+                                ? "transparent"
+                                : isDark
+                                  ? "rgba(255, 255, 255, 0.2)"
+                                  : "rgba(0, 0, 0, 0.2)",
+                              color: it.matchedBill.confirmedPaid
+                                ? isDark
+                                  ? "#000000"
+                                  : "#ffffff"
+                                : "transparent",
                             }}
                           >
-                            {it.matchedBill.confirmedPaid && <Check size={9} strokeWidth={3} />}
+                            {it.matchedBill.confirmedPaid && (
+                              <Check size={9} strokeWidth={3} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -524,16 +608,16 @@ export function BatchTransactionReviewSheet({
                     {/* Duplicate Warning Badge */}
                     {it.isDuplicate && (
                       <div
-                        className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium"
+                        className="mt-1.5 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9.5px] font-medium"
                         style={{
                           background: isDark
-                            ? "rgba(255, 255, 255, 0.06)"
-                            : "rgba(0, 0, 0, 0.05)",
-                          color: "var(--text-secondary)",
-                          border: "1px solid var(--glass-border)",
+                            ? "rgba(255, 255, 255, 0.04)"
+                            : "rgba(0, 0, 0, 0.03)",
+                          color: "var(--text-tertiary)",
+                          border: buttonGlassBorder,
                         }}
                       >
-                        <AlertCircle size={11} className="shrink-0" />
+                        <AlertCircle size={10} className="shrink-0" />
                         <span className="truncate">
                           {isIndonesian
                             ? "Kemungkinan duplikat (tidak dicentang otomatis)"
@@ -548,21 +632,24 @@ export function BatchTransactionReviewSheet({
           })}
         </div>
 
-        {/* Action Controls Bar */}
-        <div className="pt-2 border-t border-[var(--glass-border)] flex items-center gap-2">
+        {/* ── 4. Action Controls Bar ── */}
+        <div
+          className="pt-2 border-t flex items-center gap-2"
+          style={{ borderColor: hairlineDivider }}
+        >
           {/* Save to Draft Button */}
           <button
             type="button"
             onClick={handleSaveToDraft}
-            className="flex-1 py-3 px-3 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer active:scale-95 select-none"
+            className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 select-none"
             style={{
-              background: "var(--glass-fill)",
-              borderColor: "var(--glass-border)",
+              background: buttonGlassBg,
+              border: buttonGlassBorder,
               color: "var(--text-primary)",
             }}
           >
-            <Bookmark size={13} />
-            <span>{isIndonesian ? "Simpan ke Draft" : "Save to Draft"}</span>
+            <Bookmark size={13} strokeWidth={2} />
+            <span>{isIndonesian ? "Simpan ke Draft" : "Save Draft"}</span>
           </button>
 
           {/* Confirm & Record Button */}
@@ -570,10 +657,10 @@ export function BatchTransactionReviewSheet({
             type="button"
             disabled={selectedCount === 0 || isSubmitting}
             onClick={handleApprove}
-            className="flex-1 py-3 px-3 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed select-none shadow-sm"
+            className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed select-none shadow-xs"
             style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
+              background: isDark ? "#ffffff" : "#18181b",
+              color: isDark ? "#000000" : "#ffffff",
             }}
           >
             {isSubmitting ? (
@@ -593,49 +680,64 @@ export function BatchTransactionReviewSheet({
           </button>
         </div>
 
-        {/* Category Picker Popover Sheet */}
+        {/* ── 5. Category Picker Popover Sheet ── */}
         {activeItemForCategory && (
           <div
             className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
-            style={{ background: "rgba(0,0,0,0.6)" }}
+            style={{ background: "rgba(0, 0, 0, 0.45)" }}
             onClick={() => setActiveItemForCategory(null)}
           >
             <div
-              className="w-full max-w-sm rounded-[24px] p-4 border select-none max-h-[75vh] flex flex-col"
+              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[75vh] flex flex-col"
               style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
+                background: isDark
+                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
+                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+                borderColor: buttonGlassBorder,
                 color: "var(--text-primary)",
+                boxShadow: isDark
+                  ? "0 18px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                  : "0 14px 36px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between pb-3 mb-2 border-b border-[var(--glass-border)]">
-                <h4 className="text-[14px] font-semibold">
+              <div
+                className="flex items-center justify-between pb-2.5 mb-2 border-b"
+                style={{ borderColor: hairlineDivider }}
+              >
+                <h4 className="text-[13.5px] font-bold">
                   {isIndonesian ? "Pilih Kategori" : "Select Category"}
                 </h4>
                 <button
                   type="button"
                   onClick={() => setActiveItemForCategory(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ color: "var(--text-tertiary)" }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
-                  <X size={14} />
+                  <X size={13} strokeWidth={2} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-1">
+              <div className="flex-1 overflow-y-auto space-y-0.5 no-scrollbar">
                 {categories.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => handleSelectCategory(c)}
-                    className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-[var(--glass-fill)] cursor-pointer text-left"
+                    className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <IconRenderer icon={c.emoji} size="w-4 h-4" />
-                      <span className="text-[13px] font-medium">{c.name}</span>
+                      <span className="text-[12.5px] font-medium">
+                        {c.name}
+                      </span>
                     </div>
-                    <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
+                    <ChevronRight
+                      size={13}
+                      strokeWidth={2}
+                      className="text-[var(--text-tertiary)]"
+                    />
                   </button>
                 ))}
               </div>

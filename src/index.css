@@ -328,6 +328,7 @@ body,
     );
     opacity: 0.45;
     pointer-events: none;
+    display: none !important;
   }
 
   .light .glass-surface,
@@ -649,18 +650,7 @@ textarea:not([readonly]) {
 .spatial-canvas {
   position: relative;
   background-color: var(--bg-base);
-  background-image:
-    radial-gradient(
-      ellipse at 15% 15%,
-      rgba(255, 255, 255, 0.05) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at 85% 75%,
-      rgba(255, 255, 255, 0.03) 0%,
-      transparent 50%
-    );
-  overflow: hidden;
+  background-image: none !important;
 }
 
 .light .spatial-canvas,

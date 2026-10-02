@@ -159,25 +159,50 @@ export function PortfolioIntelligenceDeck({
         ? { label: isIndonesian ? "Moderat" : "Moderate", desc: isIndonesian ? "Keseimbangan seimbang antara stabilitas & pertumbuhan" : "Balanced growth with risk buffer" }
         : { label: isIndonesian ? "Defensif" : "Defensive", desc: isIndonesian ? "Didominasi modal likuid & lindung nilai modal" : "Capital preservation focus" };
 
+  const cardBg = isDark
+    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const cardShadow = isDark
+    ? "0 18px 44px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
+
   return (
     <section className="space-y-4 select-none">
       {/* ── Unified Portfolio Performance & Risk Profile (Segmented) ── */}
       <div
-        className="p-5 rounded-[24px] space-y-4 relative overflow-hidden"
+        className="p-5 rounded-[26px] space-y-4 relative overflow-hidden"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
+          background: cardBg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
         }}
       >
+        {/* Specular Rim Light Reflection */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
+
         {/* Header with Segmented Switcher (Zero Text Cutoff) */}
         <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <div
               className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                border: cardBorder,
                 color: "var(--text-primary)",
               }}
             >
@@ -207,10 +232,10 @@ export function PortfolioIntelligenceDeck({
 
           {/* Segmented Switcher Pill (Apple Luxury Minimal) */}
           <div
-            className="flex items-center p-0.5 rounded-full shrink-0"
+            className="flex items-center p-1 rounded-2xl shrink-0"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
+              background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.035)",
+              border: cardBorder,
             }}
           >
             <button
@@ -219,15 +244,16 @@ export function PortfolioIntelligenceDeck({
                 triggerHaptic("light");
                 setActiveTelemetryTab("performance");
               }}
-              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 cursor-pointer"
+              className="px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all duration-200 cursor-pointer"
               style={
                 activeTelemetryTab === "performance"
                   ? {
-                      background: "var(--text-primary)",
-                      color: "var(--bg-base)",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+                      background: isDark ? "#FFFFFF" : "#18181B",
+                      color: isDark ? "#0A0A0B" : "#FFFFFF",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
                     }
                   : {
+                      background: "transparent",
                       color: "var(--text-secondary)",
                     }
               }
@@ -240,15 +266,16 @@ export function PortfolioIntelligenceDeck({
                 triggerHaptic("light");
                 setActiveTelemetryTab("risk");
               }}
-              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 cursor-pointer"
+              className="px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all duration-200 cursor-pointer"
               style={
                 activeTelemetryTab === "risk"
                   ? {
-                      background: "var(--text-primary)",
-                      color: "var(--bg-base)",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+                      background: isDark ? "#FFFFFF" : "#18181B",
+                      color: isDark ? "#0A0A0B" : "#FFFFFF",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
                     }
                   : {
+                      background: "transparent",
                       color: "var(--text-secondary)",
                     }
               }
@@ -270,8 +297,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                  border: cardBorder,
                   color: "var(--text-primary)",
                 }}
               >
@@ -291,8 +318,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="p-3.5 rounded-2xl space-y-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  border: cardBorder,
                 }}
               >
                 <span
@@ -317,8 +344,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="p-3.5 rounded-2xl space-y-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  border: cardBorder,
                 }}
               >
                 <span
@@ -392,8 +419,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                  border: cardBorder,
                   color: "var(--text-primary)",
                 }}
               >
@@ -437,8 +464,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="p-3 rounded-xl space-y-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  border: cardBorder,
                 }}
               >
                 <div className="flex items-center gap-1">
@@ -459,8 +486,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="p-3 rounded-xl space-y-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  border: cardBorder,
                 }}
               >
                 <div className="flex items-center gap-1">
@@ -481,8 +508,8 @@ export function PortfolioIntelligenceDeck({
               <div
                 className="p-3 rounded-xl space-y-1"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  border: cardBorder,
                 }}
               >
                 <div className="flex items-center gap-1">
@@ -504,8 +531,13 @@ export function PortfolioIntelligenceDeck({
 
         {/* Sticky Mini Telemetry Footer (Monochrome, 1 Line) */}
         <div
-          className="pt-2.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[10.5px]"
-          style={{ color: "var(--text-tertiary)" }}
+          className="pt-2.5 flex items-center justify-between text-[10.5px]"
+          style={{
+            borderTop: isDark
+              ? "1px solid rgba(255, 255, 255, 0.06)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
+            color: "var(--text-tertiary)",
+          }}
         >
           <span>
             {isIndonesian ? "Profil:" : "Stance:"}{" "}
