@@ -12,7 +12,11 @@ describe("Portfolio Holdings Workstation & App Icon Suite", () => {
       "public/favicon.png",
       "public/icon-dark.png",
       "public/icon-light.png",
+      "public/trouvaille-3d-logo.png",
       "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png",
+      "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
     ];
 
     for (const relPath of requiredIcons) {

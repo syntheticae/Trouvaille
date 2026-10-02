@@ -26,8 +26,10 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
-scripts/
+scripts/*
+!scripts/generate-all-app-icons.cjs
+!scripts/make-1024-icon.cjs
+!scripts/optimize-pwa.cjs
 trouvaille-web/
 conteks/
 *.traineddata

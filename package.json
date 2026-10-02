@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:icons": "node scripts/generate-all-app-icons.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
