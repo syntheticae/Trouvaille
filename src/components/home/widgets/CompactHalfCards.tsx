@@ -1,4 +1,4 @@
-import { Zap, Clock } from "lucide-react";
+import { Zap, Clock, SlidersHorizontal, ChevronRight } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import { CompactShell } from "./CompactShell";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -324,4 +324,193 @@ export function CompactTopCategoriesHalf({
     </CompactShell>
   );
 }
+
+export function CompactCategoryBudgetsHalf({
+  topEnvelope,
+  totalEnvelopesCount,
+  hideBalance,
+  onOpenManage,
+}: {
+  topEnvelope?: {
+    name: string;
+    spent: number;
+    budgetAmount: number;
+    percentage: number;
+    isOverbudget: boolean;
+    emoji?: string;
+  } | null;
+  totalEnvelopesCount: number;
+  hideBalance?: boolean;
+  onOpenManage?: () => void;
+}) {
+  const { isIndonesian } = useLanguage();
+
+  return (
+    <CompactShell
+      title={isIndonesian ? "Amplop Anggaran" : "Category Budgets"}
+      onOpenDetail={onOpenManage}
+    >
+      {topEnvelope && totalEnvelopesCount > 0 ? (
+        <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+          <div>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+                {topEnvelope.name}
+              </span>
+              <span
+                className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md ${
+                  topEnvelope.isOverbudget
+                    ? "text-[var(--text-primary)] font-bold"
+                    : "text-[var(--text-secondary)]"
+                }`}
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {topEnvelope.isOverbudget
+                  ? isIndonesian
+                    ? "Lebih"
+                    : "Over"
+                  : `${topEnvelope.percentage}%`}
+              </span>
+            </div>
+
+            <p className="text-[14px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1 truncate">
+              {hideBalance ? "••••" : formatRupiah(topEnvelope.spent)}
+              <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1">
+                / {hideBalance ? "••••" : formatRupiah(topEnvelope.budgetAmount)}
+              </span>
+            </p>
+          </div>
+
+          <div className="shrink-0 space-y-1">
+            <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-[var(--text-primary)] transition-all"
+                style={{
+                  width: `${Math.min(100, Math.max(3, topEnvelope.percentage))}%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[9.5px] text-[var(--text-tertiary)]">
+              <span>
+                {isIndonesian
+                  ? `${totalEnvelopesCount} kuota aktif`
+                  : `${totalEnvelopesCount} active`}
+              </span>
+              <span className="font-medium text-[var(--text-secondary)]">
+                {topEnvelope.percentage}%
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+          <div className="flex items-center gap-2 pt-1">
+            <div
+              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <SlidersHorizontal size={13} strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11.5px] font-semibold text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Belum Diatur" : "Not Configured"}
+              </p>
+              <p className="text-[9.5px] text-[var(--text-tertiary)] truncate">
+                {isIndonesian ? "Batas kuota belanja" : "Envelope limits"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenManage?.();
+            }}
+            className="w-full py-1.5 px-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform cursor-pointer"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <span>{isIndonesian ? "Atur Kuota" : "Set Limits"}</span>
+            <ChevronRight size={11} />
+          </button>
+        </div>
+      )}
+    </CompactShell>
+  );
+}
+
+export function CompactSavingsRateVelocityHalf({
+  savingsRate,
+  runwayMonths,
+  onOpenDetail,
+}: {
+  savingsRate: number;
+  runwayMonths: number;
+  onOpenDetail?: () => void;
+}) {
+  const { isIndonesian } = useLanguage();
+
+  return (
+    <CompactShell
+      title={isIndonesian ? "Rasio & Runway" : "Savings & Runway"}
+      onOpenDetail={onOpenDetail}
+    >
+      <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+        {/* Savings Rate Section */}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Rasio Tabungan" : "Savings Rate"}
+            </span>
+            <p className="text-[17px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
+              {savingsRate}%
+            </p>
+          </div>
+          <span
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-[var(--text-secondary)]"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {savingsRate >= 20 ? (isIndonesian ? "Optimal" : "Optimal") : (isIndonesian ? "Moderat" : "Moderate")}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-black/5 dark:border-white/5 my-0.5" />
+
+        {/* Runway Section */}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Runway Kas" : "Runway"}
+            </span>
+            <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-tight mt-0.5">
+              {runwayMonths > 0 ? runwayMonths.toFixed(1) : "0.0"}{" "}
+              <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
+                {isIndonesian ? "bulan" : "mo"}
+              </span>
+            </p>
+          </div>
+          <span className="text-[9.5px] text-[var(--text-tertiary)] font-medium">
+            {isIndonesian ? "Cadangan" : "Buffer"}
+          </span>
+        </div>
+      </div>
+    </CompactShell>
+  );
+}
+
 

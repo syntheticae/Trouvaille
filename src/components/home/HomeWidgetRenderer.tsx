@@ -27,6 +27,8 @@ import {
   CompactGoalsHalf,
   CompactBillsHalf,
   CompactTopCategoriesHalf,
+  CompactCategoryBudgetsHalf,
+  CompactSavingsRateVelocityHalf,
   SavingsRingCard,
   SpendingVelocityBarCard,
   CategoryDonutCard,
@@ -754,13 +756,74 @@ export function HomeWidgetRenderer({
         </section>
       );
 
-    case "category_budgets":
+    case "category_budgets": {
+      if (size === "half") {
+        const configuredCats = categories.filter(
+          (c: any) => c.type !== "income" && Number(c.budget_amount || 0) > 0,
+        );
+
+        if (configuredCats.length === 0) {
+          return (
+            <CompactCategoryBudgetsHalf
+              totalEnvelopesCount={0}
+              hideBalance={hideBalance}
+              onOpenManage={onOpenCategoryManagement}
+            />
+          );
+        }
+
+        const spendMap = new Map<string, number>();
+        monthTxs.forEach((t: any) => {
+          if (t.type !== "expense") return;
+          const isCorrection =
+            t.note?.includes("[Correction]") ||
+            t.note?.includes("Saldo Awal") ||
+            t.note?.includes("Opening Balance");
+          if (isCorrection) return;
+
+          const amt = Number(t.amount || 0);
+          const catId = t.category_id || "uncategorized";
+          spendMap.set(catId, (spendMap.get(catId) || 0) + amt);
+        });
+
+        const items = configuredCats.map((cat: any) => {
+          const spent = spendMap.get(cat.id) || 0;
+          const budgetAmount = Number(cat.budget_amount || 0);
+          const percentage =
+            budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
+          const remaining = budgetAmount - spent;
+          return {
+            id: cat.id,
+            name: cat.name,
+            emoji: cat.emoji || "Wallet",
+            budgetAmount,
+            spent,
+            percentage,
+            remaining,
+            isOverbudget: spent > budgetAmount,
+          };
+        });
+
+        items.sort((a: any, b: any) => b.percentage - a.percentage);
+        const topEnvelope = items[0];
+
+        return (
+          <CompactCategoryBudgetsHalf
+            topEnvelope={topEnvelope}
+            totalEnvelopesCount={configuredCats.length}
+            hideBalance={hideBalance}
+            onOpenManage={onOpenCategoryManagement}
+          />
+        );
+      }
+
       return (
         <CategoryBudgetDeck
           onOpenManageCategories={onOpenCategoryManagement}
           hideBalance={hideBalance}
         />
       );
+    }
 
     case "recent_transactions":
       if (allTxs.length === 0) return null;
@@ -788,18 +851,40 @@ export function HomeWidgetRenderer({
               return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-2xl glass-surface border border-[var(--glass-border)]"
+                  className="flex items-center justify-between p-3 rounded-2xl glass-surface relative overflow-hidden"
                   style={{
-                    background: "var(--bg-elevated)",
-                    boxShadow: "var(--shadow-card)",
+                    background: isDark
+                      ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+                      : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                      : "1px solid rgba(0, 0, 0, 0.06)",
+                    boxShadow: isDark
+                      ? "0 8px 24px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                      : "0 4px 14px -3px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff",
+                    backdropFilter: "blur(24px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
                   }}
                 >
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+                    style={{
+                      background: isDark
+                        ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+                        : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+                    }}
+                  />
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                       style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.035)",
+                        border: isDark
+                          ? "1px solid rgba(255, 255, 255, 0.08)"
+                          : "1px solid rgba(0, 0, 0, 0.06)",
                       }}
                     >
                       <IconRenderer icon={resCat.emoji} size="w-5 h-5" />
@@ -962,7 +1047,55 @@ export function HomeWidgetRenderer({
         </section>
       );
 
-    case "savings_rate_velocity":
+    case "savings_rate_velocity": {
+      const savingsRate =
+        currentMonthStats.income > 0
+          ? Math.max(
+              0,
+              Math.round(
+                ((currentMonthStats.income - currentMonthStats.expense) /
+                  currentMonthStats.income) *
+                  100,
+              ),
+            )
+          : 0;
+      const runway =
+        currentMonthStats.expense > 0
+          ? liquidAssets / currentMonthStats.expense
+          : 0;
+
+      if (size === "half") {
+        return (
+          <CompactSavingsRateVelocityHalf
+            savingsRate={savingsRate}
+            runwayMonths={runway}
+            onOpenDetail={() => {
+              onOpenMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent:
+                    currentMonthStats.income - currentMonthStats.expense,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  title: isIndonesian
+                    ? "Telemetri Laju Tabungan"
+                    : "Savings Telemetry",
+                  subtitle: isIndonesian
+                    ? `Rasio tabungan saat ini ${savingsRate}% dengan estimasi ketahanan dana likuid ${runway > 0 ? runway.toFixed(1) : "0"} bulan.`
+                    : `Current savings rate is ${savingsRate}% with estimated liquid runway of ${runway > 0 ? runway.toFixed(1) : "0"} months.`,
+                  badge: isIndonesian ? "Rasio & Runway" : "Rate & Runway",
+                  ctaLabel: isIndonesian
+                    ? "Lihat Analisis Statistik"
+                    : "View Statistics Analytics",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
+        );
+      }
+
       return (
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
@@ -982,7 +1115,7 @@ export function HomeWidgetRenderer({
             </span>
           </div>
           <div
-            className={`p-4 rounded-3xl glass-surface border border-[var(--glass-border)] grid ${size === "half" ? "grid-cols-1" : "grid-cols-2"} gap-3`}
+            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] grid grid-cols-2 gap-3"
             style={{
               background: "var(--bg-elevated)",
               boxShadow: "var(--shadow-card)",
@@ -1005,9 +1138,7 @@ export function HomeWidgetRenderer({
                 className="text-[20px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                {currentMonthStats.income > 0
-                  ? `${Math.max(0, Math.round(((currentMonthStats.income - currentMonthStats.expense) / currentMonthStats.income) * 100))}%`
-                  : "0%"}
+                {savingsRate}%
               </p>
               <p
                 className="text-[10px]"
@@ -1036,7 +1167,7 @@ export function HomeWidgetRenderer({
                 style={{ color: "var(--text-primary)" }}
               >
                 {currentMonthStats.expense > 0
-                  ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} ${isIndonesian ? "bln" : "mo"}`
+                  ? `${runway.toFixed(1)} ${isIndonesian ? "bln" : "mo"}`
                   : "∞"}
               </p>
               <p
@@ -1051,6 +1182,7 @@ export function HomeWidgetRenderer({
           </div>
         </section>
       );
+    }
 
     case "savings_ring":
       return (

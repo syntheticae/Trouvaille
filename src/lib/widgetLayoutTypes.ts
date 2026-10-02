@@ -114,7 +114,7 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
     page: "home",
     category: "planning",
     size: "full",
-    supportedSizes: ["full"],
+    supportedSizes: ["full", "half"],
     order: 9,
     isVisible: true,
   },

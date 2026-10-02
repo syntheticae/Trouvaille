@@ -176,7 +176,7 @@ export function WidgetCardWrapper({
       {/* Edit Mode Specular Border Ring */}
       <div
         className={`rounded-[26px] ${
-          isHalf ? "h-full" : ""
+          isHalf ? "h-full min-h-0 overflow-hidden" : ""
         } ${
           isEditMode
             ? "ring-2 ring-white/20 ring-offset-2 ring-offset-black/50 transition-shadow duration-200"

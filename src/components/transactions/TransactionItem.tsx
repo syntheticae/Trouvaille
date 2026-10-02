@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useRef } from "react";
-import { motion, type PanInfo } from "framer-motion";
+import { motion, type PanInfo, useMotionValue, useTransform } from "framer-motion";
 import {
   ArrowLeftRight,
   Clock,
@@ -73,6 +73,10 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   const isDraggingRef = useRef(false);
   const longPressTimerRef = useRef<any>(null);
 
+  // Motion value for horizontal swipe with fade-in reveal for actions
+  const dragX = useMotionValue(0);
+  const revealOpacity = useTransform(dragX, [-80, -20, 0, 20, 80], [1, 0.4, 0, 0.4, 1]);
+
   const clearLongPress = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -120,42 +124,43 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
     }
   };
 
-  // ── Clean Studio Glass Tokens (Rata, Zero Glow, Tanpa Efek Sisi Kiri) ──
+  // ── Apple Liquid Glass Studio Tokens ──
   const cardBg = isSelected
     ? isDark
       ? "rgba(255, 255, 255, 0.08)"
       : "rgba(0, 0, 0, 0.05)"
     : isDark
-      ? "linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 100%)"
-      : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
+      ? "linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%)"
+      : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
 
   const cardBorder = isSelected
     ? isDark
       ? "1px solid rgba(255, 255, 255, 0.35)"
       : "1px solid rgba(0, 0, 0, 0.25)"
     : isDark
-      ? "1px solid rgba(255, 255, 255, 0.07)"
-      : "1px solid rgba(0, 0, 0, 0.05)";
+      ? "1px solid rgba(255, 255, 255, 0.08)"
+      : "1px solid rgba(0, 0, 0, 0.06)";
 
   const cardShadow = isDark
-    ? "0 4px 16px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-    : "0 2px 8px -2px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
+    ? "0 10px 28px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+    : "0 4px 16px -3px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
 
   const iconBg = isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.035)";
 
   const iconBorder = isDark
-    ? "1px solid rgba(255, 255, 255, 0.07)"
-    : "1px solid rgba(0, 0, 0, 0.05)";
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
 
   return (
     <div className="relative rounded-[20px] overflow-hidden select-none touch-pan-y">
-      {/* Background Actions Reveal Layer */}
+      {/* Background Actions Reveal Layer (Transparent when idle to eliminate muddy blur) */}
       {!isSelectMode && (
-        <div
+        <motion.div
           className="absolute inset-0 flex items-center justify-between px-5 rounded-[20px]"
           style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+            opacity: revealOpacity,
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.04)",
           }}
         >
           {/* Left Side: Duplicate */}
@@ -169,7 +174,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
             <span>{isIndonesian ? "Hapus" : "Delete"}</span>
             <Trash2 size={15} strokeWidth={2} />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Foreground Swipeable Card */}
@@ -191,15 +196,26 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
         onTap={handleTapOrClick}
         className="p-3 sm:p-3.5 rounded-[20px] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform relative z-10"
         style={{
+          x: dragX,
           willChange: "transform",
           transform: "translateZ(0)",
           background: cardBg,
           border: cardBorder,
           boxShadow: cardShadow,
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
         }}
       >
+        {/* Specular Rim Highlight */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+              : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+          }}
+        />
         <div className="flex items-center gap-2.5 min-w-0 pr-2">
           {/* Selection Checkbox */}
           {isSelectMode && (
