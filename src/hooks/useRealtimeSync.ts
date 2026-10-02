@@ -9,6 +9,7 @@ import {
 import { categoryKeys } from "./useCategories";
 import { useOptionalSpace } from "../contexts/SpaceContext";
 import type { DynamicIslandHUDData } from "../components/transactions/DynamicIslandHUD";
+import { fetchHoldingsFromSupabase } from "../lib/marketPriceService";
 
 export interface UseRealtimeSyncOptions {
   onPartnerTransaction?: (data: DynamicIslandHUDData) => void;
@@ -139,6 +140,21 @@ export function useRealtimeSync(
         () => {
           // Cloud membership updated (e.g. joined ledger, role change)
           void refreshLedgersRef.current?.();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "holdings",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          // Cloud holding changed (e.g. edited in Supabase, from Web, or another device)
+          fetchHoldingsFromSupabase(userId).catch((e) =>
+            console.warn("[useRealtimeSync] holdings sync error:", e),
+          );
         },
       )
       .subscribe((status) => {

@@ -52,6 +52,7 @@ import {
   hasGuestData,
   discardGuestData,
 } from "./lib/guestMigration";
+import { fetchHoldingsFromSupabase } from "./lib/marketPriceService";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 import { useSpace } from "./contexts/SpaceContext";
@@ -721,6 +722,10 @@ function AppShell() {
       setIsInitDone(true);
     }
     if (user?.id && !isGuest) {
+      fetchHoldingsFromSupabase(user.id).catch((e) =>
+        console.warn("[App] Cloud holdings fetch error:", e),
+      );
+
       const migrationKey = `trouvaille_migrated_guest_${user.id}`;
       const isAlreadyHandled = localStorage.getItem(migrationKey) === "true";
       if (!isAlreadyHandled && hasGuestData()) {
@@ -838,6 +843,7 @@ function AppShell() {
                 .select("*")
                 .eq("user_id", user.id)
                 .order("due_date", { ascending: true }),
+              fetchHoldingsFromSupabase(user.id),
             ]);
 
             setSyncedTxCount(freshTxs.length);

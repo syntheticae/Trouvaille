@@ -37,7 +37,7 @@ export function useWalletBalances(targetSpaceId?: string) {
     if (wallets.length > 0 && allTxs.length > 0) {
       bridgeCryptoAccountToHolding(wallets, allTxs, user?.id);
     }
-  }, [wallets, allTxs, user?.id]);
+  }, [wallets, allTxs, user?.id, holdingsTick]);
 
   const activeSpaceId = targetSpaceId || spaceCtx?.activeSpaceId || "personal";
 

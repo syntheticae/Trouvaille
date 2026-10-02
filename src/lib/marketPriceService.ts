@@ -394,6 +394,17 @@ export async function deleteHoldingFromSupabase(id: string, userId: string): Pro
   }
 }
 
+const holdingsHydratedUsers = new Set<string>();
+
+export function isHoldingsHydrated(userId?: string): boolean {
+  if (!userId || userId === "guest_local_user") return true;
+  return holdingsHydratedUsers.has(userId);
+}
+
+export function markHoldingsHydrated(userId: string): void {
+  if (userId) holdingsHydratedUsers.add(userId);
+}
+
 /**
  * Loads cloud holdings from Supabase and merges into local cache.
  */
@@ -407,6 +418,7 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
       .order("updated_at", { ascending: false });
 
     if (!error && Array.isArray(data)) {
+      markHoldingsHydrated(userId);
       // Map deduplicating by normalized symbol, keeping the latest / highest-unit row
       const symbolMap = new Map<string, any>();
       for (const row of data) {
@@ -484,10 +496,14 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
       }
 
       saveHoldings(nonUsdtHoldings, userId, false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
+      }
       return nonUsdtHoldings;
     }
   } catch (e) {
     console.warn("[fetchHoldingsFromSupabase] Fetch notice:", e);
+    markHoldingsHydrated(userId);
   }
   return getSavedHoldings(userId);
 }

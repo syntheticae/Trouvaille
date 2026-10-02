@@ -10,6 +10,8 @@ import {
   getReconciledTxIds,
   markTxAsReconciled,
   USD_IDR_ESTIMATE,
+  isHoldingsHydrated,
+  fetchHoldingsFromSupabase,
   type UsdtValuationPref,
 } from "./marketPriceService";
 
@@ -826,38 +828,31 @@ export function bridgeCryptoAccountToHolding(
 
   const allHoldings = getSavedHoldings(userId);
   const existingUsdt = allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT");
+
+  // Safeguard: If user is authenticated but cloud holdings have not yet finished hydrating,
+  // do NOT synthesize and overwrite Supabase with an auto-calculated ledger guess!
+  if (userId && userId !== "guest_local_user" && !existingUsdt && !isHoldingsHydrated(userId)) {
+    fetchHoldingsFromSupabase(userId).catch(() => {});
+    return null;
+  }
+
   const usdtPref = getSavedUsdtPref(userId);
   const liveRate =
     (existingUsdt?.current_price && existingUsdt.current_price > 5000 ? existingUsdt.current_price : 0) ||
     (usdtPref.rate > 5000 ? usdtPref.rate : USD_IDR_ESTIMATE);
 
-  // Check if user has already manually calibrated units (via "Manual balance correction" activity)
-  const hasManualUnitCalibration = (existingUsdt?.activities || []).some(
-    (a) =>
-      a.note?.toLowerCase().includes("manual") ||
-      a.note?.toLowerCase().includes("koreksi") ||
-      a.note?.toLowerCase().includes("calibration"),
-  );
-
+  // Sovereign Units Ground Truth: Once units exist (> 0), never overwrite units via cash ledger formula!
   let resolvedUnits: number;
   let resolvedAvgBuyPrice: number;
 
-  if (existingUsdt && existingUsdt.units > 0 && hasManualUnitCalibration) {
-    // User explicitly set their exact USDT coin count; keep their units and anchor Cost Basis to ledger balance
+  if (existingUsdt && existingUsdt.units > 0) {
     resolvedUnits = existingUsdt.units;
-    resolvedAvgBuyPrice = Math.round((recordedCryptoBalance / resolvedUnits) * 100) / 100;
-  } else if (
-    existingUsdt &&
-    existingUsdt.units > 0 &&
-    existingUsdt.avg_buy_price > 0 &&
-    Math.abs(existingUsdt.avg_buy_price - existingUsdt.current_price) > 5 &&
-    Math.abs(existingUsdt.units * existingUsdt.avg_buy_price - recordedCryptoBalance) < 5000
-  ) {
-    // Already properly bridged and anchored
-    resolvedUnits = existingUsdt.units;
-    resolvedAvgBuyPrice = existingUsdt.avg_buy_price;
+    resolvedAvgBuyPrice =
+      existingUsdt.avg_buy_price > 0
+        ? existingUsdt.avg_buy_price
+        : Math.round((recordedCryptoBalance / resolvedUnits) * 100) / 100;
   } else {
-    // Auto-bridge from historical ledger transactions
+    // Auto-bridge from historical ledger transactions only when no prior holding units exist
     resolvedAvgBuyPrice = estimatedAvgBuyPrice;
     resolvedUnits = Number((recordedCryptoBalance / resolvedAvgBuyPrice).toFixed(4));
   }

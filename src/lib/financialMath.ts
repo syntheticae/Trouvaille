@@ -630,8 +630,8 @@ export function calculateWalletBalances(
       }
     }
 
-    const fromEntry = getWallet(fromIdOrName || "Cash");
-    const toEntry = getWallet(toIdOrName || "BNI");
+    const fromEntry = getWallet(fromIdOrName || defaultWallet.id);
+    const toEntry = getWallet(toIdOrName || defaultWallet.id);
 
     const isCorrection = isCorrectionTx(tx);
 
