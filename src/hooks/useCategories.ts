@@ -716,22 +716,16 @@ export function useEnsureDefaultCategories(options?: {
           .select("id, name, type")
           .eq("user_id", user.id);
 
+        // If the user already has categories, NEVER inject defaults
+        if (existing && existing.length > 0) {
+          return;
+        }
+
         const targetDefaults = getDefaultCategories(options);
-
-        const existingMap = new Set(
-          (existing || []).map(
-            (c) => `${c.type}_${c.name.trim().toLowerCase()}`,
-          ),
-        );
-
-        const missing = targetDefaults.filter(
-          (c) => !existingMap.has(`${c.type}_${c.name.trim().toLowerCase()}`),
-        );
-
-        if (missing.length > 0) {
+        if (targetDefaults.length > 0) {
           await supabase
             .from("categories")
-            .insert(missing.map((c) => ({ ...c, user_id: user.id })));
+            .insert(targetDefaults.map((c) => ({ ...c, user_id: user.id })));
         }
       } catch (err) {
         console.warn("useEnsureDefaultCategories error:", err);

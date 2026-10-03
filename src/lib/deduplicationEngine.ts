@@ -12,8 +12,63 @@ export interface DeduplicationSummary {
 }
 
 /**
+ * Cross-lingual canonical keys for standard default categories.
+ * Maps English and Indonesian default equivalents to the same canonical key,
+ * preventing bilingual duplicate bloat (e.g., Food & Dining alongside Makanan & Minuman).
+ */
+export const CROSS_LINGUAL_CANONICAL_KEY: Record<string, string> = {
+  // Income Universal Streams
+  "income:salary & wages": "canonical_income_salary",
+  "income:gaji & upah": "canonical_income_salary",
+  "income:business & freelance": "canonical_income_business",
+  "income:bisnis & freelance": "canonical_income_business",
+  "income:bonuses & commissions": "canonical_income_bonus",
+  "income:bonus & komisi": "canonical_income_bonus",
+  "income:investments & dividends": "canonical_income_investments",
+  "income:investasi & dividen": "canonical_income_investments",
+  "income:interest & passive income": "canonical_income_interest",
+  "income:bunga & imbal hasil": "canonical_income_interest",
+  "income:cashback & refunds": "canonical_income_cashback",
+  "income:pengembalian & diskon": "canonical_income_cashback",
+  "income:gifts & grants": "canonical_income_gifts",
+  "income:hadiah & hibah": "canonical_income_gifts",
+  "income:other income": "canonical_income_other",
+  "income:pendapatan lainnya": "canonical_income_other",
+
+  // Expense Universal Pillars
+  "expense:food & dining": "canonical_expense_food",
+  "expense:makanan & minuman": "canonical_expense_food",
+  "expense:groceries & supermarket": "canonical_expense_groceries",
+  "expense:transportation & travel": "canonical_expense_transportation",
+  "expense:transportasi & kendaraan": "canonical_expense_transportation",
+  "expense:housing & utilities": "canonical_expense_housing",
+  "expense:hunian & utilitas": "canonical_expense_housing",
+  "expense:bills & subscriptions": "canonical_expense_bills",
+  "expense:tagihan & langganan": "canonical_expense_bills",
+  "expense:shopping & lifestyle": "canonical_expense_shopping",
+  "expense:belanja & gaya hidup": "canonical_expense_shopping",
+  "expense:health & medical": "canonical_expense_health",
+  "expense:kesehatan & medis": "canonical_expense_health",
+  "expense:entertainment & leisure": "canonical_expense_entertainment",
+  "expense:hiburan & rekreasi": "canonical_expense_entertainment",
+  "expense:family & personal care": "canonical_expense_family",
+  "expense:keluarga & pribadi": "canonical_expense_family",
+  "expense:education & career": "canonical_expense_education",
+  "expense:pendidikan & karier": "canonical_expense_education",
+  "expense:pendidikan & karir": "canonical_expense_education",
+  "expense:gifts & donations": "canonical_expense_gifts",
+  "expense:sosial & amal": "canonical_expense_gifts",
+  "expense:financial fees & taxes": "canonical_expense_fees",
+  "expense:biaya finansial & pajak": "canonical_expense_fees",
+  "expense:savings & investments": "canonical_expense_savings",
+  "expense:investasi & tabungan": "canonical_expense_savings",
+  "expense:other expenses": "canonical_expense_other",
+  "expense:lainnya": "canonical_expense_other",
+};
+
+/**
  * Automatically inspects, consolidates, and merges duplicate categories for a user.
- * 1. Groups by type and lower-cased name.
+ * 1. Groups by type and lower-cased name, and cross-lingual canonical keys.
  * 2. Picks the single best survivor (priority: most transactions linked, or oldest created_at).
  * 3. Migrates any transactions referencing duplicate category IDs to the surviving category ID.
  * 4. Safely deletes duplicate category rows in Supabase and local cache.
@@ -28,10 +83,11 @@ export async function autoDeduplicateCategories(
     return { mergedCount: 0, duplicateCount: 0, details: [] };
   }
 
-  // 1. Group categories by type and trimmed lower-case name
+  // 1. Group categories by canonical key or type + trimmed lower-case name
   const groups = new Map<string, Category[]>();
   for (const cat of categories) {
-    const key = `${cat.type || "expense"}:${cat.name.trim().toLowerCase()}`;
+    const rawKey = `${cat.type || "expense"}:${cat.name.trim().toLowerCase()}`;
+    const key = CROSS_LINGUAL_CANONICAL_KEY[rawKey] || rawKey;
     const list = groups.get(key) || [];
     list.push(cat);
     groups.set(key, list);
@@ -120,7 +176,8 @@ export async function autoDeduplicateCategories(
   // 3. Update local caches if any merges took place
   if (totalMerged > 0) {
     const survivingCategories = categories.filter((c) => {
-      const key = `${c.type || "expense"}:${c.name.trim().toLowerCase()}`;
+      const rawKey = `${c.type || "expense"}:${c.name.trim().toLowerCase()}`;
+      const key = CROSS_LINGUAL_CANONICAL_KEY[rawKey] || rawKey;
       const group = groups.get(key);
       if (group && group.length > 1) {
         // Only keep the chosen survivor

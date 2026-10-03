@@ -20,7 +20,7 @@ import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import { AssetDetailSheet } from "./AssetDetailSheet";
 import { StakingYieldModal } from "./StakingYieldModal";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
-import { formatRupiah } from "../../lib/utils";
+import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -61,6 +61,50 @@ import {
   type PresetAsset,
   type PresetCategory,
 } from "../../lib/assetPresets";
+
+function parseCleanNumber(val: string): number {
+  if (!val) return 0;
+  const s = val.trim();
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastComma > lastDot) {
+      return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+    } else {
+      return parseFloat(s.replace(/,/g, "")) || 0;
+    }
+  } else if (lastComma !== -1) {
+    const commaCount = (s.match(/,/g) || []).length;
+    if (commaCount > 1) {
+      return parseFloat(s.replace(/,/g, "")) || 0;
+    }
+    return parseFloat(s.replace(",", ".")) || 0;
+  } else if (lastDot !== -1) {
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      return parseFloat(s.replace(/\./g, "")) || 0;
+    }
+    return parseFloat(s) || 0;
+  }
+  return parseFloat(s) || 0;
+}
+
+function formatHoldingPrice(
+  val: number | string | null | undefined,
+  currency: "IDR" | "USD",
+): string {
+  if (val === null || val === undefined || val === "") return "";
+  const num = typeof val === "number" ? val : parseCleanNumber(String(val));
+  if (num <= 0) return "";
+  const { display } = formatLiveAmountInput(
+    String(num),
+    currency === "IDR",
+    currency === "USD",
+    currency === "USD" ? 4 : 0,
+  );
+  return display;
+}
 
 const getTypeLabel = (type: string, isIndonesian: boolean): string => {
   const labels: Record<string, { en: string; id: string }> = {
@@ -223,11 +267,6 @@ export function AssetValuationSheet({
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (addPhase === 1) {
-      setTimeout(() => searchInputRef.current?.focus(), 150);
-    }
-  }, [addPhase]);
 
   const openAssetPicker = () => {
     triggerHaptic("light");
@@ -262,11 +301,11 @@ export function AssetValuationSheet({
         if (livePrice && livePrice > 0) {
           if (preset.suggestedCurrency === "USD" && usdtPref.rate > 0) {
             const usdPrice = parseFloat((livePrice / usdtPref.rate).toFixed(2));
-            setFormCurrentPrice(String(usdPrice));
-            setFormBuyPrice(String(usdPrice));
+            setFormCurrentPrice(formatHoldingPrice(usdPrice, "USD"));
+            setFormBuyPrice(formatHoldingPrice(usdPrice, "USD"));
           } else {
-            setFormCurrentPrice(String(livePrice));
-            setFormBuyPrice(String(livePrice));
+            setFormCurrentPrice(formatHoldingPrice(livePrice, "IDR"));
+            setFormBuyPrice(formatHoldingPrice(livePrice, "IDR"));
           }
         }
       } catch {
@@ -507,9 +546,9 @@ export function AssetValuationSheet({
       return;
     }
 
-    const units = formType === "fixed_asset" ? 1 : parseFloat(formUnits);
-    const rawBuy = parseFloat(formBuyPrice);
-    const rawCurrent = parseFloat(formCurrentPrice) || rawBuy;
+    const units = formType === "fixed_asset" ? 1 : parseCleanNumber(formUnits);
+    const rawBuy = parseCleanNumber(formBuyPrice);
+    const rawCurrent = parseCleanNumber(formCurrentPrice) || rawBuy;
 
     if (isNaN(units) || units <= 0 || isNaN(rawBuy) || rawBuy <= 0) {
       showToast(
@@ -590,18 +629,20 @@ export function AssetValuationSheet({
     const liveRate = usdtPref.rate > 0 ? usdtPref.rate : 16000;
     setFormCurrency(isUsd ? "USD" : "IDR");
     setFormBuyPrice(
-      isUsd
-        ? String(parseFloat((h.avg_buy_price / liveRate).toFixed(2)))
-        : String(h.avg_buy_price),
+      formatHoldingPrice(
+        isUsd ? parseFloat((h.avg_buy_price / liveRate).toFixed(2)) : h.avg_buy_price,
+        isUsd ? "USD" : "IDR",
+      ),
     );
     setFormCurrentPrice(
-      isUsd
-        ? String(
-            parseFloat(
+      formatHoldingPrice(
+        isUsd
+          ? parseFloat(
               ((h.current_price || h.avg_buy_price) / liveRate).toFixed(2),
-            ),
-          )
-        : String(h.current_price || h.avg_buy_price),
+            )
+          : h.current_price || h.avg_buy_price,
+        isUsd ? "USD" : "IDR",
+      ),
     );
     setFormIcon(h.icon || getDefaultAssetIconName(h.asset_type));
     setFormPlatform(
@@ -1817,12 +1858,16 @@ export function AssetValuationSheet({
                 type="text"
                 inputMode="decimal"
                 value={formBuyPrice}
-                onChange={(e) =>
-                  setFormBuyPrice(
-                    e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
-                  )
-                }
-                placeholder={formCurrency === "USD" ? "$0.00" : "Rp"}
+                onChange={(e) => {
+                  const { display } = formatLiveAmountInput(
+                    e.target.value,
+                    formCurrency === "IDR",
+                    formCurrency === "USD",
+                    4,
+                  );
+                  setFormBuyPrice(display);
+                }}
+                placeholder={formCurrency === "USD" ? "$0.00" : "Rp 0"}
                 className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold outline-none "
                 style={{
                   background: controlBg,
@@ -1835,37 +1880,41 @@ export function AssetValuationSheet({
                 <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                   ≈{" "}
                   {formatRupiah(
-                    parseFloat(formBuyPrice || "0") * usdtPref.rate,
+                    parseCleanNumber(formBuyPrice) * usdtPref.rate,
                   )}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Current Market Price */}
+          {/* Market Price */}
           <div>
             <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1 px-1">
               {isIndonesian
-                ? `Harga Pasar Saat Ini (${formCurrency})`
-                : `Current Market Price (${formCurrency})`}
+                ? `Harga Pasar (${formCurrency})`
+                : `Market Price (${formCurrency})`}
             </label>
             <input
               type="text"
               inputMode="decimal"
               value={formCurrentPrice}
-              onChange={(e) =>
-                setFormCurrentPrice(
-                  e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
-                )
-              }
+              onChange={(e) => {
+                const { display } = formatLiveAmountInput(
+                  e.target.value,
+                  formCurrency === "IDR",
+                  formCurrency === "USD",
+                  4,
+                );
+                setFormCurrentPrice(display);
+              }}
               placeholder={
                 isFetchingCurrentPrice
                   ? isIndonesian
-                    ? "Mengambil harga live..."
-                    : "Fetching live price..."
+                    ? "Mengambil harga..."
+                    : "Fetching price..."
                   : formCurrency === "USD"
                     ? "$0.00"
-                    : "Rp"
+                    : "Rp 0"
               }
               className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold outline-none "
               style={{
@@ -1879,7 +1928,7 @@ export function AssetValuationSheet({
               <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                 ≈{" "}
                 {formatRupiah(
-                  parseFloat(formCurrentPrice || "0") * usdtPref.rate,
+                  parseCleanNumber(formCurrentPrice) * usdtPref.rate,
                 )}
               </p>
             )}

@@ -461,12 +461,12 @@ export async function seedOnboardingWallets(
         .select("id, name")
         .eq("user_id", userId);
 
-      const existingNames = new Set(
-        (existingWallets || []).map((w) => w.name.trim().toLowerCase()),
-      );
-      const walletsToInsert = seeded.filter(
-        (w) => !existingNames.has(w.name.trim().toLowerCase()),
-      );
+      // If user already has wallets in cloud, NEVER inject default wallets
+      if (existingWallets && existingWallets.length > 0) {
+        return seeded;
+      }
+
+      const walletsToInsert = seeded;
 
       let error = null;
       if (walletsToInsert.length > 0) {

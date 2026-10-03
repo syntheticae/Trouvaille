@@ -76,30 +76,21 @@ async function seedOnboardingCategories(
         .select("id, name, type")
         .eq("user_id", userId);
 
-      const existingKeys = new Set(
-        (existingCats || []).map(
-          (c) => `${c.type || "expense"}:${c.name.trim().toLowerCase()}`,
-        ),
-      );
-      const catsToInsert = fullCategories.filter(
-        (c) =>
-          !existingKeys.has(
-            `${c.type || "expense"}:${c.name.trim().toLowerCase()}`,
-          ),
-      );
-
-      if (catsToInsert.length > 0) {
-        await supabase.from("categories").insert(
-          catsToInsert.map((c) => ({
-            id: c.id,
-            user_id: userId,
-            name: c.name,
-            emoji: c.emoji,
-            type: c.type,
-            is_default: true,
-          })),
-        );
+      // If user already has categories in cloud, NEVER inject default categories
+      if (existingCats && existingCats.length > 0) {
+        return;
       }
+
+      await supabase.from("categories").insert(
+        fullCategories.map((c) => ({
+          id: c.id,
+          user_id: userId,
+          name: c.name,
+          emoji: c.emoji,
+          type: c.type,
+          is_default: true,
+        })),
+      );
     } catch (e) {
       console.warn("[seedOnboardingCategories] Cloud insertion warning:", e);
     }

@@ -121,6 +121,49 @@ describe("Deduplication Engine Suite", () => {
       expect(res.mergedCount).toBe(0);
       expect(res.duplicateCount).toBe(0);
     });
+
+    it("detects and consolidates cross-lingual default categories (e.g. Makanan & Minuman and Food & Dining)", async () => {
+      const mockCategories: Category[] = [
+        {
+          id: "cat-indo",
+          user_id: "user-1",
+          name: "Makanan & Minuman",
+          emoji: "Utensils",
+          type: "expense",
+          is_default: true,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "cat-en",
+          user_id: "user-1",
+          name: "Food & Dining",
+          emoji: "Utensils",
+          type: "expense",
+          is_default: true,
+          created_at: "2026-03-01T00:00:00Z",
+        },
+      ];
+
+      const mockTxs: Transaction[] = [
+        {
+          id: "tx-1",
+          user_id: "user-1",
+          amount: 50000,
+          category_id: "cat-indo",
+          wallet_id: "w-1",
+          to_wallet_id: null,
+          type: "expense",
+          occurred_on: "2026-02-01",
+          created_at: "2026-02-01T10:00:00Z",
+        },
+      ];
+
+      const res = await autoDeduplicateCategories("user-1", mockCategories, mockTxs);
+
+      expect(res.mergedCount).toBe(1);
+      expect(res.duplicateCount).toBe(1);
+      expect(res.details[0]).toContain('Merged 1 duplicate(s) of "Makanan & Minuman"');
+    });
   });
 
   describe("autoDeduplicateWallets", () => {

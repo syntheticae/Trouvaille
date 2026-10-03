@@ -3,15 +3,12 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   X,
-  Check,
   Sparkles,
   TrendingUp,
   Calendar,
   ShieldCheck,
   Activity,
-  Loader2,
   Pause,
-  Share2,
 } from "lucide-react";
 import type { Transaction, Category } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
@@ -30,10 +27,6 @@ import {
 } from "../../lib/wrappedAnalytics";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
-import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { useToast } from "../../contexts/ToastContext";
 
 interface TopCategoryStat {
   total: number;
@@ -62,7 +55,6 @@ export function FinancialWrappedModal({
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
-  const { showToast } = useToast();
   const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const { liquidCapital, marketAssets, fixedAssets, totalAssets } =
     useWalletBalances();
@@ -71,13 +63,10 @@ export function FinancialWrappedModal({
   const [direction, setDirection] = useState<number>(1);
   const [isPaused, setIsPaused] = useState(false);
   const [showPauseHUD, setShowPauseHUD] = useState(false);
-  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
-  const [isPhotoSaved, setIsPhotoSaved] = useState(false);
   const totalSlides = 10;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pauseHUDTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideContainerRef = useRef<HTMLDivElement>(null);
-  const cachedSlideFilesRef = useRef<Map<number, File>>(new Map());
 
   const handleCenterClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -563,239 +552,12 @@ export function FinancialWrappedModal({
       setDirection(1);
       setIsPaused(false);
       setShowPauseHUD(false);
-      setIsPhotoSaved(false);
-      setIsSharingPhoto(false);
-      cachedSlideFilesRef.current.clear();
       if (pauseHUDTimerRef.current) {
         clearTimeout(pauseHUDTimerRef.current);
         pauseHUDTimerRef.current = null;
       }
     }
   }, [isOpen]);
-
-  // Background pre-render current slide image into cache for instant zero-latency sharing
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const timer = setTimeout(async () => {
-      const element = slideContainerRef.current;
-      if (!element) return;
-
-      try {
-        const { default: html2canvas } = await import("html2canvas");
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
-          logging: false,
-          ignoreElements: (node) => {
-            if (
-              node instanceof HTMLElement &&
-              (node.dataset.html2canvasIgnore === "true" ||
-                node.getAttribute("data-ignore-export") === "true")
-            ) {
-              return true;
-            }
-            return false;
-          },
-        });
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const fileName = `Trouvaille-Wrapped-Slide-${currentSlide + 1}.png`;
-            const file = new File([blob], fileName, { type: "image/png" });
-            cachedSlideFilesRef.current.set(currentSlide, file);
-          }
-        }, "image/png");
-      } catch {
-        // Silently ignore background pre-render error
-      }
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, [currentSlide, isOpen, isDark]);
-
-  // Handle sharing active slide as high-res photo (Slide 1 to 9)
-  const handleShareSlidePhoto = async () => {
-    triggerHaptic("medium");
-    if (isSharingPhoto) return;
-
-    setIsSharingPhoto(true);
-    setIsPaused(true);
-    setShowPauseHUD(false);
-    if (pauseHUDTimerRef.current) {
-      clearTimeout(pauseHUDTimerRef.current);
-      pauseHUDTimerRef.current = null;
-    }
-
-    try {
-      const fileName = `Trouvaille-Wrapped-Slide-${currentSlide + 1}.png`;
-      let file = cachedSlideFilesRef.current.get(currentSlide);
-      let dataUrl = "";
-
-      if (!file) {
-        const element = slideContainerRef.current;
-        if (!element) throw new Error("Slide element not found");
-
-        const { default: html2canvas } = await import("html2canvas");
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
-          logging: false,
-          ignoreElements: (node) => {
-            if (
-              node instanceof HTMLElement &&
-              (node.dataset.html2canvasIgnore === "true" ||
-                node.getAttribute("data-ignore-export") === "true")
-            ) {
-              return true;
-            }
-            return false;
-          },
-        });
-
-        dataUrl = canvas.toDataURL("image/png");
-        const blob = await new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, "image/png"),
-        );
-        if (blob) {
-          file = new File([blob], fileName, { type: "image/png" });
-          cachedSlideFilesRef.current.set(currentSlide, file);
-        }
-      }
-
-      let sharedSuccess = false;
-
-      // 1. Native Capacitor Sharing (iOS IPA / Android)
-      if (Capacitor.isNativePlatform()) {
-        try {
-          if (!dataUrl && file) {
-            dataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(file!);
-            });
-          }
-          const base64Data = dataUrl.includes(",")
-            ? dataUrl.split(",")[1]
-            : dataUrl;
-
-          const savedFile = await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Cache,
-          });
-
-          await Share.share({
-            title: isIndonesian
-              ? `Kilas Balik Finansial - Slide ${currentSlide + 1}`
-              : `Financial Wrapped - Slide ${currentSlide + 1}`,
-            text: isIndonesian
-              ? `Kilas Balik Finansial Trouvaille ${periodTitle} (Slide ${currentSlide + 1})`
-              : `Trouvaille Financial Wrapped ${periodTitle} (Slide ${currentSlide + 1})`,
-            url: savedFile.uri,
-          });
-          sharedSuccess = true;
-        } catch (nativeErr: any) {
-          if (nativeErr?.name === "AbortError") {
-            sharedSuccess = true;
-          } else {
-            console.warn(
-              "[FinancialWrappedModal] Native share photo error:",
-              nativeErr,
-            );
-          }
-        }
-      }
-
-      // 2. Web Share API Fallback
-      if (
-        !sharedSuccess &&
-        file &&
-        typeof navigator !== "undefined" &&
-        navigator.share &&
-        navigator.canShare
-      ) {
-        try {
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: isIndonesian
-                ? `Kilas Balik Finansial - Slide ${currentSlide + 1}`
-                : `Financial Wrapped - Slide ${currentSlide + 1}`,
-              text: isIndonesian
-                ? `Kilas Balik Finansial Trouvaille ${periodTitle} (Slide ${currentSlide + 1})`
-                : `Trouvaille Financial Wrapped ${periodTitle} (Slide ${currentSlide + 1})`,
-            });
-            sharedSuccess = true;
-          }
-        } catch (webShareErr: any) {
-          if (webShareErr?.name === "AbortError") {
-            sharedSuccess = true;
-          }
-        }
-      }
-
-      // 3. Desktop / Browser Download Fallback
-      if (!sharedSuccess) {
-        if (!dataUrl && file) {
-          dataUrl = URL.createObjectURL(file);
-        }
-        if (dataUrl) {
-          const link = document.createElement("a");
-          link.href = dataUrl;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          if (dataUrl.startsWith("blob:")) {
-            setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
-          }
-          sharedSuccess = true;
-        }
-
-        if (
-          file &&
-          typeof navigator !== "undefined" &&
-          navigator.clipboard &&
-          typeof ClipboardItem !== "undefined"
-        ) {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": file }),
-            ]);
-          } catch {
-            // Silently ignore clipboard write failures
-          }
-        }
-      }
-
-      setIsPhotoSaved(true);
-      setTimeout(() => setIsPhotoSaved(false), 2500);
-
-      showToast(
-        isIndonesian
-          ? "Foto slide berhasil dibagikan"
-          : "Slide photo shared successfully",
-        "update",
-        () => {},
-      );
-    } catch (err) {
-      console.error("Failed to share slide photo:", err);
-      showToast(
-        isIndonesian
-          ? "Gagal membagikan foto slide"
-          : "Failed to share slide photo",
-        "delete",
-        () => {},
-      );
-    } finally {
-      setIsSharingPhoto(false);
-    }
-  };
 
   const slideVariants: Variants = {
     enter: (dir: number) => ({
@@ -946,49 +708,6 @@ export function FinancialWrappedModal({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShareSlidePhoto();
-                    }}
-                    disabled={isSharingPhoto}
-                    className={`h-8 px-3 rounded-full border flex items-center gap-1.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer backdrop-blur-xl ${
-                      isDark
-                        ? "bg-white/[0.08] border-white/15 text-white/90 hover:text-white hover:bg-white/[0.14] shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
-                        : "bg-black/[0.05] border-black/10 text-black/90 hover:text-black hover:bg-black/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
-                    }`}
-                    title={
-                      isIndonesian
-                        ? `Bagikan Foto Slide ${currentSlide + 1}`
-                        : `Share Slide ${currentSlide + 1} Photo`
-                    }
-                  >
-                    {isSharingPhoto ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : isPhotoSaved ? (
-                      <Check
-                        size={12}
-                        className={isDark ? "text-white" : "text-black"}
-                      />
-                    ) : (
-                      <Share2 size={12} />
-                    )}
-                    <span>
-                      {isSharingPhoto
-                        ? isIndonesian
-                          ? "Menyiapkan..."
-                          : "Preparing..."
-                        : isPhotoSaved
-                          ? isIndonesian
-                            ? "Foto Tersimpan"
-                            : "Photo Saved"
-                          : isIndonesian
-                            ? "Bagikan"
-                            : "Share"}
-                    </span>
-                  </button>
-
                 <button
                   type="button"
                   onClick={() => {
@@ -3739,42 +3458,21 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Share Story Recap Button */}
+                  {/* Done / Close Button */}
                   <button
                     type="button"
-                    data-html2canvas-ignore="true"
-                    data-ignore-export="true"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleShareSlidePhoto();
+                      triggerHaptic("light");
+                      onClose();
                     }}
-                    disabled={isSharingPhoto}
                     className={`w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg relative z-50 pointer-events-auto ${
                       isDark
                         ? "bg-white text-black hover:bg-zinc-100"
                         : "bg-black text-white hover:bg-zinc-900"
                     }`}
                   >
-                    {isSharingPhoto ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : isPhotoSaved ? (
-                      <Check size={16} />
-                    ) : (
-                      <Share2 size={16} />
-                    )}
-                    <span>
-                      {isSharingPhoto
-                        ? isIndonesian
-                          ? "Menyiapkan Foto..."
-                          : "Preparing Story..."
-                        : isPhotoSaved
-                          ? isIndonesian
-                            ? "Foto Tersimpan!"
-                            : "Story Photo Saved!"
-                          : isIndonesian
-                            ? "Bagikan Rekap Cerita"
-                            : "Share Story Recap"}
-                    </span>
+                    <span>{isIndonesian ? "Selesai" : "Done"}</span>
                   </button>
                 </motion.div>
               )}

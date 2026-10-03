@@ -741,16 +741,21 @@ function AppShell() {
     }
   }, [syncStorageKey, user?.id, isGuest, queryClient]);
 
-  // Auto-bypass onboarding trap if user already has synced transactions from cloud
+  // Auto-bypass onboarding trap if user already has synced transactions, categories, or wallets from cloud
   useEffect(() => {
-    if (user && !isGuest && !isOnboarded && syncedTxCount > 0) {
+    if (
+      user &&
+      !isGuest &&
+      !isOnboarded &&
+      (syncedTxCount > 0 || categories.length > 0 || wallets.length > 0)
+    ) {
       localStorage.setItem("trouvaille_onboarded", "true");
       if (!localStorage.getItem("trouvaille_onboarding_focus")) {
         localStorage.setItem("trouvaille_onboarding_focus", "expenses");
       }
       setIsOnboarded(true);
     }
-  }, [user, isGuest, isOnboarded, syncedTxCount]);
+  }, [user, isGuest, isOnboarded, syncedTxCount, categories.length, wallets.length]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -1043,7 +1048,12 @@ function AppShell() {
               onClick={() => {
                 triggerHaptic("light");
                 discardGuestData(user.id);
+                localStorage.setItem("trouvaille_onboarded", "true");
+                setIsOnboarded(true);
                 setShowGuestMigrationModal(false);
+                queryClient.invalidateQueries({ queryKey: ["categories"] });
+                queryClient.invalidateQueries({ queryKey: ["wallets"] });
+                queryClient.invalidateQueries({ queryKey: ["transactions"] });
               }}
               className={`w-full py-3 rounded-[22px] font-medium text-[12.5px] active:scale-[0.98] transition-all cursor-pointer ${
                 isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-900"

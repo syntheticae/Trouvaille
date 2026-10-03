@@ -63,6 +63,22 @@ function parseCleanNumber(val: string): number {
   return parseFloat(s) || 0;
 }
 
+function formatHoldingPrice(
+  val: number | string | null | undefined,
+  currency: "IDR" | "USD",
+): string {
+  if (val === null || val === undefined || val === "") return "";
+  const num = typeof val === "number" ? val : parseCleanNumber(String(val));
+  if (num <= 0) return "";
+  const { display } = formatLiveAmountInput(
+    String(num),
+    currency === "IDR",
+    currency === "USD",
+    currency === "USD" ? 4 : 0,
+  );
+  return display;
+}
+
 const getTypeLabel = (type: string, isIndonesian: boolean): string => {
   const labels: Record<string, { en: string; id: string }> = {
     all: { en: "All", id: "Semua" },
@@ -215,18 +231,22 @@ export function AddAssetModal({
           let displayVal = "";
 
           if (targetCurrency === "USD") {
+            let numVal = 0;
             if (quoteUSD && quoteUSD > 0) {
-              displayVal = String(quoteUSD);
+              numVal = quoteUSD;
             } else if (quoteIDR && quoteIDR > 0 && effectiveRate > 0) {
-              displayVal = String(parseFloat((quoteIDR / effectiveRate).toFixed(4)));
+              numVal = parseFloat((quoteIDR / effectiveRate).toFixed(4));
             }
+            displayVal = formatHoldingPrice(numVal, "USD");
           } else {
             // IDR
+            let numVal = 0;
             if (quoteIDR && quoteIDR > 0) {
-              displayVal = String(quoteIDR);
+              numVal = Math.round(quoteIDR);
             } else if (quoteUSD && quoteUSD > 0 && effectiveRate > 0) {
-              displayVal = String(Math.round(quoteUSD * effectiveRate));
+              numVal = Math.round(quoteUSD * effectiveRate);
             }
+            displayVal = formatHoldingPrice(numVal, "IDR");
           }
 
           if (displayVal) {
@@ -258,26 +278,32 @@ export function AddAssetModal({
       // 1. Convert or re-apply current price
       if (priceMode === "live" && lastQuoteRef.current) {
         if (newCurrency === "USD") {
+          let numVal = 0;
           if (lastQuoteRef.current.usd && lastQuoteRef.current.usd > 0) {
-            setFormCurrentPrice(String(lastQuoteRef.current.usd));
+            numVal = lastQuoteRef.current.usd;
           } else if (lastQuoteRef.current.idr && rate > 0) {
-            setFormCurrentPrice(String(parseFloat((lastQuoteRef.current.idr / rate).toFixed(4))));
+            numVal = parseFloat((lastQuoteRef.current.idr / rate).toFixed(4));
           }
+          setFormCurrentPrice(formatHoldingPrice(numVal, "USD"));
         } else {
           // Switch to IDR
+          let numVal = 0;
           if (lastQuoteRef.current.idr && lastQuoteRef.current.idr > 0) {
-            setFormCurrentPrice(String(lastQuoteRef.current.idr));
+            numVal = Math.round(lastQuoteRef.current.idr);
           } else if (lastQuoteRef.current.usd && rate > 0) {
-            setFormCurrentPrice(String(Math.round(lastQuoteRef.current.usd * rate)));
+            numVal = Math.round(lastQuoteRef.current.usd * rate);
           }
+          setFormCurrentPrice(formatHoldingPrice(numVal, "IDR"));
         }
       } else {
         const curPriceNum = parseCleanNumber(formCurrentPrice);
         if (curPriceNum > 0) {
           if (newCurrency === "USD" && oldCurrency === "IDR") {
-            setFormCurrentPrice(String(parseFloat((curPriceNum / rate).toFixed(4))));
+            const numVal = parseFloat((curPriceNum / rate).toFixed(4));
+            setFormCurrentPrice(formatHoldingPrice(numVal, "USD"));
           } else if (newCurrency === "IDR" && oldCurrency === "USD") {
-            setFormCurrentPrice(String(Math.round(curPriceNum * rate)));
+            const numVal = Math.round(curPriceNum * rate);
+            setFormCurrentPrice(formatHoldingPrice(numVal, "IDR"));
           }
         }
       }
@@ -286,9 +312,11 @@ export function AddAssetModal({
       const buyPriceNum = parseCleanNumber(formBuyPrice);
       if (buyPriceNum > 0) {
         if (newCurrency === "USD" && oldCurrency === "IDR") {
-          setFormBuyPrice(String(parseFloat((buyPriceNum / rate).toFixed(4))));
+          const numVal = parseFloat((buyPriceNum / rate).toFixed(4));
+          setFormBuyPrice(formatHoldingPrice(numVal, "USD"));
         } else if (newCurrency === "IDR" && oldCurrency === "USD") {
-          setFormBuyPrice(String(Math.round(buyPriceNum * rate)));
+          const numVal = Math.round(buyPriceNum * rate);
+          setFormBuyPrice(formatHoldingPrice(numVal, "IDR"));
         }
       }
     },
@@ -321,8 +349,8 @@ export function AddAssetModal({
           "RD-SAHAM": "11.0",
         };
         setAnnualRate(fundRates[preset.symbol] || "6.0");
-        setFormBuyPrice("1000.00");
-        setFormCurrentPrice("1000.00");
+        setFormBuyPrice(formatHoldingPrice(1000, curr));
+        setFormCurrentPrice(formatHoldingPrice(1000, curr));
       } else if (preset.type === "bond") {
         setPriceMode("custom");
         setIsDepreciationEnabled(true);
@@ -335,7 +363,8 @@ export function AddAssetModal({
           INDON: "5.2",
         };
         setAnnualRate(bondRates[preset.symbol] || "6.5");
-        const defaultBondPrice = curr === "USD" ? "1000" : "1000000";
+        const defaultBondPriceNum = curr === "USD" ? 1000 : 1000000;
+        const defaultBondPrice = formatHoldingPrice(defaultBondPriceNum, curr);
         setFormBuyPrice(defaultBondPrice);
         setFormCurrentPrice(defaultBondPrice);
       } else if (preset.type === "fixed_asset") {
@@ -366,10 +395,11 @@ export function AddAssetModal({
       setFormSymbol(editingHolding.symbol || "");
       setFormName(editingHolding.name || "");
       setFormType(editingHolding.asset_type || "crypto");
-      setFormCurrency((editingHolding.currency as "IDR" | "USD") || "IDR");
+      const holdingCurr = (editingHolding.currency as "IDR" | "USD") || "IDR";
+      setFormCurrency(holdingCurr);
       setFormUnits(String(editingHolding.units || ""));
-      setFormBuyPrice(String(editingHolding.avg_buy_price || ""));
-      setFormCurrentPrice(String(editingHolding.current_price || ""));
+      setFormBuyPrice(formatHoldingPrice(editingHolding.avg_buy_price, holdingCurr));
+      setFormCurrentPrice(formatHoldingPrice(editingHolding.current_price, holdingCurr));
       setFormIcon(editingHolding.icon || "Coins");
       setPriceMode(editingHolding.is_custom_price ? "custom" : "live");
       setFormPurchaseDate(
@@ -402,12 +432,6 @@ export function AddAssetModal({
     }
   }, [isOpen, editingHolding, initialPreset, handleSelectPreset]);
 
-  // Focus search when entering Phase 1
-  useEffect(() => {
-    if (phase === 1 && isOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 150);
-    }
-  }, [phase, isOpen]);
 
   // Filter Presets
   const filteredPresets = useMemo(() => {
@@ -461,7 +485,7 @@ export function AddAssetModal({
     setCustomBrokerText("");
     setFormIcon(type === "fixed_asset" ? "Building2" : type === "bond" ? "FileText" : "TrendingUp");
     setFormUnits(type === "bond" ? "1" : type === "fixed_asset" ? "1" : "");
-    const defaultCustomPrice = type === "bond" ? "1000000" : "";
+    const defaultCustomPrice = type === "bond" ? formatHoldingPrice(1000000, "IDR") : "";
     setFormBuyPrice(defaultCustomPrice);
     setFormCurrentPrice(defaultCustomPrice);
     setPriceMode("custom");
@@ -1235,20 +1259,13 @@ export function AddAssetModal({
                         <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
                           <span>
                             {isIndonesian
-                              ? `Harga Pasar Terkini (${formCurrency})`
-                              : `Current Market Price (${formCurrency})`}
+                              ? `Harga Pasar (${formCurrency})`
+                              : `Market Price (${formCurrency})`}
                           </span>
                         </label>
                         {isFetchingPrice && (
                           <Loader2 className="w-3 h-3 animate-spin text-[var(--text-tertiary)]" />
                         )}
-                        {!isFetchingPrice &&
-                          priceMode === "live" &&
-                          formCurrentPrice && (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[var(--text-secondary)] font-medium">
-                              ● Live API
-                            </span>
-                          )}
                         {!isFetchingPrice && priceMode === "live" && (
                           <button
                             type="button"
