@@ -7,6 +7,7 @@ export type PresetCategory =
   | "stock_id"
   | "gold"
   | "mutual_fund"
+  | "bond"
   | "fixed_asset"
   | "valas";
 
@@ -260,6 +261,56 @@ export const PRESET_ASSETS: PresetAsset[] = [
     category: "mutual_fund",
     suggestedCurrency: "IDR",
     icon: "TrendingUp",
+  },
+
+  // Bonds / SBN
+  {
+    symbol: "ORI",
+    name: "Obligasi Negara Ritel (ORI)",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "SBR",
+    name: "Savings Bond Ritel (SBR)",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "SR",
+    name: "Sukuk Ritel (SR)",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "FR",
+    name: "Surat Utang Negara (Fixed Rate / FR)",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "PBS",
+    name: "Project Based Sukuk (PBS)",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "INDON",
+    name: "Indonesian Sovereign US Dollar Bond",
+    type: "bond",
+    category: "bond",
+    suggestedCurrency: "USD",
+    icon: "FileText",
   },
 
   // Fixed Assets

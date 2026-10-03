@@ -622,7 +622,9 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
       if (h.asset_type === "crypto") {
         newPrice = await fetchCryptoPriceInIDR(h.symbol);
       } else if (h.asset_type === "stock") {
-        newPrice = await fetchStockPriceInIDR(h.symbol);
+        newPrice = await fetchStockPriceInIDR(h.symbol, false, h.currency === "IDR");
+      } else if (h.asset_type === "gold" || h.symbol?.toUpperCase() === "ANTAM" || h.symbol?.toUpperCase() === "XAU") {
+        newPrice = await fetchGoldPriceInIDR();
       }
     } catch {
       // Keep current price on network fallback
@@ -957,6 +959,74 @@ export async function fetchCryptoPriceInUSD(
   return quote ? quote.usd : null;
 }
 
+export interface GoldMarketQuote {
+  pricePerGramIDR: number;
+  usdPerTroyOz: number;
+  change24hPct: number;
+  source: string;
+}
+
+/**
+ * Fetch live gold spot quote in IDR per gram (with Antam physical minting parity ~3% premium).
+ * Uses public Gold API (https://api.gold-api.com/price/XAU).
+ */
+export async function fetchGoldQuote(forceRefresh = false): Promise<GoldMarketQuote | null> {
+  const cacheKey = "gold_quote_xau_idr";
+  if (!forceRefresh) {
+    const cached = getCachedQuote(cacheKey);
+    if (cached !== null && cached > 0) {
+      return {
+        pricePerGramIDR: cached,
+        usdPerTroyOz: 0,
+        change24hPct: 0,
+        source: "cached",
+      };
+    }
+  }
+
+  const TROY_OUNCE_TO_GRAM = 31.1034768;
+  const usdIdrRate = await fetchUsdtPriceInIDR(forceRefresh);
+
+  try {
+    const res = await universalFetchWithTimeout("https://api.gold-api.com/price/XAU", undefined, 3500);
+    if (res.ok) {
+      const data = await res.json();
+      const pricePerTroyOz = Number(data?.price);
+      if (pricePerTroyOz > 500) {
+        const usdPerGram = pricePerTroyOz / TROY_OUNCE_TO_GRAM;
+        // Physical Antam parity: ~3% premium over international spot
+        const idrPerGram = Math.round(usdPerGram * usdIdrRate * 1.03);
+        const change24hPct = Number(data?.chp) || Number(data?.change_percent) || 0;
+
+        setCachedQuote(cacheKey, idrPerGram);
+        setCachedQuote("gold_quote_xau_usd", Math.round(usdPerGram * 100) / 100);
+        setCachedQuote("XAU", idrPerGram);
+        setCachedQuote("ANTAM", idrPerGram);
+        setCachedQuote("GOLD", idrPerGram);
+        setCachedQuote("EMAS", idrPerGram);
+        setCachedQuote("UBS", Math.round(idrPerGram * 0.995));
+
+        return {
+          pricePerGramIDR: idrPerGram,
+          usdPerTroyOz: pricePerTroyOz,
+          change24hPct: Math.round(change24hPct * 100) / 100,
+          source: "gold_api",
+        };
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Fetch live gold price in IDR per gram.
+ */
+export async function fetchGoldPriceInIDR(forceRefresh = false): Promise<number | null> {
+  const quote = await fetchGoldQuote(forceRefresh);
+  return quote ? quote.pricePerGramIDR : null;
+}
+
 export interface StockMarketQuote {
   usd?: number;
   idr: number;
@@ -964,25 +1034,43 @@ export interface StockMarketQuote {
   isUS: boolean;
 }
 
+const KNOWN_US_TICKERS = new Set([
+  "AAPL", "NVDA", "TSLA", "MSFT", "GOOGL", "GOOG", "AMZN", "META",
+  "NFLX", "AMD", "INTC", "SPY", "QQQ", "VOO", "VTI", "COIN", "PLTR",
+  "DIS", "BABA", "UBER", "PYPL", "BRK.B", "BRK.A", "JPM", "V", "MA",
+  "WMT", "COST", "XOM", "CVX", "LLY", "UNH", "JNJ", "PG", "HD", "BAC"
+]);
+
 /**
  * Fetch live stock quote via Yahoo Finance Chart API.
- * Supports both Indonesian equities (*.JK) and US equities.
+ * Supports both Indonesian equities (*.JK) and US equities with smart disambiguation.
  */
 export async function fetchStockQuote(
   symbol: string,
   forceRefresh = false,
+  preferIDR = false,
 ): Promise<StockMarketQuote | null> {
   const cleanSymbol = symbol.trim().toUpperCase();
   if (!cleanSymbol) return null;
 
-  const isUS = !cleanSymbol.endsWith(".JK");
-  const cacheKeyUSD = `stock_quote_usd_${cleanSymbol}`;
-  const cacheKeyIDR = `stock_quote_idr_${cleanSymbol}`;
+  const isExplicitJK = cleanSymbol.endsWith(".JK");
+  const baseTicker = cleanSymbol.replace(/\.JK$/, "");
+
+  // Candidate tickers to try in sequence:
+  // If preferIDR, or explicitly .JK, or not a known US ticker and has 4 letters -> try .JK first!
+  const shouldTryJKFirst = isExplicitJK || preferIDR || (!KNOWN_US_TICKERS.has(baseTicker) && baseTicker.length === 4);
+  const candidates = shouldTryJKFirst
+    ? [`${baseTicker}.JK`, baseTicker]
+    : [baseTicker, `${baseTicker}.JK`];
+
+  const cacheKeyUSD = `stock_quote_usd_${baseTicker}`;
+  const cacheKeyIDR = `stock_quote_idr_${baseTicker}`;
 
   if (!forceRefresh) {
     const cachedIDR = getCachedQuote(cacheKeyIDR);
     if (cachedIDR !== null) {
       const cachedUSD = getCachedQuote(cacheKeyUSD);
+      const isUS = !shouldTryJKFirst;
       return {
         regularMarketPrice: isUS ? (cachedUSD ?? 0) : cachedIDR,
         idr: cachedIDR,
@@ -992,39 +1080,46 @@ export async function fetchStockQuote(
     }
   }
 
-  try {
-    const res = await universalFetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${cleanSymbol}?interval=1d&range=1d`,
-      undefined,
-      3500,
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const meta = data?.chart?.result?.[0]?.meta;
-    const regularMarketPrice = meta?.regularMarketPrice;
-    if (typeof regularMarketPrice === "number" && regularMarketPrice > 0) {
-      const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
-      let idrPrice: number;
-      let usdPrice: number;
+  const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
 
-      if (isUS) {
-        usdPrice = regularMarketPrice;
-        idrPrice = Math.round(usdPrice * usdtRate);
-      } else {
-        idrPrice = Math.round(regularMarketPrice);
-        usdPrice = parseFloat((idrPrice / usdtRate).toFixed(4));
+  for (const ticker of candidates) {
+    try {
+      const res = await universalFetchWithTimeout(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`,
+        undefined,
+        3500,
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      const regularMarketPrice = meta?.regularMarketPrice;
+
+      if (typeof regularMarketPrice === "number" && regularMarketPrice > 0) {
+        const isJK = ticker.endsWith(".JK") || meta?.currency === "IDR";
+        let idrPrice: number;
+        let usdPrice: number;
+
+        if (isJK) {
+          idrPrice = Math.round(regularMarketPrice);
+          usdPrice = parseFloat((idrPrice / usdtRate).toFixed(4));
+        } else {
+          usdPrice = regularMarketPrice;
+          idrPrice = Math.round(usdPrice * usdtRate);
+        }
+
+        setCachedQuote(cacheKeyUSD, usdPrice);
+        setCachedQuote(cacheKeyIDR, idrPrice);
+        setCachedQuote(`stock_quote_idr_${ticker}`, idrPrice);
+
+        return {
+          regularMarketPrice,
+          idr: idrPrice,
+          usd: usdPrice,
+          isUS: !isJK,
+        };
       }
-
-      setCachedQuote(cacheKeyUSD, usdPrice);
-      setCachedQuote(cacheKeyIDR, idrPrice);
-      return {
-        regularMarketPrice,
-        idr: idrPrice,
-        usd: usdPrice,
-        isUS,
-      };
-    }
-  } catch {}
+    } catch {}
+  }
 
   return null;
 }
@@ -1035,8 +1130,9 @@ export async function fetchStockQuote(
 export async function fetchStockPriceInIDR(
   symbol: string,
   forceRefresh = false,
+  preferIDR = false,
 ): Promise<number | null> {
-  const quote = await fetchStockQuote(symbol, forceRefresh);
+  const quote = await fetchStockQuote(symbol, forceRefresh, preferIDR);
   return quote ? quote.idr : null;
 }
 

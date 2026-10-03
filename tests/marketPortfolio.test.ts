@@ -615,6 +615,14 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
     const empty = await fetchStockQuote("");
     expect(empty).toBeNull();
   });
+
+  it("fetchGoldQuote returns valid physical gold quote in IDR per gram", async () => {
+    const { fetchGoldQuote } = await import("../src/lib/marketPriceService");
+    const gold = await fetchGoldQuote();
+    expect(gold).not.toBeNull();
+    expect(gold?.pricePerGramIDR).toBeGreaterThan(1_000_000);
+    expect(gold?.usdPerTroyOz).toBeGreaterThan(1000);
+  });
 });
 
 
