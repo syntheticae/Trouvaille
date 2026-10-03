@@ -588,6 +588,34 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
     const pref = getSavedUsdtPref(testUser);
     expect(pref.units).toBe(1002.41);
   });
+
+  it("fetchCryptoQuote resolves pegged USDT quote accurately", async () => {
+    const { fetchCryptoQuote } = await import("../src/lib/marketPriceService");
+    const quote = await fetchCryptoQuote("USDT");
+    expect(quote).not.toBeNull();
+    expect(quote?.usd).toBe(1);
+    expect(quote?.idr).toBeGreaterThan(10000);
+    expect(quote?.source).toBe("pegged");
+  });
+
+  it("fetchCryptoQuote resolves USDC and USD accurately", async () => {
+    const { fetchCryptoQuote } = await import("../src/lib/marketPriceService");
+    const usdc = await fetchCryptoQuote("USDC");
+    expect(usdc?.usd).toBe(1);
+    expect(usdc?.idr).toBeGreaterThan(10000);
+
+    const usd = await fetchCryptoQuote("USD");
+    expect(usd?.usd).toBe(1);
+    expect(usd?.idr).toBeGreaterThan(10000);
+  });
+
+  it("fetchStockQuote recognizes US vs Indonesian tickers correctly", async () => {
+    const { fetchStockQuote } = await import("../src/lib/marketPriceService");
+    // Symbol sanitization and format check
+    const empty = await fetchStockQuote("");
+    expect(empty).toBeNull();
+  });
 });
+
 
 

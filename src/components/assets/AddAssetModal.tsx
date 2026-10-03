@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
   Wallet as WalletIcon,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -18,8 +19,8 @@ import {
   type PresetCategory,
 } from "../../lib/assetPresets";
 import {
-  fetchCryptoPriceInIDR,
-  fetchStockPriceInIDR,
+  fetchCryptoQuote,
+  fetchStockQuote,
   type UsdtValuationPref,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
@@ -162,6 +163,129 @@ export function AddAssetModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const lastQuoteRef = useRef<{ usd?: number; idr?: number; timestamp: number } | null>(null);
+
+  // Dedicated Live Quote Fetcher
+  const fetchLiveQuote = useCallback(
+    async (
+      symbolToFetch: string,
+      typeToFetch: AssetType,
+      targetCurrency: "IDR" | "USD",
+      forceRefresh = false,
+      applyToBuyPrice = false,
+    ) => {
+      const clean = symbolToFetch.trim();
+      if (!clean) return;
+      setIsFetchingPrice(true);
+      try {
+        let quoteUSD: number | null = null;
+        let quoteIDR: number | null = null;
+
+        if (typeToFetch === "crypto") {
+          const res = await fetchCryptoQuote(clean, forceRefresh);
+          if (res) {
+            quoteUSD = res.usd;
+            quoteIDR = res.idr;
+          }
+        } else if (typeToFetch === "stock") {
+          const res = await fetchStockQuote(clean, forceRefresh);
+          if (res) {
+            quoteUSD = res.usd ?? null;
+            quoteIDR = res.idr;
+          }
+        }
+
+        if (quoteUSD || quoteIDR) {
+          lastQuoteRef.current = {
+            usd: quoteUSD ?? undefined,
+            idr: quoteIDR ?? undefined,
+            timestamp: Date.now(),
+          };
+
+          const effectiveRate = usdtRate > 0 ? usdtRate : 16415;
+          let displayVal = "";
+
+          if (targetCurrency === "USD") {
+            if (quoteUSD && quoteUSD > 0) {
+              displayVal = String(quoteUSD);
+            } else if (quoteIDR && quoteIDR > 0 && effectiveRate > 0) {
+              displayVal = String(parseFloat((quoteIDR / effectiveRate).toFixed(4)));
+            }
+          } else {
+            // IDR
+            if (quoteIDR && quoteIDR > 0) {
+              displayVal = String(quoteIDR);
+            } else if (quoteUSD && quoteUSD > 0 && effectiveRate > 0) {
+              displayVal = String(Math.round(quoteUSD * effectiveRate));
+            }
+          }
+
+          if (displayVal) {
+            setFormCurrentPrice(displayVal);
+            if (applyToBuyPrice) {
+              setFormBuyPrice(displayVal);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[AddAssetModal] Error fetching live quote:", err);
+      } finally {
+        setIsFetchingPrice(false);
+      }
+    },
+    [usdtRate],
+  );
+
+  // Smart Currency Conversion Handler
+  const handleCurrencyChange = useCallback(
+    (newCurrency: "IDR" | "USD") => {
+      if (newCurrency === formCurrency) return;
+      triggerHaptic("light");
+      const oldCurrency = formCurrency;
+      setFormCurrency(newCurrency);
+
+      const rate = usdtRate > 0 ? usdtRate : 16415;
+
+      // 1. Convert or re-apply current price
+      if (priceMode === "live" && lastQuoteRef.current) {
+        if (newCurrency === "USD") {
+          if (lastQuoteRef.current.usd && lastQuoteRef.current.usd > 0) {
+            setFormCurrentPrice(String(lastQuoteRef.current.usd));
+          } else if (lastQuoteRef.current.idr && rate > 0) {
+            setFormCurrentPrice(String(parseFloat((lastQuoteRef.current.idr / rate).toFixed(4))));
+          }
+        } else {
+          // Switch to IDR
+          if (lastQuoteRef.current.idr && lastQuoteRef.current.idr > 0) {
+            setFormCurrentPrice(String(lastQuoteRef.current.idr));
+          } else if (lastQuoteRef.current.usd && rate > 0) {
+            setFormCurrentPrice(String(Math.round(lastQuoteRef.current.usd * rate)));
+          }
+        }
+      } else {
+        const curPriceNum = parseCleanNumber(formCurrentPrice);
+        if (curPriceNum > 0) {
+          if (newCurrency === "USD" && oldCurrency === "IDR") {
+            setFormCurrentPrice(String(parseFloat((curPriceNum / rate).toFixed(4))));
+          } else if (newCurrency === "IDR" && oldCurrency === "USD") {
+            setFormCurrentPrice(String(Math.round(curPriceNum * rate)));
+          }
+        }
+      }
+
+      // 2. Convert buy price proportionally if filled
+      const buyPriceNum = parseCleanNumber(formBuyPrice);
+      if (buyPriceNum > 0) {
+        if (newCurrency === "USD" && oldCurrency === "IDR") {
+          setFormBuyPrice(String(parseFloat((buyPriceNum / rate).toFixed(4))));
+        } else if (newCurrency === "IDR" && oldCurrency === "USD") {
+          setFormBuyPrice(String(Math.round(buyPriceNum * rate)));
+        }
+      }
+    },
+    [formCurrency, priceMode, formCurrentPrice, formBuyPrice, usdtRate],
+  );
+
   // Select Preset Handler
   const handleSelectPreset = useCallback(
     async (preset: PresetAsset) => {
@@ -169,7 +293,8 @@ export function AddAssetModal({
       setFormSymbol(preset.symbol);
       setFormName(preset.name);
       setFormType(preset.type);
-      setFormCurrency(preset.suggestedCurrency || "IDR");
+      const curr = preset.suggestedCurrency || "IDR";
+      setFormCurrency(curr);
       setFormPlatform("");
       setIsCustomBrokerInput(false);
       setCustomBrokerText("");
@@ -183,33 +308,9 @@ export function AddAssetModal({
       setAnnualRate(preset.type === "fixed_asset" ? "10" : "15");
       setPhase(2);
 
-      setIsFetchingPrice(true);
-      try {
-        let livePrice: number | null = null;
-        if (preset.type === "crypto") {
-          livePrice = await fetchCryptoPriceInIDR(preset.symbol);
-        } else if (preset.type === "stock") {
-          livePrice = await fetchStockPriceInIDR(preset.symbol);
-        }
-
-        if (livePrice && livePrice > 0) {
-          const rate = usdtRate > 0 ? usdtRate : 16415;
-          if (preset.suggestedCurrency === "USD" && rate > 0) {
-            const usdPrice = parseFloat((livePrice / rate).toFixed(2));
-            setFormCurrentPrice(String(usdPrice));
-            setFormBuyPrice(String(usdPrice));
-          } else {
-            setFormCurrentPrice(String(livePrice));
-            setFormBuyPrice(String(livePrice));
-          }
-        }
-      } catch {
-        // ignore network errors
-      } finally {
-        setIsFetchingPrice(false);
-      }
+      await fetchLiveQuote(preset.symbol, preset.type, curr, true, true);
     },
-    [usdtRate],
+    [fetchLiveQuote],
   );
 
   // Reset or initialize on open / change
@@ -928,10 +1029,7 @@ export function AddAssetModal({
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setFormCurrency("IDR");
-                        }}
+                        onClick={() => handleCurrencyChange("IDR")}
                         className={`px-3 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer ${
                           formCurrency === "IDR"
                             ? isDark
@@ -944,10 +1042,7 @@ export function AddAssetModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setFormCurrency("USD");
-                        }}
+                        onClick={() => handleCurrencyChange("USD")}
                         className={`px-3 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer ${
                           formCurrency === "USD"
                             ? isDark
@@ -1068,12 +1163,14 @@ export function AddAssetModal({
                     }}
                   >
                     <div className="flex items-center justify-between">
-                      <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5 px-0.5">
-                        <span>
-                          {isIndonesian
-                            ? `Harga Pasar Terkini (${formCurrency})`
-                            : `Current Market Price (${formCurrency})`}
-                        </span>
+                      <div className="flex items-center gap-1.5 px-0.5">
+                        <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
+                          <span>
+                            {isIndonesian
+                              ? `Harga Pasar Terkini (${formCurrency})`
+                              : `Current Market Price (${formCurrency})`}
+                          </span>
+                        </label>
                         {isFetchingPrice && (
                           <Loader2 className="w-3 h-3 animate-spin text-[var(--text-tertiary)]" />
                         )}
@@ -1084,7 +1181,20 @@ export function AddAssetModal({
                               ● Live API
                             </span>
                           )}
-                      </label>
+                        {!isFetchingPrice && priceMode === "live" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerHaptic("light");
+                              fetchLiveQuote(formSymbol, formType, formCurrency, true, false);
+                            }}
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer bg-white/[0.04] border border-[var(--glass-border)]"
+                            title={isIndonesian ? "Perbarui harga" : "Refresh price"}
+                          >
+                            <RefreshCw size={10} strokeWidth={1.8} />
+                          </button>
+                        )}
+                      </div>
 
                       {/* Segmented Pill: Live vs Custom */}
                       <div
@@ -1101,6 +1211,10 @@ export function AddAssetModal({
                           onClick={() => {
                             triggerHaptic("light");
                             setPriceMode("live");
+                            const cur = parseCleanNumber(formCurrentPrice);
+                            if (cur <= 0) {
+                              fetchLiveQuote(formSymbol, formType, formCurrency, true, false);
+                            }
                           }}
                           className={`px-2 py-0.5 rounded-full transition-all cursor-pointer font-semibold ${
                             priceMode === "live"
@@ -1165,6 +1279,14 @@ export function AddAssetModal({
                         color: "var(--text-primary)",
                       }}
                     />
+
+                    {!isFetchingPrice && priceMode === "live" && !formCurrentPrice && (
+                      <p className="text-[10px] text-[var(--text-tertiary)] px-1 leading-snug">
+                        {isIndonesian
+                          ? "Harga live belum termuat. Ketuk ikon segarkan di atas atau pilih mode Kustom."
+                          : "Live quote not loaded. Tap refresh above or switch to Custom mode."}
+                      </p>
+                    )}
 
                     {formCurrency === "USD" && formCurrentPrice && (
                       <p className="text-[9.5px] text-[var(--text-tertiary)]  px-1">

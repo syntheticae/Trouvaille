@@ -13,7 +13,12 @@ const config: CapacitorConfig = {
     backgroundColor: '#0A0A0B',
     allowMixedContent: false,
     webContentsDebuggingEnabled: false
-  }
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
 };
 
 export default config;

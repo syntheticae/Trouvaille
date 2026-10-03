@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 
 export const HOLDINGS_STORAGE_KEY = "trouvaille_holdings_v1";
 export const QUOTES_CACHE_KEY = "trouvaille_market_quotes_cache_v2";
-const QUOTE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL
+const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
 
 export interface CachedQuote {
   price: number;
@@ -604,18 +604,17 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
     liveUsdtRate = currentPref.rate || USD_IDR_ESTIMATE;
   }
 
-  // 2. Refresh active market holdings (crypto & stock)
-  let hasChanges = false;
-  const updatedHoldings: InvestmentHolding[] = [];
-
-  for (const h of holdings) {
+  // 2. Refresh active market holdings (crypto & stock) in parallel
+  const quotePromises = holdings.map(async (h) => {
     // If holding uses custom broker price, preserve it
     if (h.is_custom_price && h.custom_price && h.custom_price > 0) {
-      updatedHoldings.push({
-        ...h,
-        current_price: h.custom_price,
-      });
-      continue;
+      return {
+        holding: {
+          ...h,
+          current_price: h.custom_price,
+        },
+        changed: false,
+      };
     }
 
     let newPrice: number | null = null;
@@ -630,16 +629,28 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
     }
 
     if (newPrice && newPrice > 0 && Math.abs(newPrice - h.current_price) > 0.001) {
-      hasChanges = true;
-      updatedHoldings.push({
-        ...h,
-        current_price: newPrice,
-        last_price_updated_at: new Date().toISOString(),
-      });
-    } else {
-      updatedHoldings.push(h);
+      return {
+        holding: {
+          ...h,
+          current_price: newPrice,
+          last_price_updated_at: new Date().toISOString(),
+        },
+        changed: true,
+      };
     }
-  }
+
+    return { holding: h, changed: false };
+  });
+
+  const settled = await Promise.allSettled(quotePromises);
+  let hasChanges = false;
+  const updatedHoldings: InvestmentHolding[] = settled.map((res, idx) => {
+    if (res.status === "fulfilled") {
+      if (res.value.changed) hasChanges = true;
+      return res.value.holding;
+    }
+    return holdings[idx];
+  });
 
   if (hasChanges) {
     saveHoldings(updatedHoldings, userId, true);
@@ -693,21 +704,44 @@ function setCachedQuote(key: string, price: number): void {
 }
 
 /**
+ * AbortController-wrapped fetch guaranteeing hard timeout protection.
+ * Prevents requests from hanging indefinitely on blocked or slow network routes.
+ */
+async function universalFetchWithTimeout(
+  url: string,
+  options?: RequestInit,
+  timeoutMs = 3500,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Fetch live USD/USDT price in IDR.
  * Priority: CoinGecko (CORS *) → Open Exchange Rate (CORS *) → static fallback.
- * Yahoo Finance is intentionally skipped — it returns null CORS header and
- * browsers block it in mobile WebView contexts.
  */
-export async function fetchUsdtPriceInIDR(): Promise<number> {
+export async function fetchUsdtPriceInIDR(forceRefresh = false): Promise<number> {
   const cacheKey = "usdt_rate_idr";
-  const cached = getCachedQuote(cacheKey);
-  if (cached !== null) return cached;
+  if (!forceRefresh) {
+    const cached = getCachedQuote(cacheKey);
+    if (cached !== null) return cached;
+  }
 
   // 1. CoinGecko — free, no auth, CORS *
   try {
-    const res = await fetch(
+    const res = await universalFetchWithTimeout(
       "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=idr",
       { headers: { Accept: "application/json" } },
+      3000,
     );
     if (res.ok) {
       const data = await res.json();
@@ -722,7 +756,11 @@ export async function fetchUsdtPriceInIDR(): Promise<number> {
 
   // 2. Open Exchange Rates — free, no auth, CORS *
   try {
-    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const res = await universalFetchWithTimeout(
+      "https://open.er-api.com/v6/latest/USD",
+      undefined,
+      3000,
+    );
     if (res.ok) {
       const data = await res.json();
       const rate = data?.rates?.IDR;
@@ -737,71 +775,269 @@ export async function fetchUsdtPriceInIDR(): Promise<number> {
   return USD_IDR_ESTIMATE;
 }
 
+export interface CryptoMarketQuote {
+  usd: number;
+  idr: number;
+  source: string;
+}
+
+export const COINGECKO_ID_MAP: Record<string, string> = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  SOL: "solana",
+  BNB: "binancecoin",
+  XRP: "ripple",
+  ADA: "cardano",
+  DOGE: "dogecoin",
+  AVAX: "avalanche-2",
+  DOT: "polkadot",
+  MATIC: "matic-network",
+  POL: "polygon-ecosystem-token",
+  LINK: "chainlink",
+  TRX: "tron",
+  SHIB: "shiba-inu",
+  LTC: "litecoin",
+  BCH: "bitcoin-cash",
+  NEAR: "near",
+  UNI: "uniswap",
+  SUI: "sui",
+  APT: "aptos",
+  TON: "the-open-network",
+  PEPE: "pepe",
+  RENDER: "render-token",
+  FET: "artificial-superintelligence-alliance",
+  USDT: "tether",
+  USDC: "usd-coin",
+};
+
 /**
- * Fetch live Crypto price via Binance Public API (100% free, no auth, unlimited rate).
- * Returns price in IDR.
+ * Multi-Provider Crypto Quote Engine:
+ * Provider 1: Gate.io Public Spot Tickers (Sub-200ms, CORS *, unblocked in Indonesia)
+ * Provider 2: CoinGecko Simple Price (Multi-currency USD & IDR)
+ * Provider 3: Indodax Ticker API (Official regulated Indonesian exchange)
+ * Provider 4: Binance Fallback (Strict 2-second timeout for VPN/global networks)
  */
-export async function fetchCryptoPriceInIDR(symbol: string): Promise<number | null> {
+export async function fetchCryptoQuote(
+  symbol: string,
+  forceRefresh = false,
+): Promise<CryptoMarketQuote | null> {
   const clean = symbol.trim().toUpperCase();
+  if (!clean) return null;
+
   if (clean === "USDT" || clean === "USD" || clean === "USDC") {
-    return fetchUsdtPriceInIDR();
+    const rate = await fetchUsdtPriceInIDR(forceRefresh);
+    return { usd: 1, idr: rate, source: "pegged" };
   }
 
   const cleanSymbol = clean.replace(/USDT$/, "");
-  const pair = `${cleanSymbol}USDT`;
-  const cacheKey = `crypto_${pair}`;
+  const cacheKeyUSD = `crypto_quote_usd_${cleanSymbol}`;
+  const cacheKeyIDR = `crypto_quote_idr_${cleanSymbol}`;
 
-  const cached = getCachedQuote(cacheKey);
-  if (cached !== null) return cached;
-
-  try {
-    const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${pair}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const usdPrice = parseFloat(data.price);
-    if (!isNaN(usdPrice) && usdPrice > 0) {
-      const usdtRate = await fetchUsdtPriceInIDR();
-      const idrPrice = Math.round(usdPrice * usdtRate);
-      setCachedQuote(cacheKey, idrPrice);
-      return idrPrice;
+  if (!forceRefresh) {
+    const cachedUSD = getCachedQuote(cacheKeyUSD);
+    const cachedIDR = getCachedQuote(cacheKeyIDR);
+    if (cachedUSD !== null && cachedIDR !== null) {
+      return { usd: cachedUSD, idr: cachedIDR, source: "cache" };
     }
-  } catch {
-    // Network or CORS fallback
   }
+
+  // Provider 1: Gate.io Public Spot Tickers (High-Speed, Sub-200ms, CORS *, Unblocked in ID)
+  try {
+    const pair = `${cleanSymbol}_USDT`;
+    const res = await universalFetchWithTimeout(
+      `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${pair}`,
+      undefined,
+      3000,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data[0]?.last) {
+        const usdPrice = parseFloat(data[0].last);
+        if (!isNaN(usdPrice) && usdPrice > 0) {
+          const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
+          const idrPrice = Math.round(usdPrice * usdtRate);
+          setCachedQuote(cacheKeyUSD, usdPrice);
+          setCachedQuote(cacheKeyIDR, idrPrice);
+          return { usd: usdPrice, idr: idrPrice, source: "gateio" };
+        }
+      }
+    }
+  } catch {}
+
+  // Provider 2: CoinGecko Simple Price API (High Reliability, Multi-Currency)
+  const cgId = COINGECKO_ID_MAP[cleanSymbol];
+  if (cgId) {
+    try {
+      const res = await universalFetchWithTimeout(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd,idr`,
+        { headers: { Accept: "application/json" } },
+        3000,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const info = data?.[cgId];
+        if (info && typeof info.usd === "number" && info.usd > 0) {
+          const usdPrice = info.usd;
+          const idrPrice =
+            typeof info.idr === "number" && info.idr > 0
+              ? Math.round(info.idr)
+              : Math.round(usdPrice * (await fetchUsdtPriceInIDR(forceRefresh)));
+          setCachedQuote(cacheKeyUSD, usdPrice);
+          setCachedQuote(cacheKeyIDR, idrPrice);
+          return { usd: usdPrice, idr: idrPrice, source: "coingecko" };
+        }
+      }
+    } catch {}
+  }
+
+  // Provider 3: Indodax Ticker API (Official Regulated Indonesian Exchange)
+  try {
+    const res = await universalFetchWithTimeout(
+      `https://indodax.com/api/ticker/${cleanSymbol.toLowerCase()}idr`,
+      undefined,
+      3000,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const rawLast = data?.ticker?.last;
+      const idrPrice = parseFloat(rawLast);
+      if (!isNaN(idrPrice) && idrPrice > 0) {
+        const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
+        const usdPrice = parseFloat((idrPrice / usdtRate).toFixed(4));
+        setCachedQuote(cacheKeyUSD, usdPrice);
+        setCachedQuote(cacheKeyIDR, Math.round(idrPrice));
+        return { usd: usdPrice, idr: Math.round(idrPrice), source: "indodax" };
+      }
+    }
+  } catch {}
+
+  // Provider 4: Binance Fallback (Strict 2-second timeout for non-ID / VPN networks)
+  try {
+    const pair = `${cleanSymbol}USDT`;
+    const res = await universalFetchWithTimeout(
+      `https://api.binance.com/api/v3/ticker/price?symbol=${pair}`,
+      undefined,
+      2000,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const usdPrice = parseFloat(data?.price);
+      if (!isNaN(usdPrice) && usdPrice > 0) {
+        const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
+        const idrPrice = Math.round(usdPrice * usdtRate);
+        setCachedQuote(cacheKeyUSD, usdPrice);
+        setCachedQuote(cacheKeyIDR, idrPrice);
+        return { usd: usdPrice, idr: idrPrice, source: "binance" };
+      }
+    }
+  } catch {}
+
   return null;
 }
 
 /**
- * Fetch live stock price via Yahoo Finance Chart API (free, on-demand).
+ * Fetch live Crypto price in IDR.
  */
-export async function fetchStockPriceInIDR(symbol: string): Promise<number | null> {
-  const cleanSymbol = symbol.trim().toUpperCase();
-  const cacheKey = `stock_${cleanSymbol}`;
+export async function fetchCryptoPriceInIDR(
+  symbol: string,
+  forceRefresh = false,
+): Promise<number | null> {
+  const quote = await fetchCryptoQuote(symbol, forceRefresh);
+  return quote ? quote.idr : null;
+}
 
-  const cached = getCachedQuote(cacheKey);
-  if (cached !== null) return cached;
+/**
+ * Fetch live Crypto price in USD.
+ */
+export async function fetchCryptoPriceInUSD(
+  symbol: string,
+  forceRefresh = false,
+): Promise<number | null> {
+  const quote = await fetchCryptoQuote(symbol, forceRefresh);
+  return quote ? quote.usd : null;
+}
+
+export interface StockMarketQuote {
+  usd?: number;
+  idr: number;
+  regularMarketPrice: number;
+  isUS: boolean;
+}
+
+/**
+ * Fetch live stock quote via Yahoo Finance Chart API.
+ * Supports both Indonesian equities (*.JK) and US equities.
+ */
+export async function fetchStockQuote(
+  symbol: string,
+  forceRefresh = false,
+): Promise<StockMarketQuote | null> {
+  const cleanSymbol = symbol.trim().toUpperCase();
+  if (!cleanSymbol) return null;
+
+  const isUS = !cleanSymbol.endsWith(".JK");
+  const cacheKeyUSD = `stock_quote_usd_${cleanSymbol}`;
+  const cacheKeyIDR = `stock_quote_idr_${cleanSymbol}`;
+
+  if (!forceRefresh) {
+    const cachedIDR = getCachedQuote(cacheKeyIDR);
+    if (cachedIDR !== null) {
+      const cachedUSD = getCachedQuote(cacheKeyUSD);
+      return {
+        regularMarketPrice: isUS ? (cachedUSD ?? 0) : cachedIDR,
+        idr: cachedIDR,
+        usd: cachedUSD ?? undefined,
+        isUS,
+      };
+    }
+  }
 
   try {
-    const res = await fetch(
+    const res = await universalFetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${cleanSymbol}?interval=1d&range=1d`,
+      undefined,
+      3500,
     );
     if (!res.ok) return null;
     const data = await res.json();
     const meta = data?.chart?.result?.[0]?.meta;
     const regularMarketPrice = meta?.regularMarketPrice;
     if (typeof regularMarketPrice === "number" && regularMarketPrice > 0) {
-      // If US stock (e.g. AAPL, TSLA), convert to IDR
-      const isUS = !cleanSymbol.endsWith(".JK");
-      const finalPrice = isUS
-        ? Math.round(regularMarketPrice * USD_IDR_ESTIMATE)
-        : Math.round(regularMarketPrice);
-      setCachedQuote(cacheKey, finalPrice);
-      return finalPrice;
+      const usdtRate = await fetchUsdtPriceInIDR(forceRefresh);
+      let idrPrice: number;
+      let usdPrice: number;
+
+      if (isUS) {
+        usdPrice = regularMarketPrice;
+        idrPrice = Math.round(usdPrice * usdtRate);
+      } else {
+        idrPrice = Math.round(regularMarketPrice);
+        usdPrice = parseFloat((idrPrice / usdtRate).toFixed(4));
+      }
+
+      setCachedQuote(cacheKeyUSD, usdPrice);
+      setCachedQuote(cacheKeyIDR, idrPrice);
+      return {
+        regularMarketPrice,
+        idr: idrPrice,
+        usd: usdPrice,
+        isUS,
+      };
     }
-  } catch {
-    // Graceful fallback
-  }
+  } catch {}
+
   return null;
+}
+
+/**
+ * Fetch live stock price in IDR.
+ */
+export async function fetchStockPriceInIDR(
+  symbol: string,
+  forceRefresh = false,
+): Promise<number | null> {
+  const quote = await fetchStockQuote(symbol, forceRefresh);
+  return quote ? quote.idr : null;
 }
 
 /**
