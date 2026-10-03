@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
 import {
   useAddTransaction,
   useUpdateTransaction,
@@ -190,6 +191,7 @@ export function TransactionSheet({
   const { shortcuts } = useShortcuts();
   const { user } = useAuth();
   const { data: wallets = [] } = useWallets();
+  const { balancesById } = useWalletBalances();
 
   const fromWallet = useMemo(
     () => wallets.find((w) => w.id === walletId),
@@ -754,6 +756,45 @@ export function TransactionSheet({
     if (!isNaN(evaluated) && evaluated > 0) return evaluated;
     return 0;
   }, [amount, amountInput]);
+
+  const activeSourceWallet = useMemo(() => {
+    return wallets.find((w) => w.id === walletId) || wallets[0] || null;
+  }, [wallets, walletId]);
+
+  const isCreditOrLoan = useMemo(() => {
+    if (!activeSourceWallet) return false;
+    return (
+      activeSourceWallet.classification === "credit" ||
+      activeSourceWallet.classification === "loan"
+    );
+  }, [activeSourceWallet]);
+
+  const effectiveSourceBalance = useMemo(() => {
+    if (!activeSourceWallet) return 0;
+    const computedBal =
+      balancesById[activeSourceWallet.id] ?? activeSourceWallet.balance ?? 0;
+    if (
+      transaction &&
+      transaction.wallet_id === activeSourceWallet.id &&
+      (transaction.type === "expense" || transaction.type === "transfer")
+    ) {
+      return computedBal + (transaction.amount || 0);
+    }
+    return computedBal;
+  }, [activeSourceWallet, balancesById, transaction]);
+
+  const isOverdraft = useMemo(() => {
+    if (type !== "expense" && type !== "transfer") return false;
+    if (isCreditOrLoan || !activeSourceWallet) return false;
+    if (currentNumericAmount <= 0) return false;
+    return currentNumericAmount > effectiveSourceBalance;
+  }, [
+    type,
+    isCreditOrLoan,
+    activeSourceWallet,
+    currentNumericAmount,
+    effectiveSourceBalance,
+  ]);
 
   const lastSaveTriggeredAt = useRef<number>(0);
   const touchHandledRef = useRef<boolean>(false);
@@ -1523,6 +1564,35 @@ export function TransactionSheet({
             setMoreWalletOpen(true);
           }}
         />
+
+        {/* ── Overdraft Warning Capsule (Real-time Guardrail) ── */}
+        <AnimatePresence>
+          {isOverdraft && (
+            <motion.div
+              initial={{ opacity: 0, y: -4, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -4, height: 0 }}
+              transition={{ duration: 0.16 }}
+              className="mb-3 mx-0.5 px-3 py-2 rounded-2xl flex items-center gap-2.5 text-[11.5px] font-medium overflow-hidden"
+              style={{
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
+              }}
+            >
+              <AlertTriangle
+                size={14}
+                className="shrink-0 text-[var(--text-secondary)]"
+                strokeWidth={1.75}
+              />
+              <span className="leading-snug text-[11px] text-[var(--text-secondary)]">
+                {isIndonesian
+                  ? `Nominal melebihi saldo akun saat ini (${formatRupiah(effectiveSourceBalance)})`
+                  : `Amount exceeds current account balance (${formatRupiah(effectiveSourceBalance)})`}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── 6. Note & Date/Time Compact Capsule ── */}
         <div

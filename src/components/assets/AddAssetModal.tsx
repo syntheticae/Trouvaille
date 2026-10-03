@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Wallet as WalletIcon,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -341,6 +342,30 @@ export function AddAssetModal({
       unrealizedPct: pct,
     };
   }, [formUnits, formBuyPrice, formCurrentPrice]);
+
+  // Fat-Finger Price Deviation Detection (> 5x or < 0.2x)
+  const priceDeviation = useMemo(() => {
+    const rawBuy = parseCleanNumber(formBuyPrice);
+    const rawCurrent = parseCleanNumber(formCurrentPrice);
+    if (rawBuy <= 0 || rawCurrent <= 0) return null;
+
+    const ratio = rawBuy / rawCurrent;
+    if (ratio >= 5) {
+      const pct = Math.round((ratio - 1) * 100);
+      return {
+        type: "high",
+        label: `+${pct.toLocaleString()}%`,
+      };
+    }
+    if (ratio <= 0.2) {
+      const pct = Math.round((1 - ratio) * 100);
+      return {
+        type: "low",
+        label: `-${pct}%`,
+      };
+    }
+    return null;
+  }, [formBuyPrice, formCurrentPrice]);
 
   // Handle Save
   const handleSave = async () => {
@@ -1003,6 +1028,35 @@ export function AddAssetModal({
                       )}
                     </div>
                   </div>
+
+                  {/* Fat-Finger Price Deviation Guard */}
+                  <AnimatePresence>
+                    {priceDeviation && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.16 }}
+                        className="p-2.5 px-3 rounded-2xl flex items-center gap-2 select-none overflow-hidden"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <AlertCircle
+                          size={14}
+                          strokeWidth={1.75}
+                          className="shrink-0 text-[var(--text-secondary)]"
+                        />
+                        <p className="text-[11px] font-medium text-[var(--text-secondary)] leading-snug">
+                          {isIndonesian
+                            ? `Harga beli menyimpang drastis dari harga pasar (${priceDeviation.label})`
+                            : `Buy price deviates significantly from market price (${priceDeviation.label})`}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Market Price with Live API vs Custom Toggle */}
                   <div
