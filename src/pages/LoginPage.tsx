@@ -30,6 +30,7 @@ import {
 } from "../components/auth/loginAuthHelpers";
 import { DynamicShowcaseCapsule } from "../components/auth/DynamicShowcaseCapsule";
 import { VaultPinLoginModal } from "../components/auth/VaultPinLoginModal";
+import { cn } from "../lib/utils";
 
 export function LoginPage() {
   const chartGradientId = useId();
@@ -44,7 +45,9 @@ export function LoginPage() {
   // Inline email form state
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState(() => getBiometricLoginCredentials()?.email || "");
+  const [email, setEmail] = useState(
+    () => getBiometricLoginCredentials()?.email || "",
+  );
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +77,8 @@ export function LoginPage() {
     setMessage(null);
     triggerHaptic("medium");
     try {
-      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const isNative =
+        typeof window !== "undefined" && Capacitor.isNativePlatform();
       const redirectUri = isNative
         ? "com.alhafidz.trouvaille://auth-callback"
         : typeof window !== "undefined"
@@ -103,7 +107,12 @@ export function LoginPage() {
         if (error) throw error;
       }
     } catch (err: any) {
-      setError(err?.message || (isIndonesian ? `Gagal masuk dengan ${provider}.` : `Failed to sign in with ${provider}.`));
+      setError(
+        err?.message ||
+          (isIndonesian
+            ? `Gagal masuk dengan ${provider}.`
+            : `Failed to sign in with ${provider}.`),
+      );
     } finally {
       setLoading(false);
     }
@@ -141,9 +150,12 @@ export function LoginPage() {
             ? `${window.location.origin}/?type=recovery`
             : undefined;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: resetRedirectUri,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: resetRedirectUri,
+        },
+      );
       if (error) throw error;
       setMessage(
         isIndonesian
@@ -153,7 +165,9 @@ export function LoginPage() {
     } catch (err: any) {
       setError(
         err?.message ||
-          (isIndonesian ? "Gagal mengirimkan tautan pengaturan ulang." : "Failed to send reset link."),
+          (isIndonesian
+            ? "Gagal mengirimkan tautan pengaturan ulang."
+            : "Failed to send reset link."),
       );
     } finally {
       setLoading(false);
@@ -202,7 +216,6 @@ export function LoginPage() {
     setLoading(false);
   };
 
-  // PIN Unlock Modal submission
   const handlePinDigit = async (digit: string) => {
     if (pinInput.length >= 6 || pinVerifying) return;
     triggerHaptic("light");
@@ -228,12 +241,19 @@ export function LoginPage() {
           }
         } else {
           triggerHaptic("heavy");
-          setPinError(res.error || (isIndonesian ? "PIN tidak valid." : "Invalid PIN."));
+          setPinError(
+            res.error || (isIndonesian ? "PIN tidak valid." : "Invalid PIN."),
+          );
           setTimeout(() => setPinInput(""), 600);
         }
       } catch (err: any) {
         triggerHaptic("heavy");
-        setPinError(err?.message || (isIndonesian ? "Gagal memverifikasi PIN." : "Failed to verify PIN."));
+        setPinError(
+          err?.message ||
+            (isIndonesian
+              ? "Gagal memverifikasi PIN."
+              : "Failed to verify PIN."),
+        );
         setTimeout(() => setPinInput(""), 600);
       } finally {
         setPinVerifying(false);
@@ -251,90 +271,87 @@ export function LoginPage() {
 
   return (
     <div
-      className={`min-h-dvh w-full flex flex-col justify-between items-center relative overflow-hidden select-none transition-colors duration-500 ${
-        isDark ? "bg-[#060608] text-white" : "bg-[#f4f4f7] text-zinc-950"
-      }`}
+      className={cn(
+        "min-h-dvh w-full flex flex-col justify-between items-center relative overflow-hidden select-none transition-colors duration-500",
+        isDark ? "bg-[#060608] text-white" : "bg-[#f4f4f7] text-zinc-950",
+      )}
       style={{
         fontFamily: "'Urbanist', sans-serif",
-        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 12px), 16px)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)",
       }}
     >
-      {/* ============================================================ */}
-      {/* 1. CINEMATIC AMBIENT AURORA MESH */}
-      {/* ============================================================ */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Soft top-center aura */}
+      {/* ── 1. CINEMATIC AMBIENT AURORA MESH (POLISHED & BALANCED) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+        {/* Soft Top-Center Luminous Caustic */}
         <div
-          className={`absolute top-[8%] left-1/2 -translate-x-1/2 w-[340px] h-[340px] rounded-full blur-[110px] ${
-            isDark ? "bg-white/[0.06]" : "bg-black/[0.02]"
-          }`}
+          className={cn(
+            "absolute top-[6%] left-1/2 -translate-x-1/2 w-[380px] h-[340px] rounded-full blur-[100px] transition-opacity",
+            isDark ? "bg-white/[0.055]" : "bg-white opacity-85",
+          )}
         />
-        {/* Subtle mid-horizon glow */}
+
+        {/* Ambient Mid Glow */}
         <div
-          className={`absolute top-[42%] left-1/2 -translate-x-1/2 w-[540px] h-[280px] rounded-full blur-[100px] ${
-            isDark ? "bg-white/[0.04]" : "bg-black/[0.015]"
-          }`}
+          className={cn(
+            "absolute top-[36%] left-1/2 -translate-x-1/2 w-[520px] h-[260px] rounded-full blur-[90px] transition-opacity",
+            isDark ? "bg-white/[0.035]" : "bg-slate-200/50 opacity-70",
+          )}
         />
-        {/* Subtle bottom vignette */}
+
+        {/* Bottom Atmospheric Vignette */}
         <div
-          className={`absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t ${
+          className={cn(
+            "absolute bottom-0 inset-x-0 h-44 transition-opacity",
             isDark
-              ? "from-black via-black/80 to-transparent"
-              : "from-[#f4f4f7] via-[#f4f4f7]/80 to-transparent"
-          }`}
+              ? "bg-gradient-to-t from-[#060608] via-[#060608]/80 to-transparent"
+              : "bg-gradient-to-t from-[#f4f4f7] via-[#f4f4f7]/80 to-transparent",
+          )}
         />
       </div>
 
-      {/* ============================================================ */}
-      {/* 2. CELESTIAL HORIZON ARC (CRADLES SHOWCASE ABOVE CARD) */}
-      {/* ============================================================ */}
+      {/* ── 2. POLISHED CELESTIAL HORIZON ARC (CRADLES SHOWCASE & LIQUID SHEET) ── */}
       <div
-        className={`absolute top-[38%] sm:top-[40%] left-1/2 -translate-x-1/2 w-[170vw] max-w-[900px] aspect-square rounded-[50%] pointer-events-none border-t transition-all duration-700 ${
-          isDark ? "border-white/20" : "border-black/10"
-        }`}
+        className={cn(
+          "absolute top-[37%] sm:top-[39%] left-1/2 -translate-x-1/2 w-[180vw] max-w-[960px] aspect-square rounded-[50%] pointer-events-none border-t transition-all duration-700",
+          isDark ? "border-white/[0.18]" : "border-black/[0.07]",
+        )}
         style={{
           background: isDark
-            ? "radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 35%, transparent 65%)"
-            : "radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.01) 35%, transparent 65%)",
+            ? "radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.015) 38%, transparent 68%)"
+            : "radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(230, 233, 242, 0.45) 32%, transparent 65%)",
           boxShadow: isDark
-            ? "0 -8px 35px rgba(255, 255, 255, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.35)"
-            : "0 -8px 35px rgba(0, 0, 0, 0.04), inset 0 1px 2px rgba(255, 255, 255, 0.9)",
+            ? "inset 0 1px 1px 0 rgba(255, 255, 255, 0.25), 0 -10px 40px -10px rgba(0, 0, 0, 0.6)"
+            : "inset 0 1.5px 1px 0 #ffffff, 0 -12px 36px -8px rgba(20, 25, 45, 0.04)",
         }}
       />
 
-      {/* ============================================================ */}
-      {/* 3. TOP SECTION: BALANCED & ENRICHED 5-SLIDE SHOWCASE */}
-      {/* ============================================================ */}
-      <div className="flex-1 w-full max-w-sm px-5 relative z-10 flex flex-col justify-center items-center text-center py-2">
-        {/* Dynamic Showcase Slide Text */}
+      {/* ── 3. TOP SECTION: SHOWCASE STAGE & PROPORTIONAL TITLE ── */}
+      <div className="flex-1 w-full max-w-sm px-6 relative z-10 flex flex-col justify-center items-center text-center py-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-1 mb-2.5"
           >
-            <h1
-              className={`text-[26px] sm:text-[28px] font-semibold tracking-tight leading-tight ${
-                isDark ? "text-white" : "text-zinc-950"
-              }`}
-            >
+            <h1 className="text-[25px] sm:text-[27px] font-bold tracking-tight leading-tight">
               {currentSlide.title}
             </h1>
             <p
-              className={`text-[12.5px] sm:text-[13px] font-normal whitespace-pre-line leading-relaxed max-w-[310px] mx-auto ${
-                isDark ? "text-white/55" : "text-zinc-600"
-              }`}
+              className={cn(
+                "text-[12.5px] font-medium leading-relaxed max-w-[290px] mx-auto",
+                isDark ? "text-zinc-400" : "text-zinc-600",
+              )}
             >
               {currentSlide.tagline}
             </p>
           </motion.div>
         </AnimatePresence>
 
-        {/* Dynamic Showcase Display Stage (Architecturally Differentiated Glass Morphism) */}
-        <div className="w-full flex justify-center items-center min-h-[165px] my-1">
+        {/* Dynamic Showcase Capsule with Organic Glass Reflection */}
+        <div className="w-full flex justify-center items-center min-h-[160px] my-1">
           <DynamicShowcaseCapsule
             currentSlide={currentSlide}
             isDark={isDark}
@@ -346,13 +363,15 @@ export function LoginPage() {
             }}
             onPrev={() => {
               triggerHaptic("light");
-              setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
+              setActiveSlide(
+                (prev) => (prev - 1 + slides.length) % slides.length,
+              );
             }}
           />
         </div>
 
-        {/* 5 Pagination Dots (Interactive & Auto-Synced) */}
-        <div className="flex items-center justify-center gap-2 mt-2">
+        {/* Apple Tactile Segment Pagination Dots */}
+        <div className="flex items-center justify-center gap-1.5 mt-2.5">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -365,76 +384,71 @@ export function LoginPage() {
               className="p-1 cursor-pointer"
             >
               <div
-                className={`h-1.5 rounded-full transition-all duration-300 ${
+                className={cn(
+                  "h-1 rounded-full transition-all duration-300",
                   idx === activeSlide
                     ? isDark
-                      ? "w-5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                      : "w-5 bg-zinc-950 shadow-[0_0_8px_rgba(0,0,0,0.3)]"
+                      ? "w-4 bg-white"
+                      : "w-4 bg-zinc-950"
                     : isDark
-                      ? "w-1.5 bg-white/25 hover:bg-white/50"
-                      : "w-1.5 bg-black/20 hover:bg-black/40"
-                }`}
+                      ? "w-1 bg-white/25 hover:bg-white/50"
+                      : "w-1 bg-black/15 hover:bg-black/30",
+                )}
               />
             </button>
           ))}
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* 4. BOTTOM LIQUID GLASS SHEET WITH INLINE EXPANSION           */}
-      {/* ============================================================ */}
+      {/* ── 4. MATURE LIQUID GLASS SHEET (APPLE VISIONOS / IOS 18 SPEC) ── */}
       <motion.div
-        initial={{ opacity: 0, y: 25 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className={`w-full max-w-[480px] rounded-t-[36px] sm:rounded-t-[40px] px-6 pt-6 relative z-20 overflow-hidden border-t border-x transition-all ${
-          isDark ? "border-white/[0.16]" : "border-black/[0.08]"
-        }`}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className={cn(
+          "w-full max-w-[450px] rounded-t-[34px] sm:rounded-t-[38px] px-6 pt-5 pb-6 relative z-20 overflow-hidden border-t border-x transition-all",
+          isDark
+            ? "bg-gradient-to-b from-white/[0.09] via-white/[0.04] to-[#0c0c0e]/95 border-white/[0.14]"
+            : "bg-gradient-to-b from-white/85 via-white/65 to-white/90 border-white/80",
+        )}
         style={{
-          background: isDark
-            ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(18, 18, 22, 0.96) 55%, #0c0c0e 100%)"
-            : "linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 248, 250, 0.98) 60%, #ffffff 100%)",
-          backdropFilter: "blur(48px)",
-          WebkitBackdropFilter: "blur(48px)",
+          backdropFilter: "blur(40px) saturate(190%)",
+          WebkitBackdropFilter: "blur(40px) saturate(190%)",
           boxShadow: isDark
-            ? "0 -24px 60px rgba(0, 0, 0, 0.85), inset 0 1.5px 1px rgba(255, 255, 255, 0.28)"
-            : "0 -20px 50px rgba(0, 0, 0, 0.12), inset 0 1.5px 1px rgba(255, 255, 255, 1)",
-          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
+            ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.22), 0 -16px 40px -10px rgba(0, 0, 0, 0.7)"
+            : "inset 0 1.5px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.03), 0 -16px 36px -12px rgba(25, 30, 50, 0.08)",
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 14px), 22px)",
         }}
       >
-        {/* Ambient Top Inner Glow */}
-        <div
-          className={`absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-24 rounded-full blur-[40px] pointer-events-none ${
-            isDark ? "bg-white/[0.08]" : "bg-black/[0.02]"
-          }`}
-        />
+        {/* Specular Highlight Rim at the top edge */}
+        <div className="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/50 to-transparent pointer-events-none" />
 
         <AnimatePresence mode="wait">
           {/* ========================================================== */}
-          {/* VIEW MODE A: WELCOME / SIGN UP PAGE                       */}
+          {/* VIEW MODE A: WELCOME / REGISTER                           */}
           {/* ========================================================== */}
           {viewMode === "welcome" ? (
             <motion.div
               key="view-welcome"
-              initial={{ opacity: 0, x: -12 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="w-full flex flex-col"
             >
-              {/* Heading & Subtitle */}
-              <div className="text-center space-y-1 mb-5 px-2">
-                <h2
-                  className={`text-[21px] sm:text-[22px] font-semibold tracking-tight ${
-                    isDark ? "text-white" : "text-zinc-950"
-                  }`}
-                >
-                  {isIndonesian ? "Selamat Datang di Trouvaille" : "Welcome to Trouvaille"}
+              {/* Header */}
+              <div className="text-center space-y-1 mb-4 px-1">
+                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
+                  {isIndonesian
+                    ? "Selamat Datang di Trouvaille"
+                    : "Welcome to Trouvaille"}
                 </h2>
                 <p
-                  className={`text-[12.5px] font-normal leading-relaxed max-w-[310px] mx-auto ${
-                    isDark ? "text-white/55" : "text-zinc-600"
-                  }`}
+                  className={cn(
+                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
                 >
                   {isIndonesian
                     ? "Pantau arus kas harian dan bangun kejelasan aset dengan presisi tinggi."
@@ -442,24 +456,25 @@ export function LoginPage() {
                 </p>
               </div>
 
-              {/* Action Area (Inline Form or Buttons) */}
-              <div className="space-y-2.5 w-full">
+              {/* Action Area */}
+              <div className="space-y-2 w-full">
                 {showEmailForm ? (
-                  /* INLINE REGISTRATION FORM */
                   <motion.form
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
                     onSubmit={handleSubmit}
-                    className="space-y-2.5 overflow-hidden"
+                    className="space-y-2 overflow-hidden"
                   >
+                    {/* Email Input */}
                     <div className="relative">
                       <Mail
                         size={15}
-                        className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        className={cn(
+                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
+                          isDark ? "text-zinc-500" : "text-zinc-400",
+                        )}
                       />
                       <input
                         type="email"
@@ -468,44 +483,53 @@ export function LoginPage() {
                         placeholder="your.email@domain.com"
                         required
                         disabled={loading}
-                        className={`w-full pl-10 pr-3.5 py-3 rounded-xl text-[13px] outline-none transition-all ${
+                        className={cn(
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
                           isDark
-                            ? "bg-white/[0.05] border border-white/14 text-white placeholder:text-white/30"
-                            : "bg-black/[0.035] border border-black/12 text-zinc-900 placeholder:text-zinc-400"
-                        }`}
+                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                        )}
                       />
                     </div>
 
+                    {/* Password Input */}
                     <div className="relative">
                       <Lock
                         size={15}
-                        className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        className={cn(
+                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
+                          isDark ? "text-zinc-500" : "text-zinc-400",
+                        )}
                       />
                       <input
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={
-                          isIndonesian ? "Kata sandi (min 6 karakter)" : "Password (min 6 characters)"
+                          isIndonesian
+                            ? "Kata sandi (min 6 karakter)"
+                            : "Password (min 6 characters)"
                         }
                         required
                         minLength={6}
                         disabled={loading}
-                        className={`w-full pl-10 pr-10 py-3 rounded-xl text-[13px] outline-none transition-all ${
+                        className={cn(
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
                           isDark
-                            ? "bg-white/[0.05] border border-white/14 text-white placeholder:text-white/30"
-                            : "bg-black/[0.035] border border-black/12 text-zinc-900 placeholder:text-zinc-400"
-                        }`}
+                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                        )}
                       />
                       <button
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setShowPassword(!showPassword)}
-                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none ${
-                          isDark ? "text-white/40 hover:text-white/80" : "text-zinc-400 hover:text-zinc-700"
-                        }`}
+                        className={cn(
+                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
+                          isDark
+                            ? "text-zinc-500 hover:text-zinc-300"
+                            : "text-zinc-400 hover:text-zinc-700",
+                        )}
                       >
                         {showPassword ? (
                           <EyeOff size={15} strokeWidth={1.75} />
@@ -515,43 +539,65 @@ export function LoginPage() {
                       </button>
                     </div>
 
-                    {/* Password Strength Indicator for Registration (Strict Monochrome Rule 7) */}
+                    {/* Password Strength Indicator */}
                     {password.length > 0 && (
-                      <div className="px-1 space-y-1">
+                      <div className="px-1 space-y-1 pt-0.5">
                         <div
-                          className={`w-full h-1 rounded-full overflow-hidden flex gap-1 ${
-                            isDark ? "bg-white/10" : "bg-black/10"
-                          }`}
+                          className={cn(
+                            "w-full h-1 rounded-full overflow-hidden flex gap-1",
+                            isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                          )}
                         >
                           {[1, 2, 3, 4].map((s) => {
-                            const strength = getPasswordStrength(password, isIndonesian);
+                            const strength = getPasswordStrength(
+                              password,
+                              isIndonesian,
+                            );
                             const active = strength.score >= s;
                             return (
                               <div
                                 key={s}
-                                className={`h-full flex-1 transition-all rounded-full ${
+                                className={cn(
+                                  "h-full flex-1 transition-all rounded-full",
                                   active
                                     ? isDark
                                       ? "bg-white"
                                       : "bg-zinc-950"
-                                    : isDark
-                                      ? "bg-white/10"
-                                      : "bg-black/10"
-                                }`}
+                                    : "bg-transparent",
+                                )}
                                 style={{
-                                  opacity: active ? (s === 1 ? 0.35 : s === 2 ? 0.55 : s === 3 ? 0.8 : 1) : 1,
+                                  opacity: active
+                                    ? s === 1
+                                      ? 0.35
+                                      : s === 2
+                                        ? 0.6
+                                        : s === 3
+                                          ? 0.85
+                                          : 1
+                                    : 0,
                                 }}
                               />
                             );
                           })}
                         </div>
                         <div
-                          className={`flex items-center justify-between text-[10px] ${
-                            isDark ? "text-white/40" : "text-zinc-500"
-                          }`}
+                          className={cn(
+                            "flex items-center justify-between text-[9.5px]",
+                            isDark ? "text-zinc-500" : "text-zinc-500",
+                          )}
                         >
-                          <span>{isIndonesian ? "Kekuatan Kata Sandi" : "Password Strength"}</span>
-                          <span className={isDark ? "text-white/80 font-medium" : "text-zinc-900 font-medium"}>
+                          <span>
+                            {isIndonesian
+                              ? "Kekuatan Kata Sandi"
+                              : "Password Strength"}
+                          </span>
+                          <span
+                            className={
+                              isDark
+                                ? "text-zinc-300 font-semibold"
+                                : "text-zinc-800 font-semibold"
+                            }
+                          >
                             {getPasswordStrength(password, isIndonesian).label}
                           </span>
                         </div>
@@ -560,50 +606,61 @@ export function LoginPage() {
 
                     {error && (
                       <p
-                        className={`text-[12px] font-medium px-1 ${
-                          isDark ? "text-zinc-300" : "text-zinc-700"
-                        }`}
+                        className={cn(
+                          "text-[11.5px] font-medium px-1",
+                          isDark ? "text-zinc-300" : "text-zinc-700",
+                        )}
                       >
                         {error}
                       </p>
                     )}
                     {message && (
                       <p
-                        className={`text-[12px] font-medium px-1 ${
-                          isDark ? "text-white" : "text-zinc-900"
-                        }`}
+                        className={cn(
+                          "text-[11.5px] font-medium px-1",
+                          isDark ? "text-white" : "text-zinc-900",
+                        )}
                       >
                         {message}
                       </p>
                     )}
 
+                    {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
-                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer select-none mt-1 ${
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer select-none mt-1 border",
                         isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white hover:bg-zinc-900"
-                      }`}
+                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
+                      )}
                     >
                       {loading ? (
                         <div className="flex items-center gap-2">
-                          <Loader2 size={16} className="animate-spin" />
-                          <span>{isIndonesian ? "Membuat Akun..." : "Creating Account..."}</span>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>
+                            {isIndonesian
+                              ? "Membuat Akun..."
+                              : "Creating Account..."}
+                          </span>
                         </div>
                       ) : (
                         <>
-                          <span>{isIndonesian ? "Buat Akun" : "Create Account"}</span>
-                          <ArrowRight size={15} strokeWidth={2} />
+                          <span>
+                            {isIndonesian ? "Buat Akun" : "Create Account"}
+                          </span>
+                          <ArrowRight size={14} strokeWidth={2.2} />
                         </>
                       )}
                     </button>
 
                     <div
-                      className={`flex items-center justify-between px-1 pt-1 text-[11px] font-medium ${
-                        isDark ? "text-white/50" : "text-zinc-500"
-                      }`}
+                      className={cn(
+                        "flex items-center justify-between px-1 pt-1 text-[11px] font-medium",
+                        isDark ? "text-zinc-400" : "text-zinc-500",
+                      )}
                     >
                       <button
                         type="button"
@@ -614,9 +671,9 @@ export function LoginPage() {
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer select-none ${
+                        className={
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
-                        }`}
+                        }
                       >
                         {isIndonesian ? "Batal" : "Cancel"}
                       </button>
@@ -629,45 +686,44 @@ export function LoginPage() {
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer select-none font-medium ${
-                          isDark ? "text-white/80 hover:text-white" : "text-zinc-800 hover:text-zinc-950"
-                        }`}
+                        className={
+                          isDark
+                            ? "text-white hover:underline"
+                            : "text-zinc-950 hover:underline"
+                        }
                       >
-                        {isIndonesian ? "Sudah punya akun? Masuk" : "Already have an account? Sign in"}
+                        {isIndonesian
+                          ? "Sudah punya akun? Masuk"
+                          : "Already have an account? Sign in"}
                       </button>
                     </div>
                   </motion.form>
                 ) : (
-                  /* DEFAULT BUTTONS LIST */
                   <>
                     {/* 1. Continue with Email */}
                     <button
                       type="button"
                       disabled={loading}
                       onClick={handleToggleEmailForm}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                         isDark
-                          ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
-                      }`}
-                      style={{
-                        boxShadow: isDark
-                          ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
-                          : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                      }}
+                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
+                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <Mail
-                          size={17}
-                          strokeWidth={1.75}
-                          className={isDark ? "text-zinc-900" : "text-white"}
-                        />
-                        <span>{isIndonesian ? "Lanjutkan dengan Surel" : "Continue with Email"}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Mail size={16} strokeWidth={2} />
+                        <span>
+                          {isIndonesian
+                            ? "Lanjutkan dengan Surel"
+                            : "Continue with Email"}
+                        </span>
                       </div>
                       <ArrowRight
-                        size={15}
-                        strokeWidth={2}
-                        className={isDark ? "text-zinc-500" : "text-zinc-400"}
+                        size={14}
+                        strokeWidth={2.2}
+                        className="opacity-60"
                       />
                     </button>
 
@@ -676,17 +732,15 @@ export function LoginPage() {
                       type="button"
                       disabled={loading}
                       onClick={() => handleOAuthLogin("google")}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer group border ${
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                         isDark
-                          ? "bg-white/[0.055] border-white/16 text-white hover:bg-white/[0.08]"
-                          : "bg-white/90 border-black/10 text-zinc-900 hover:bg-white shadow-sm"
-                      }`}
-                      style={{
-                        boxShadow: isDark ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)" : undefined,
-                      }}
+                          ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                          : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-2.5">
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                           <path
                             fill="#4285F4"
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -704,49 +758,55 @@ export function LoginPage() {
                             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                           />
                         </svg>
-                        <span>{isIndonesian ? "Lanjutkan dengan Google" : "Continue with Google"}</span>
+                        <span>
+                          {isIndonesian
+                            ? "Lanjutkan dengan Google"
+                            : "Continue with Google"}
+                        </span>
                       </div>
                       <ArrowRight
-                        size={15}
-                        className={`group-hover:translate-x-0.5 transition-transform ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        size={14}
+                        strokeWidth={2}
+                        className="opacity-40"
                       />
                     </button>
 
-                    {/* 3. Continue without an account */}
+                    {/* 3. Continue without account */}
                     <button
                       type="button"
                       disabled={loading}
                       onClick={handleContinueAsGuest}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-medium text-[13.5px] active:scale-[0.98] transition-all cursor-pointer group border ${
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-medium text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                         isDark
-                          ? "bg-white/[0.035] border-white/12 text-white/90 hover:bg-white/[0.06]"
-                          : "bg-black/[0.03] border-black/8 text-zinc-800 hover:bg-black/[0.05]"
-                      }`}
-                      style={{
-                        boxShadow: isDark ? "inset 0 1px 1px rgba(255, 255, 255, 0.1)" : undefined,
-                      }}
+                          ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.07] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                          : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.06] text-zinc-700 shadow-[inset_0_1px_0_#ffffff]",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <User
-                          size={17}
+                          size={16}
                           strokeWidth={1.75}
-                          className={isDark ? "text-white/70" : "text-zinc-600"}
+                          className="opacity-70"
                         />
-                        <span>{isIndonesian ? "Lanjutkan tanpa akun" : "Continue without an account"}</span>
+                        <span>
+                          {isIndonesian
+                            ? "Lanjutkan tanpa akun"
+                            : "Continue without an account"}
+                        </span>
                       </div>
                       <ArrowRight
-                        size={15}
-                        className={`group-hover:translate-x-0.5 transition-transform ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        size={14}
+                        strokeWidth={2}
+                        className="opacity-40"
                       />
                     </button>
+
                     <p
-                      className={`text-[10.5px] text-center pt-0.5 ${
-                        isDark ? "text-white/40" : "text-zinc-500"
-                      }`}
+                      className={cn(
+                        "text-[10px] text-center pt-0.5",
+                        isDark ? "text-zinc-500" : "text-zinc-500",
+                      )}
                     >
                       {isIndonesian
                         ? "Privat & hanya di perangkat · Tanpa pencadangan cloud"
@@ -756,27 +816,41 @@ export function LoginPage() {
                 )}
               </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-3.5">
-                <div className={`h-[1px] flex-1 ${isDark ? "bg-white/[0.08]" : "bg-black/[0.08]"}`} />
+              {/* Minimal Divider */}
+              <div className="flex items-center gap-3 my-3">
+                <div
+                  className={cn(
+                    "h-[1px] flex-1",
+                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                  )}
+                />
                 <span
-                  className={`text-[11px] font-normal ${
-                    isDark ? "text-white/40" : "text-zinc-400"
-                  }`}
+                  className={cn(
+                    "text-[10.5px]",
+                    isDark ? "text-zinc-500" : "text-zinc-400",
+                  )}
                 >
                   {isIndonesian ? "atau" : "or"}
                 </span>
-                <div className={`h-[1px] flex-1 ${isDark ? "bg-white/[0.08]" : "bg-black/[0.08]"}`} />
+                <div
+                  className={cn(
+                    "h-[1px] flex-1",
+                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                  )}
+                />
               </div>
 
-              {/* Footer: Switch to Log in */}
-              <div className="text-center pb-1">
+              {/* Footer Switch */}
+              <div className="text-center">
                 <p
-                  className={`text-[12px] font-normal ${
-                    isDark ? "text-white/50" : "text-zinc-500"
-                  }`}
+                  className={cn(
+                    "text-[11.5px]",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
                 >
-                  {isIndonesian ? "Sudah memiliki akun? " : "Already have an account? "}
+                  {isIndonesian
+                    ? "Belum memiliki akun? "
+                    : "Don't have an account? "}
                   <button
                     type="button"
                     onClick={() => {
@@ -786,40 +860,38 @@ export function LoginPage() {
                       setError(null);
                       setMessage(null);
                     }}
-                    className={`font-semibold hover:underline cursor-pointer transition-colors ${
-                      isDark ? "text-white" : "text-zinc-950"
-                    }`}
+                    className={cn(
+                      "font-semibold hover:underline cursor-pointer",
+                      isDark ? "text-white" : "text-zinc-950",
+                    )}
                   >
-                    {isIndonesian ? "Masuk" : "Log in"}
+                    {isIndonesian ? "Daftar" : "Sign up"}
                   </button>
                 </p>
               </div>
             </motion.div>
           ) : (
             /* ========================================================== */
-            /* VIEW MODE B: LOG IN PAGE                                   */
+            /* VIEW MODE B: LOG IN                                        */
             /* ========================================================== */
             <motion.div
               key="view-login"
-              initial={{ opacity: 0, x: 12 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="w-full flex flex-col"
             >
-              {/* Heading & Subtitle */}
-              <div className="text-center space-y-1 mb-5 px-2">
-                <h2
-                  className={`text-[21px] sm:text-[22px] font-semibold tracking-tight ${
-                    isDark ? "text-white" : "text-zinc-950"
-                  }`}
-                >
+              {/* Header */}
+              <div className="text-center space-y-1 mb-4 px-1">
+                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
                   {isIndonesian ? "Selamat Datang Kembali" : "Welcome Back"}
                 </h2>
                 <p
-                  className={`text-[12.5px] font-normal leading-relaxed max-w-[310px] mx-auto ${
-                    isDark ? "text-white/55" : "text-zinc-600"
-                  }`}
+                  className={cn(
+                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
                 >
                   {isIndonesian
                     ? "Masuk untuk mengakses brankas aset dan space tersinkronisasi milik Anda."
@@ -827,24 +899,25 @@ export function LoginPage() {
                 </p>
               </div>
 
-              {/* Action Area (Inline Form or Buttons) */}
-              <div className="space-y-2.5 w-full">
+              {/* Action Area */}
+              <div className="space-y-2 w-full">
                 {showEmailForm ? (
-                  /* INLINE SIGN-IN FORM */
                   <motion.form
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
                     onSubmit={handleSubmit}
-                    className="space-y-2.5 overflow-hidden"
+                    className="space-y-2 overflow-hidden"
                   >
+                    {/* Email Input */}
                     <div className="relative">
                       <Mail
                         size={15}
-                        className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        className={cn(
+                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
+                          isDark ? "text-zinc-500" : "text-zinc-400",
+                        )}
                       />
                       <input
                         type="email"
@@ -853,20 +926,23 @@ export function LoginPage() {
                         placeholder="your.email@domain.com"
                         required
                         disabled={loading}
-                        className={`w-full pl-10 pr-3.5 py-3 rounded-xl text-[13px] outline-none transition-all ${
+                        className={cn(
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
                           isDark
-                            ? "bg-white/[0.05] border border-white/14 text-white placeholder:text-white/30"
-                            : "bg-black/[0.035] border border-black/12 text-zinc-900 placeholder:text-zinc-400"
-                        }`}
+                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                        )}
                       />
                     </div>
 
+                    {/* Password Input */}
                     <div className="relative">
                       <Lock
                         size={15}
-                        className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        className={cn(
+                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
+                          isDark ? "text-zinc-500" : "text-zinc-400",
+                        )}
                       />
                       <input
                         type={showPassword ? "text" : "password"}
@@ -875,19 +951,23 @@ export function LoginPage() {
                         placeholder={isIndonesian ? "Kata sandi" : "Password"}
                         required
                         disabled={loading}
-                        className={`w-full pl-10 pr-10 py-3 rounded-xl text-[13px] outline-none transition-all ${
+                        className={cn(
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
                           isDark
-                            ? "bg-white/[0.05] border border-white/14 text-white placeholder:text-white/30"
-                            : "bg-black/[0.035] border border-black/12 text-zinc-900 placeholder:text-zinc-400"
-                        }`}
+                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                        )}
                       />
                       <button
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setShowPassword(!showPassword)}
-                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none ${
-                          isDark ? "text-white/40 hover:text-white/80" : "text-zinc-400 hover:text-zinc-700"
-                        }`}
+                        className={cn(
+                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
+                          isDark
+                            ? "text-zinc-500 hover:text-zinc-300"
+                            : "text-zinc-400 hover:text-zinc-700",
+                        )}
                       >
                         {showPassword ? (
                           <EyeOff size={15} strokeWidth={1.75} />
@@ -899,50 +979,61 @@ export function LoginPage() {
 
                     {error && (
                       <p
-                        className={`text-[12px] font-medium px-1 ${
-                          isDark ? "text-zinc-300" : "text-zinc-700"
-                        }`}
+                        className={cn(
+                          "text-[11.5px] font-medium px-1",
+                          isDark ? "text-zinc-300" : "text-zinc-700",
+                        )}
                       >
                         {error}
                       </p>
                     )}
                     {message && (
                       <p
-                        className={`text-[12px] font-medium px-1 ${
-                          isDark ? "text-white" : "text-zinc-900"
-                        }`}
+                        className={cn(
+                          "text-[11.5px] font-medium px-1",
+                          isDark ? "text-white" : "text-zinc-900",
+                        )}
                       >
                         {message}
                       </p>
                     )}
 
+                    {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
-                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer select-none mt-1 ${
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer select-none mt-1 border",
                         isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white hover:bg-zinc-900"
-                      }`}
+                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
+                      )}
                     >
                       {loading ? (
                         <div className="flex items-center gap-2">
-                          <Loader2 size={16} className="animate-spin" />
-                          <span>{isIndonesian ? "Sedang Masuk..." : "Signing In..."}</span>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>
+                            {isIndonesian ? "Sedang Masuk..." : "Signing In..."}
+                          </span>
                         </div>
                       ) : (
                         <>
-                          <span>{isIndonesian ? "Masuk dengan Surel" : "Sign In with Email"}</span>
-                          <ArrowRight size={15} strokeWidth={2} />
+                          <span>
+                            {isIndonesian
+                              ? "Masuk dengan Surel"
+                              : "Sign In with Email"}
+                          </span>
+                          <ArrowRight size={14} strokeWidth={2.2} />
                         </>
                       )}
                     </button>
 
                     <div
-                      className={`flex items-center justify-between px-1 pt-1 text-[11px] font-medium ${
-                        isDark ? "text-white/50" : "text-zinc-500"
-                      }`}
+                      className={cn(
+                        "flex items-center justify-between px-1 pt-1 text-[11px] font-medium",
+                        isDark ? "text-zinc-400" : "text-zinc-500",
+                      )}
                     >
                       <button
                         type="button"
@@ -953,9 +1044,9 @@ export function LoginPage() {
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer select-none ${
+                        className={
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
-                        }`}
+                        }
                       >
                         {isIndonesian ? "Batal" : "Cancel"}
                       </button>
@@ -963,16 +1054,16 @@ export function LoginPage() {
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={handleForgotPassword}
-                        className={`transition-colors cursor-pointer select-none ${
-                          isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-800"
-                        }`}
+                        className={cn(
+                          "hover:underline",
+                          isDark ? "text-zinc-400" : "text-zinc-600",
+                        )}
                       >
                         {isIndonesian ? "Lupa kata sandi?" : "Forgot password?"}
                       </button>
                     </div>
                   </motion.form>
                 ) : (
-                  /* DEFAULT LOGIN BUTTONS */
                   <>
                     {/* 1. Unlock with Security PIN (If Enrolled) */}
                     {hasVaultPin && (
@@ -985,29 +1076,25 @@ export function LoginPage() {
                           setShowPinModal(true);
                           triggerHaptic("light");
                         }}
-                        className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                        className={cn(
+                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                           isDark
-                            ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                            : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
-                        }`}
-                        style={{
-                          boxShadow: isDark
-                            ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
-                            : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                        }}
+                            ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
+                            : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
+                        )}
                       >
-                        <div className="flex items-center gap-3">
-                          <KeyRound
-                            size={17}
-                            strokeWidth={1.75}
-                            className={isDark ? "text-zinc-900" : "text-white"}
-                          />
-                          <span>{isIndonesian ? "Buka dengan PIN Brankas" : "Unlock with Vault PIN"}</span>
+                        <div className="flex items-center gap-2.5">
+                          <KeyRound size={16} strokeWidth={2} />
+                          <span>
+                            {isIndonesian
+                              ? "Buka dengan PIN Brankas"
+                              : "Unlock with Vault PIN"}
+                          </span>
                         </div>
                         <ArrowRight
-                          size={15}
-                          strokeWidth={2}
-                          className={isDark ? "text-zinc-500" : "text-zinc-400"}
+                          size={14}
+                          strokeWidth={2.2}
+                          className="opacity-60"
                         />
                       </button>
                     )}
@@ -1017,72 +1104,46 @@ export function LoginPage() {
                       type="button"
                       disabled={loading}
                       onClick={handleToggleEmailForm}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                         !hasVaultPin
                           ? isDark
-                            ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                            : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
+                            ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
+                            : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]"
                           : isDark
-                          ? "bg-white/[0.055] border border-white/16 text-white hover:bg-white/[0.08]"
-                          : "bg-white/90 border border-black/10 text-zinc-900 hover:bg-white shadow-sm"
-                      }`}
-                      style={{
-                        boxShadow: !hasVaultPin
-                          ? isDark
-                            ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
-                            : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)"
-                          : isDark
-                          ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)"
-                          : undefined,
-                      }}
+                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                            : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <Mail
-                          size={17}
-                          strokeWidth={1.75}
-                          className={
-                            !hasVaultPin
-                              ? isDark
-                                ? "text-zinc-900"
-                                : "text-white"
-                              : isDark
-                              ? "text-white/80"
-                              : "text-zinc-700"
-                          }
-                        />
-                        <span>{isIndonesian ? "Masuk dengan Surel" : "Log in with Email"}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Mail size={16} strokeWidth={2} />
+                        <span>
+                          {isIndonesian
+                            ? "Masuk dengan Surel"
+                            : "Log in with Email"}
+                        </span>
                       </div>
                       <ArrowRight
-                        size={15}
-                        strokeWidth={2}
-                        className={
-                          !hasVaultPin
-                            ? isDark
-                              ? "text-zinc-500"
-                              : "text-zinc-400"
-                            : isDark
-                            ? "text-white/40"
-                            : "text-zinc-400"
-                        }
+                        size={14}
+                        strokeWidth={2.2}
+                        className="opacity-60"
                       />
                     </button>
 
-                    {/* 4. Log in with Google */}
+                    {/* 3. Log in with Google */}
                     <button
                       type="button"
                       disabled={loading}
                       onClick={() => handleOAuthLogin("google")}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer group border ${
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
                         isDark
-                          ? "bg-white/[0.055] border-white/16 text-white hover:bg-white/[0.08]"
-                          : "bg-white/90 border-black/10 text-zinc-900 hover:bg-white shadow-sm"
-                      }`}
-                      style={{
-                        boxShadow: isDark ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)" : undefined,
-                      }}
+                          ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                          : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-2.5">
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                           <path
                             fill="#4285F4"
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1100,40 +1161,57 @@ export function LoginPage() {
                             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                           />
                         </svg>
-                        <span>{isIndonesian ? "Masuk dengan Google" : "Log in with Google"}</span>
+                        <span>
+                          {isIndonesian
+                            ? "Masuk dengan Google"
+                            : "Log in with Google"}
+                        </span>
                       </div>
                       <ArrowRight
-                        size={15}
-                        className={`group-hover:translate-x-0.5 transition-transform ${
-                          isDark ? "text-white/40" : "text-zinc-400"
-                        }`}
+                        size={14}
+                        strokeWidth={2}
+                        className="opacity-40"
                       />
                     </button>
                   </>
                 )}
               </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-3.5">
-                <div className={`h-[1px] flex-1 ${isDark ? "bg-white/[0.08]" : "bg-black/[0.08]"}`} />
+              {/* Minimal Divider */}
+              <div className="flex items-center gap-3 my-3">
+                <div
+                  className={cn(
+                    "h-[1px] flex-1",
+                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                  )}
+                />
                 <span
-                  className={`text-[11px] font-normal ${
-                    isDark ? "text-white/40" : "text-zinc-400"
-                  }`}
+                  className={cn(
+                    "text-[10.5px]",
+                    isDark ? "text-zinc-500" : "text-zinc-400",
+                  )}
                 >
                   {isIndonesian ? "atau" : "or"}
                 </span>
-                <div className={`h-[1px] flex-1 ${isDark ? "bg-white/[0.08]" : "bg-black/[0.08]"}`} />
+                <div
+                  className={cn(
+                    "h-[1px] flex-1",
+                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                  )}
+                />
               </div>
 
-              {/* Footer: Switch back to Sign up */}
-              <div className="text-center pb-1">
+              {/* Footer Switch */}
+              <div className="text-center">
                 <p
-                  className={`text-[12px] font-normal ${
-                    isDark ? "text-white/50" : "text-zinc-500"
-                  }`}
+                  className={cn(
+                    "text-[11.5px]",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
                 >
-                  {isIndonesian ? "Belum memiliki akun? " : "Don't have an account? "}
+                  {isIndonesian
+                    ? "Belum memiliki akun? "
+                    : "Don't have an account? "}
                   <button
                     type="button"
                     onClick={() => {
@@ -1143,9 +1221,10 @@ export function LoginPage() {
                       setError(null);
                       setMessage(null);
                     }}
-                    className={`font-semibold hover:underline cursor-pointer transition-colors ${
-                      isDark ? "text-white" : "text-zinc-950"
-                    }`}
+                    className={cn(
+                      "font-semibold hover:underline cursor-pointer",
+                      isDark ? "text-white" : "text-zinc-950",
+                    )}
                   >
                     {isIndonesian ? "Daftar" : "Sign up"}
                   </button>
@@ -1156,9 +1235,7 @@ export function LoginPage() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ============================================================ */}
-      {/* 5. IN-APP VAULT PIN MODAL (MONOCHROME LUXURY)                 */}
-      {/* ============================================================ */}
+      {/* ── 5. VAULT PIN MODAL ── */}
       <VaultPinLoginModal
         isOpen={showPinModal}
         isDark={isDark}
@@ -1178,4 +1255,3 @@ export function LoginPage() {
     </div>
   );
 }
-

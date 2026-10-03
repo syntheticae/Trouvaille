@@ -1,11 +1,16 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence, type PanInfo, useDragControls } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  type PanInfo,
+  useDragControls,
+} from "framer-motion";
 import { X, CalendarDays } from "lucide-react";
 import { getDaysInMonth } from "date-fns";
 import type { Transaction } from "../../lib/types";
-import { formatRupiah } from "../../lib/utils";
+import { formatRupiah, cn } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -113,7 +118,13 @@ export function MonthForecastSheet({
       map.set(d, Math.round(forecasted));
     }
     return map;
-  }, [actualCumulative, daysElapsed, totalDays, effectiveTotalExpense, effectiveDailyAvg]);
+  }, [
+    actualCumulative,
+    daysElapsed,
+    totalDays,
+    effectiveTotalExpense,
+    effectiveDailyAvg,
+  ]);
 
   // Chart dimensions (pure floating layout without card box)
   const svgWidth = 320;
@@ -125,16 +136,17 @@ export function MonthForecastSheet({
   const plotWidth = svgWidth - padLeft - padRight;
   const plotHeight = svgHeight - padTop - padBottom;
 
-  const maxVal = Math.max(effectiveProjectedTotal, effectiveTotalExpense, 1) * 1.08;
+  const maxVal =
+    Math.max(effectiveProjectedTotal, effectiveTotalExpense, 1) * 1.08;
 
   const getX = useCallback(
     (d: number) => padLeft + ((d - 1) / Math.max(1, totalDays - 1)) * plotWidth,
-    [padLeft, totalDays, plotWidth]
+    [padLeft, totalDays, plotWidth],
   );
 
   const getY = useCallback(
     (v: number) => padTop + plotHeight - (Math.max(0, v) / maxVal) * plotHeight,
-    [padTop, plotHeight, maxVal]
+    [padTop, plotHeight, maxVal],
   );
 
   // Solid Actual Path
@@ -162,11 +174,23 @@ export function MonthForecastSheet({
   const forecastPath = useMemo(() => {
     if (daysElapsed >= totalDays) return "";
     const xStart = getX(daysElapsed);
-    const yStart = getY(forecastCumulative.get(daysElapsed) || effectiveTotalExpense);
+    const yStart = getY(
+      forecastCumulative.get(daysElapsed) || effectiveTotalExpense,
+    );
     const xEnd = getX(totalDays);
-    const yEnd = getY(forecastCumulative.get(totalDays) || effectiveProjectedTotal);
+    const yEnd = getY(
+      forecastCumulative.get(totalDays) || effectiveProjectedTotal,
+    );
     return `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`;
-  }, [daysElapsed, totalDays, forecastCumulative, effectiveTotalExpense, effectiveProjectedTotal, getX, getY]);
+  }, [
+    daysElapsed,
+    totalDays,
+    forecastCumulative,
+    effectiveTotalExpense,
+    effectiveProjectedTotal,
+    getX,
+    getY,
+  ]);
 
   // Pointer interactions for scrubber
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -207,7 +231,8 @@ export function MonthForecastSheet({
 
   // Active inspected day
   const activeInspectDay = hoveredDay !== null ? hoveredDay : null;
-  const isHoverActual = activeInspectDay !== null && activeInspectDay <= daysElapsed;
+  const isHoverActual =
+    activeInspectDay !== null && activeInspectDay <= daysElapsed;
   const displayHeroAmount =
     activeInspectDay !== null
       ? isHoverActual
@@ -216,12 +241,14 @@ export function MonthForecastSheet({
       : effectiveProjectedTotal;
 
   // Axis scale labels
-  const yLabelTop = Math.round(maxVal / 1000000) > 0
-    ? `${(maxVal / 1000000).toFixed(1)}M`
-    : `${Math.round(maxVal / 1000)}K`;
-  const yLabelMid = Math.round(maxVal / 2000000) > 0
-    ? `${(maxVal / 2000000).toFixed(1)}M`
-    : `${Math.round(maxVal / 2000)}K`;
+  const yLabelTop =
+    Math.round(maxVal / 1000000) > 0
+      ? `${(maxVal / 1000000).toFixed(1)}M`
+      : `${Math.round(maxVal / 1000)}K`;
+  const yLabelMid =
+    Math.round(maxVal / 2000000) > 0
+      ? `${(maxVal / 2000000).toFixed(1)}M`
+      : `${Math.round(maxVal / 2000)}K`;
 
   if (typeof document === "undefined") return null;
 
@@ -229,370 +256,461 @@ export function MonthForecastSheet({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Ambient Dark Backdrop */}
+          {/* Ambient Dark Backdrop with Soft Blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
             onClick={onClose}
-            className="fixed inset-0 z-[998] bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[998] bg-black/65 backdrop-blur-md"
           />
 
-          {/* Minimalist Apple Luxury Bottom Sheet (Flush with bottom, swipe-to-dismiss) */}
+          {/* Minimalist Apple Liquid Glass Bottom Sheet */}
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 350, damping: 35 }}
+            transition={{ type: "spring", stiffness: 360, damping: 34 }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{ top: 0 }}
-            dragElastic={{ top: 0.05, bottom: 0.8 }}
+            dragElastic={{ top: 0.05, bottom: 0.75 }}
             dragSnapToOrigin
             onDragEnd={handleDragEnd}
-            className="fixed bottom-0 left-0 right-0 z-[999] shadow-2xl flex flex-col select-none overflow-hidden"
+            className={cn(
+              "fixed bottom-0 left-0 right-0 z-[999] flex flex-col select-none overflow-hidden rounded-t-[36px] transition-colors",
+              isDark ? "text-white" : "text-[#09090b]",
+            )}
             style={{
-              background: "var(--bg-elevated)",
-              color: "var(--text-primary)",
-              borderTop: "1px solid var(--glass-border)",
-              borderRadius: "32px 32px 0 0",
+              background: isDark
+                ? "linear-gradient(180deg, rgba(26, 26, 32, 0.88) 0%, rgba(14, 14, 18, 0.94) 100%)"
+                : "linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(246, 247, 250, 0.95) 100%)",
+              backdropFilter: "blur(40px) saturate(190%)",
+              WebkitBackdropFilter: "blur(40px) saturate(190%)",
+              borderTop: isDark
+                ? "1px solid rgba(255, 255, 255, 0.16)"
+                : "1px solid rgba(255, 255, 255, 0.9)",
+              boxShadow: isDark
+                ? "0 -24px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.22)"
+                : "0 -20px 50px rgba(20, 25, 40, 0.08), inset 0 1.5px 0 #ffffff",
               maxHeight: "92dvh",
-              paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
+              paddingBottom:
+                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
               fontFamily: "'Urbanist', sans-serif",
             }}
           >
-            {/* Top Grab Handle Area - exclusively handles downward drag dismiss */}
-            <div 
+            {/* Top Grab Handle Area */}
+            <div
               className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing w-full touch-none"
               onPointerDown={(e) => dragControls.start(e)}
             >
               <div
-                className="w-10 h-1 rounded-full transition-colors"
-                style={{ background: "var(--text-tertiary)", opacity: 0.3 }}
+                className="w-10 h-1 rounded-full transition-opacity opacity-30 hover:opacity-60"
+                style={{
+                  background: isDark ? "#ffffff" : "#000000",
+                }}
               />
             </div>
 
             {/* Inner Content Container */}
-            <div className="w-full max-w-md mx-auto px-6 flex flex-col overflow-y-auto">
-              {/* Modal Header Row */}
+            <div className="w-full max-w-md mx-auto px-6 flex flex-col overflow-y-auto no-scrollbar">
+              {/* Modal Header Row with Circular Glass Close Button */}
               <div className="relative flex items-center justify-center py-1">
-            <h2
-              className="text-[15px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {isIndonesian ? "Prakiraan Akhir Bulan" : "Month Forecast"}
-            </h2>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-              }}
-              className="absolute right-0 w-8 h-8 rounded-full flex items-center justify-center glass-surface active:scale-95 transition-all"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              title={isIndonesian ? "Tutup" : "Close"}
-              aria-label={isIndonesian ? "Tutup" : "Close"}
-            >
-              <X size={15} />
-            </button>
-          </div>
+                <h2
+                  className="text-[14.5px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Prakiraan Akhir Bulan" : "Month Forecast"}
+                </h2>
 
-          {/* Hero Forecast Number & Elapsed Counter */}
-          <div className="text-center pt-3 pb-1">
-            <h1
-              className="text-4xl sm:text-[42px] font-bold amount tracking-tight leading-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {formatRupiah(displayHeroAmount)}
-            </h1>
-
-            <p
-              className="text-[12px] font-medium mt-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {activeInspectDay !== null ? (
-                <span>
-                  {isIndonesian ? `Hari ke-${activeInspectDay} dari ${totalDays} ` : `Day ${activeInspectDay} of ${totalDays} `}
-                  {isHoverActual
-                    ? (isIndonesian ? "(Aktual)" : "(Actual)")
-                    : (isIndonesian ? "(Prakiraan)" : "(Forecast)")}
-                </span>
-              ) : (
-                <span>{isIndonesian ? `${daysElapsed} dari ${totalDays} hari` : `${daysElapsed} of ${totalDays} days`}</span>
-              )}
-            </p>
-
-            <p
-              className="text-[12px] max-w-[270px] mx-auto mt-2 leading-relaxed font-normal"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian
-                ? "Jika laju pengeluaran stabil pada ritme ini, berikut estimasi total akhir bulan."
-                : "If you keep spending at the same pace, here is what the full month will look like."}
-            </p>
-          </div>
-
-          {/* Floating Minimalist Dual-Curve Chart (No Container Card) */}
-          <div className="w-full pt-3 pb-2 touch-none">
-            <svg
-              ref={chartRef}
-              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto overflow-visible cursor-crosshair"
-              onPointerDown={handlePointerMove}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerLeave}
-              onPointerLeave={handlePointerLeave}
-            >
-              <defs>
-                {/* Monochrome luminous fill gradient */}
-                <linearGradient id="spentGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={isDark ? "#ffffff" : "#18181b"} stopOpacity={isDark ? 0.18 : 0.08} />
-                  <stop offset="100%" stopColor={isDark ? "#ffffff" : "#18181b"} stopOpacity={isDark ? 0.01 : 0.00} />
-                </linearGradient>
-              </defs>
-
-              {/* Baseline at bottom */}
-              <line
-                x1={padLeft}
-                y1={padTop + plotHeight}
-                x2={padLeft + plotWidth}
-                y2={padTop + plotHeight}
-                stroke={isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"}
-                strokeWidth="1"
-              />
-
-              {/* Y-axis tick labels on left */}
-              <text
-                x={padLeft - 6}
-                y={padTop + 4}
-                textAnchor="end"
-                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
-                fontSize="8.5"
-                fontFamily="monospace"
-              >
-                {yLabelTop}
-              </text>
-              <text
-                x={padLeft - 6}
-                y={padTop + plotHeight / 2 + 3}
-                textAnchor="end"
-                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
-                fontSize="8.5"
-                fontFamily="monospace"
-              >
-                {yLabelMid}
-              </text>
-              <text
-                x={padLeft - 6}
-                y={padTop + plotHeight}
-                textAnchor="end"
-                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
-                fontSize="8.5"
-                fontFamily="monospace"
-              >
-                0
-              </text>
-
-              {/* Area fill under solid curve */}
-              {actualAreaPath && (
-                <path d={actualAreaPath} fill="url(#spentGradient)" />
-              )}
-
-              {/* Dashed Forecast Path (Future trajectory) */}
-              {forecastPath && (
-                <path
-                  d={forecastPath}
-                  fill="none"
-                  stroke={isDark ? "rgba(255,255,255,0.45)" : "#71717a"}
-                  strokeWidth="1.75"
-                  strokeDasharray="4 4"
-                  strokeLinecap="round"
-                />
-              )}
-
-              {/* Solid Actual Spend Curve */}
-              {actualPath && (
-                <path
-                  d={actualPath}
-                  fill="none"
-                  stroke={isDark ? "#ffffff" : "#18181b"}
-                  strokeWidth="2.25"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-
-              {/* Terminal marker dot on today */}
-              {daysElapsed >= 1 && (
-                <g>
-                  <circle
-                    cx={getX(daysElapsed)}
-                    cy={getY(actualCumulative.get(daysElapsed) || effectiveTotalExpense)}
-                    r="6"
-                    fill={isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)"}
-                  />
-                  <circle
-                    cx={getX(daysElapsed)}
-                    cy={getY(actualCumulative.get(daysElapsed) || effectiveTotalExpense)}
-                    r="3.5"
-                    fill={isDark ? "#ffffff" : "#18181b"}
-                    stroke={isDark ? "#111114" : "#ffffff"}
-                    strokeWidth="1.5"
-                  />
-                </g>
-              )}
-
-              {/* Interactive Scrubber Indicator */}
-              {hoveredDay !== null && (
-                <g>
-                  <line
-                    x1={getX(hoveredDay)}
-                    y1={padTop}
-                    x2={getX(hoveredDay)}
-                    y2={padTop + plotHeight}
-                    stroke={isDark ? "#ffffff" : "#18181b"}
-                    strokeWidth="1"
-                    strokeDasharray="2 2"
-                    opacity="0.8"
-                  />
-                  <circle
-                    cx={getX(hoveredDay)}
-                    cy={getY(
-                      hoveredDay <= daysElapsed
-                        ? actualCumulative.get(hoveredDay) || 0
-                        : forecastCumulative.get(hoveredDay) || 0
-                    )}
-                    r="4"
-                    fill={isDark ? "#ffffff" : "#18181b"}
-                    stroke={isDark ? "#000000" : "#ffffff"}
-                    strokeWidth="1.5"
-                  />
-                </g>
-              )}
-
-              {/* X-axis tick labels at bottom */}
-              <text
-                x={padLeft}
-                y={svgHeight - 6}
-                fill="var(--text-tertiary)"
-                fontSize="9"
-                fontFamily="'Urbanist', sans-serif"
-              >
-                1
-              </text>
-              <text
-                x={padLeft + plotWidth}
-                y={svgHeight - 6}
-                textAnchor="end"
-                fill="var(--text-tertiary)"
-                fontSize="9"
-                fontFamily="'Urbanist', sans-serif"
-              >
-                {totalDays}
-              </text>
-            </svg>
-
-            {/* Minimalist Centered Legend */}
-            <div
-              className="flex items-center justify-center gap-6 mt-1 text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-4 h-[2px] rounded-full"
-                  style={{ background: "var(--text-primary)" }}
-                />
-                <span>{isIndonesian ? "Terpakai" : "Spent"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-4 h-[2px] rounded-full border-t border-dashed"
-                  style={{
-                    borderTopWidth: "2px",
-                    borderColor: "var(--text-tertiary)",
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onClose();
                   }}
-                />
-                <span>{isIndonesian ? "Prakiraan" : "Forecast"}</span>
+                  className="absolute right-0 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.12)"
+                      : "1px solid rgba(0, 0, 0, 0.06)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.15)"
+                      : "inset 0 1px 0 #ffffff",
+                    color: "var(--text-secondary)",
+                  }}
+                  title={isIndonesian ? "Tutup" : "Close"}
+                  aria-label={isIndonesian ? "Tutup" : "Close"}
+                >
+                  <X size={14} strokeWidth={2.2} />
+                </button>
               </div>
-            </div>
-          </div>
 
-          {/* Minimalist Metric Cards (Side-by-Side Reference Layout) */}
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div
-              className="p-3.5 rounded-2xl flex flex-col justify-between glass-surface"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Terpakai sejauh ini" : "Spent so far"}
-              </span>
-              <p
-                className="text-[17px] font-semibold amount mt-1"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {formatRupiah(effectiveTotalExpense)}
-              </p>
-            </div>
+              {/* Hero Forecast Number & Elapsed Counter */}
+              <div className="text-center pt-3 pb-1">
+                <h1
+                  className="text-4xl sm:text-[42px] font-bold amount tracking-tight leading-tight tabular-nums"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {formatRupiah(displayHeroAmount)}
+                </h1>
 
-            <div
-              className="p-3.5 rounded-2xl flex flex-col justify-between glass-surface"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Rata-rata harian" : "Daily average"}
-              </span>
-              <p
-                className="text-[17px] font-semibold amount mt-1"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {formatRupiah(Math.round(effectiveDailyAvg))}
-              </p>
-            </div>
-          </div>
+                <p
+                  className="text-[12px] font-medium mt-1"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {activeInspectDay !== null ? (
+                    <span>
+                      {isIndonesian
+                        ? `Hari ke-${activeInspectDay} dari ${totalDays} `
+                        : `Day ${activeInspectDay} of ${totalDays} `}
+                      {isHoverActual
+                        ? isIndonesian
+                          ? "(Aktual)"
+                          : "(Actual)"
+                        : isIndonesian
+                          ? "(Prakiraan)"
+                          : "(Forecast)"}
+                    </span>
+                  ) : (
+                    <span>
+                      {isIndonesian
+                        ? `${daysElapsed} dari ${totalDays} hari`
+                        : `${daysElapsed} of ${totalDays} days`}
+                    </span>
+                  )}
+                </p>
 
-          {/* Calendar Runway Action Button */}
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              onClose();
-              navigate("/calendar");
-            }}
-            className="w-full mt-3 py-3 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer glass-surface"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-            title={isIndonesian ? "Lihat Kalender & Runway Harian" : "View Calendar & Daily Runway"}
-          >
-            <CalendarDays size={14} strokeWidth={1.75} />
-            <span>{isIndonesian ? "Lihat Kalender & Runway Harian" : "View Calendar & Daily Runway"}</span>
-          </button>
-        </div>
-      </motion.div>
-    </>
-  )}
-</AnimatePresence>,
-document.body
-);
+                <p
+                  className="text-[12px] max-w-[280px] mx-auto mt-2 leading-relaxed font-normal"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian
+                    ? "Jika laju pengeluaran stabil pada ritme ini, berikut estimasi total akhir bulan."
+                    : "If you keep spending at the same pace, here is what the full month will look like."}
+                </p>
+              </div>
+
+              {/* Floating Minimalist Dual-Curve Chart (Original Pure Floating Layout) */}
+              <div className="w-full pt-3 pb-2 touch-none">
+                <svg
+                  ref={chartRef}
+                  viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                  className="w-full h-auto overflow-visible cursor-crosshair select-none"
+                  onPointerDown={handlePointerMove}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerLeave}
+                  onPointerLeave={handlePointerLeave}
+                >
+                  <defs>
+                    {/* Liquid Glass Monochromatic Luminous Gradient */}
+                    <linearGradient
+                      id="spentGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={isDark ? "#ffffff" : "#18181b"}
+                        stopOpacity={isDark ? 0.22 : 0.09}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={isDark ? "#ffffff" : "#18181b"}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Baseline at bottom */}
+                  <line
+                    x1={padLeft}
+                    y1={padTop + plotHeight}
+                    x2={padLeft + plotWidth}
+                    y2={padTop + plotHeight}
+                    stroke={
+                      isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"
+                    }
+                    strokeWidth="1"
+                  />
+
+                  {/* Y-axis tick labels on left */}
+                  <text
+                    x={padLeft - 6}
+                    y={padTop + 4}
+                    textAnchor="end"
+                    fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
+                    fontSize="8.5"
+                    fontFamily="monospace"
+                  >
+                    {yLabelTop}
+                  </text>
+                  <text
+                    x={padLeft - 6}
+                    y={padTop + plotHeight / 2 + 3}
+                    textAnchor="end"
+                    fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
+                    fontSize="8.5"
+                    fontFamily="monospace"
+                  >
+                    {yLabelMid}
+                  </text>
+                  <text
+                    x={padLeft - 6}
+                    y={padTop + plotHeight}
+                    textAnchor="end"
+                    fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
+                    fontSize="8.5"
+                    fontFamily="monospace"
+                  >
+                    0
+                  </text>
+
+                  {/* Area fill under solid curve */}
+                  {actualAreaPath && (
+                    <path d={actualAreaPath} fill="url(#spentGradient)" />
+                  )}
+
+                  {/* Dashed Forecast Path (Future trajectory) */}
+                  {forecastPath && (
+                    <path
+                      d={forecastPath}
+                      fill="none"
+                      stroke={isDark ? "rgba(255,255,255,0.45)" : "#71717a"}
+                      strokeWidth="1.75"
+                      strokeDasharray="4 4"
+                      strokeLinecap="round"
+                    />
+                  )}
+
+                  {/* Solid Actual Spend Curve with Subtle Luminous Rim */}
+                  {actualPath && (
+                    <path
+                      d={actualPath}
+                      fill="none"
+                      stroke={isDark ? "#ffffff" : "#18181b"}
+                      strokeWidth="2.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+
+                  {/* Terminal marker dot on today */}
+                  {daysElapsed >= 1 && (
+                    <g>
+                      <circle
+                        cx={getX(daysElapsed)}
+                        cy={getY(
+                          actualCumulative.get(daysElapsed) ||
+                            effectiveTotalExpense,
+                        )}
+                        r="6"
+                        fill={
+                          isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)"
+                        }
+                      />
+                      <circle
+                        cx={getX(daysElapsed)}
+                        cy={getY(
+                          actualCumulative.get(daysElapsed) ||
+                            effectiveTotalExpense,
+                        )}
+                        r="3.5"
+                        fill={isDark ? "#ffffff" : "#18181b"}
+                        stroke={isDark ? "#121216" : "#ffffff"}
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+
+                  {/* Interactive Scrubber Indicator */}
+                  {hoveredDay !== null && (
+                    <g>
+                      <line
+                        x1={getX(hoveredDay)}
+                        y1={padTop}
+                        x2={getX(hoveredDay)}
+                        y2={padTop + plotHeight}
+                        stroke={isDark ? "#ffffff" : "#18181b"}
+                        strokeWidth="1"
+                        strokeDasharray="2 2"
+                        opacity="0.8"
+                      />
+                      <circle
+                        cx={getX(hoveredDay)}
+                        cy={getY(
+                          hoveredDay <= daysElapsed
+                            ? actualCumulative.get(hoveredDay) || 0
+                            : forecastCumulative.get(hoveredDay) || 0,
+                        )}
+                        r="4"
+                        fill={isDark ? "#ffffff" : "#18181b"}
+                        stroke={isDark ? "#000000" : "#ffffff"}
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+
+                  {/* X-axis tick labels at bottom */}
+                  <text
+                    x={padLeft}
+                    y={svgHeight - 6}
+                    fill="var(--text-tertiary)"
+                    fontSize="9"
+                    fontFamily="'Urbanist', sans-serif"
+                    fontWeight="600"
+                  >
+                    1
+                  </text>
+                  <text
+                    x={padLeft + plotWidth}
+                    y={svgHeight - 6}
+                    textAnchor="end"
+                    fill="var(--text-tertiary)"
+                    fontSize="9"
+                    fontFamily="'Urbanist', sans-serif"
+                    fontWeight="600"
+                  >
+                    {totalDays}
+                  </text>
+                </svg>
+
+                {/* Minimalist Centered Legend */}
+                <div
+                  className="flex items-center justify-center gap-6 mt-1 text-[11px] font-medium"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-4 h-[2px] rounded-full"
+                      style={{ background: "var(--text-primary)" }}
+                    />
+                    <span>{isIndonesian ? "Terpakai" : "Spent"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-4 h-[2px] rounded-full border-t border-dashed"
+                      style={{
+                        borderTopWidth: "2px",
+                        borderColor: "var(--text-tertiary)",
+                      }}
+                    />
+                    <span>{isIndonesian ? "Prakiraan" : "Forecast"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Polished Liquid Glass Metric Cards (Side-by-Side Original Layout) */}
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div
+                  className="p-3.5 rounded-2xl flex flex-col justify-between transition-all"
+                  style={{
+                    background: isDark
+                      ? "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                      : "linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 100%)",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.12)"
+                      : "1px solid rgba(255, 255, 255, 0.85)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)"
+                      : "inset 0 1.5px 0 #ffffff, 0 4px 14px rgba(20, 25, 40, 0.03)",
+                  }}
+                >
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian ? "Terpakai sejauh ini" : "Spent so far"}
+                  </span>
+                  <p
+                    className="text-[17px] font-semibold amount mt-1 tabular-nums truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {formatRupiah(effectiveTotalExpense)}
+                  </p>
+                </div>
+
+                <div
+                  className="p-3.5 rounded-2xl flex flex-col justify-between transition-all"
+                  style={{
+                    background: isDark
+                      ? "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                      : "linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 100%)",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.12)"
+                      : "1px solid rgba(255, 255, 255, 0.85)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)"
+                      : "inset 0 1.5px 0 #ffffff, 0 4px 14px rgba(20, 25, 40, 0.03)",
+                  }}
+                >
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian ? "Rata-rata harian" : "Daily average"}
+                  </span>
+                  <p
+                    className="text-[17px] font-semibold amount mt-1 tabular-nums truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {formatRupiah(Math.round(effectiveDailyAvg))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Polished Tactile Liquid Glass Action Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onClose();
+                  navigate("/calendar");
+                }}
+                className="w-full mt-3 py-3 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer select-none"
+                style={{
+                  background: isDark
+                    ? "linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%)"
+                    : "linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.58) 100%)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.18)"
+                    : "1px solid rgba(255, 255, 255, 0.95)",
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 24px rgba(0, 0, 0, 0.35)"
+                    : "inset 0 1.5px 0 #ffffff, 0 6px 20px rgba(20, 25, 40, 0.04)",
+                  color: "var(--text-primary)",
+                }}
+                title={
+                  isIndonesian
+                    ? "Lihat Kalender & Runway Harian"
+                    : "View Calendar & Daily Runway"
+                }
+              >
+                <CalendarDays size={14} strokeWidth={1.8} />
+                <span>
+                  {isIndonesian
+                    ? "Lihat Kalender & Runway Harian"
+                    : "View Calendar & Daily Runway"}
+                </span>
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
 }
-

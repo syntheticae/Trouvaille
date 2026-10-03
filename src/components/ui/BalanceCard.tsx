@@ -13,12 +13,13 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import type { Wallet } from "../../lib/types";
+import { cn } from "../../lib/utils";
 
 function getWalletRoleDescription(
   name: string,
   classification?: string,
   isAnchor?: boolean,
-  isIndonesian?: boolean
+  isIndonesian?: boolean,
 ): string {
   const n = (name || "").toLowerCase();
   if (isAnchor) {
@@ -98,11 +99,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [showDormant, setShowDormant] = useState(false);
   const { isIndonesian } = useLanguage();
   useCurrency();
-  const {
-    liquidAccounts,
-    liquidCapital,
-    allTxs,
-  } = useWalletBalances();
+  const { liquidAccounts, liquidCapital, allTxs } = useWalletBalances();
   const { data: bills = [] } = useBills();
   const { data: wallets = [] } = useWallets();
   const { theme } = useTheme();
@@ -121,7 +118,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
     : "0 10px 30px -8px rgba(31, 36, 48, 0.06), inset 0 1px 0 #ffffff";
 
   // Selected cash wallet for detail sheet (unified with Assets page)
-  const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(null);
+  const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(
+    null,
+  );
   const [isWalletManagementOpen, setIsWalletManagementOpen] = useState(false);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
 
@@ -233,13 +232,13 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
 
   const sortedPositiveAccounts = useMemo(() => {
     return [...accounts.filter((a) => a.balance > 0)].sort(
-      (a, b) => b.balance - a.balance
+      (a, b) => b.balance - a.balance,
     );
   }, [accounts]);
 
   const zeroAccounts = useMemo(
     () => accounts.filter((a) => a.balance <= 0),
-    [accounts]
+    [accounts],
   );
 
   return (
@@ -277,7 +276,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
               style={{ color: "var(--text-secondary)" }}
             >
-              {isIndonesian ? "Semua Detail" : "All Details"} <ChevronRight size={13} />
+              {isIndonesian ? "Semua Detail" : "All Details"}{" "}
+              <ChevronRight size={13} />
             </button>
           )}
         </div>
@@ -286,14 +286,18 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           <div
             className="py-5 text-center rounded-2xl"
             style={{
-              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.03)"
+                : "rgba(0, 0, 0, 0.025)",
               border: cardBorder,
             }}
           >
             <div
               className="w-7 h-7 mx-auto rounded-full flex items-center justify-center mb-1.5"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.06)"
+                  : "rgba(0, 0, 0, 0.04)",
                 color: "var(--text-tertiary)",
               }}
             >
@@ -303,7 +307,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               className="text-[12px] font-bold"
               style={{ color: "var(--text-secondary)" }}
             >
-              {isIndonesian ? "Belum Ada Aktivitas Akun" : "No Account Activity"}
+              {isIndonesian
+                ? "Belum Ada Aktivitas Akun"
+                : "No Account Activity"}
             </p>
             <p
               className="text-[10px] mt-0.5"
@@ -320,7 +326,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             <div
               className="w-full h-2.5 rounded-full overflow-hidden flex gap-[2px] mb-3 p-[1px]"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
                 border: cardBorder,
               }}
             >
@@ -344,7 +352,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   key={item.name}
                   className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-full"
                   style={{
-                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.035)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.035)",
                     border: cardBorder,
                   }}
                 >
@@ -371,7 +381,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   onClick={() => setDetailOpen(true)}
                   className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer"
                   style={{
-                    background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.05)",
                     border: cardBorder,
                     color: "var(--text-secondary)",
                   }}
@@ -428,33 +440,36 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
 
       {/* Refined Executive Streamlined Liquidity Breakdown Bottom Sheet */}
       <BottomSheet isOpen={detailOpen} onClose={() => setDetailOpen(false)}>
-        <div className="p-5 space-y-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+24px),32px)]">
-          {/* Header */}
-          <div className="flex justify-between items-start">
-            <div>
+        <div className="p-4 sm:p-5 space-y-3 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),20px)] select-none">
+          {/* ── 1. Apple Minimalist Header ───────────────────────────────────── */}
+          <div className="flex justify-between items-baseline gap-2 pb-0.5">
+            <div className="min-w-0">
               <h3
-                className="font-semibold text-lg leading-tight"
+                className="font-bold text-[15px] tracking-tight leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {isIndonesian ? "Sumber Likuiditas" : "Liquidity Sources"}
               </h3>
               <p
-                className="text-[11px] font-medium mt-0.5"
+                className="text-[10px] font-medium mt-0.5 truncate"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {sortedPositiveAccounts.length}{" "}
-                {isIndonesian ? "akun aktif · Posisi Modal Likuid" : "active accounts · Liquid Capital Position"}
+                {isIndonesian
+                  ? "akun aktif · Posisi Modal Likuid"
+                  : "active accounts · Liquid Position"}
               </p>
             </div>
-            <div className="text-right">
-              <p
-                className="text-[9px] font-bold uppercase tracking-wider"
+
+            <div className="text-right shrink-0">
+              <span
+                className="text-[8.5px] font-semibold uppercase tracking-wider block opacity-60"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isIndonesian ? "Total Kas Likuid" : "Total Liquid Capital"}
-              </p>
+                {isIndonesian ? "Total Kas Likuid" : "Total Liquid"}
+              </span>
               <p
-                className="amount text-[18px] font-bold leading-tight mt-0.5"
+                className="amount text-[15px] font-bold leading-tight tabular-nums mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {hideBalance ? "Rp ••••••••" : formatRupiah(totalLiquidCapital)}
@@ -462,12 +477,14 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             </div>
           </div>
 
-          {/* Trouvaille Telemetry Strip: Safe to Spend & Committed Buffer */}
+          {/* ── 2. Compact Telemetry Strip ──────────────────────────────────── */}
           {committedAmount > 0 && (
             <div
-              className="p-3 rounded-2xl flex items-center justify-between text-[11px]"
+              className="py-1.5 px-2.5 rounded-xl flex items-center justify-between text-[10px] transition-colors"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.03)"
+                  : "rgba(0, 0, 0, 0.02)",
                 border: cardBorder,
               }}
             >
@@ -476,22 +493,28 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: "var(--text-primary)" }}
                 />
-                <span className="truncate" style={{ color: "var(--text-tertiary)" }}>
+                <span
+                  className="truncate opacity-75"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {isIndonesian ? "Aman Dibelanjakan:" : "Safe to Spend:"}
                 </span>
                 <span
-                  className="amount font-bold"
+                  className="amount font-bold tabular-nums"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {hideBalance ? "Rp ••••••••" : formatRupiah(safeToSpend)}
                 </span>
               </div>
-              <div className="text-right shrink-0">
-                <span style={{ color: "var(--text-tertiary)" }}>
+              <div className="text-right shrink-0 pl-2">
+                <span
+                  className="opacity-75"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {isIndonesian ? "Komitmen: " : "Committed: "}
                 </span>
                 <span
-                  className="amount font-semibold"
+                  className="amount font-medium tabular-nums"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   {hideBalance ? "Rp ••••••••" : formatRupiah(committedAmount)}
@@ -500,13 +523,15 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             </div>
           )}
 
-          {/* Continuous Micro Allocation Spectrum */}
+          {/* ── 3. Micro Allocation Spectrum ─────────────────────────────────── */}
           {items.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div
-                className="w-full h-1.5 rounded-full overflow-hidden flex gap-[2px] p-[1px]"
+                className="w-full h-1 rounded-full overflow-hidden flex gap-[2px] p-[0.5px]"
                 style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.04)",
                   border: cardBorder,
                 }}
               >
@@ -522,7 +547,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   />
                 ))}
               </div>
-              <div className="flex items-center justify-between text-[10px] px-0.5" style={{ color: "var(--text-tertiary)" }}>
+              <div
+                className="flex items-center justify-between text-[9px] px-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 <span>
                   {sortedPositiveAccounts.length}{" "}
                   {isIndonesian ? "akun likuid" : "liquid accounts"}
@@ -532,118 +560,94 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             </div>
           )}
 
-          {/* Sleek Streamlined Holdings List (Reference Style) */}
-          <div className="flex flex-col">
-            <div
-              className="h-[1px] w-full shrink-0"
-              style={{ background: dividerGradient }}
-            />
+          {/* ── 4. Compact Apple-Style 2-Column Micro-Grid ───────────────────── */}
+          <div className="grid grid-cols-2 gap-1.5 overflow-y-auto no-scrollbar pr-0.5 pt-0.5">
             {sortedPositiveAccounts.map((acc, index) => {
               const isAnchor = index === 0;
               return (
-                <Fragment key={acc.id || acc.name}>
-                  {index > 0 && (
-                    <div
-                      className="h-[1px] w-full shrink-0"
-                      style={{ background: dividerGradient }}
-                    />
+                <div
+                  key={acc.id || acc.name}
+                  onClick={() => handleOpenWalletModal(acc)}
+                  className={cn(
+                    "p-2.5 rounded-xl border flex flex-col justify-between transition-all cursor-pointer active:scale-[0.98] group relative select-none",
+                    isDark
+                      ? "bg-white/[0.03] hover:bg-white/[0.05] border-white/[0.07] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                      : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.06] shadow-[inset_0_1px_0_#ffffff]",
                   )}
-                  <div
-                    onClick={() => handleOpenWalletModal(acc)}
-                    className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
-                  >
-                    {/* Left Column: Clean Unboxed Icon + Name with Chevron + Subtitle */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
-                        <IconRenderer icon={acc.icon} size="w-5 h-5" />
+                >
+                  {/* Row 1: Icon + Name + Core Tag & Allocation % */}
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 opacity-70 text-[var(--text-secondary)]">
+                        <IconRenderer icon={acc.icon} size="w-3.5 h-3.5" />
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="text-[14.5px] font-semibold tracking-tight truncate"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {acc.name}
-                          </span>
-                          <ChevronRight
-                            size={13}
-                            className="text-[var(--text-tertiary)] group-hover:translate-x-0.5 transition-transform shrink-0"
-                          />
-                          {isAnchor && (
-                            <span
-                              className="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0"
-                              style={{
-                                background: "var(--glass-fill)",
-                                color: "var(--text-secondary)",
-                                border: "1px solid var(--glass-border)",
-                              }}
-                            >
-                              {isIndonesian ? "Utama" : "Core"}
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className="text-[11px] font-medium mt-0.5 truncate"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          <span
-                            className="font-semibold"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {acc.percent.toFixed(1)}%
-                          </span>
-                          {" · "}
-                          {getWalletRoleDescription(
-                            acc.name,
-                            acc.classification,
-                            isAnchor,
-                            isIndonesian
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Tabular Balance + Sublabel */}
-                    <div className="text-right shrink-0 pl-2">
-                      <p
-                        className="amount text-[15px] font-bold leading-tight"
+                      <span
+                        className="text-[11.5px] font-semibold tracking-tight truncate leading-none"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
-                      </p>
-                      <p
-                        className="text-[10px] mt-0.5 font-medium"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        {acc.percent.toFixed(1)}% {isIndonesian ? "alokasi" : "share"}
-                      </p>
+                        {acc.name}
+                      </span>
+                      {isAnchor && (
+                        <span
+                          className={cn(
+                            "text-[7.5px] px-1 py-0.2 rounded font-bold uppercase tracking-wider shrink-0",
+                            isDark
+                              ? "bg-white/10 text-zinc-300 border border-white/10"
+                              : "bg-black/5 text-zinc-700 border border-black/5",
+                          )}
+                        >
+                          {isIndonesian ? "Utama" : "Core"}
+                        </span>
+                      )}
                     </div>
+                    <span className="text-[9.5px] font-medium tabular-nums shrink-0 text-[var(--text-tertiary)]">
+                      {acc.percent.toFixed(1)}%
+                    </span>
                   </div>
-                </Fragment>
+
+                  {/* Row 2: Balance & Micro Role Subtitle */}
+                  <div className="flex items-baseline justify-between gap-1">
+                    <p
+                      className="amount text-[12.5px] font-bold tabular-nums leading-none truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
+                    </p>
+                    <span
+                      className="text-[8.5px] font-medium truncate opacity-60 max-w-[45%] text-right"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {getWalletRoleDescription(
+                        acc.name,
+                        acc.classification,
+                        isAnchor,
+                        isIndonesian,
+                      )}
+                    </span>
+                  </div>
+                </div>
               );
             })}
-            <div
-              className="h-[1px] w-full shrink-0"
-              style={{ background: dividerGradient }}
-            />
           </div>
 
-          {/* Collapsible Dormant / Zero-Balance Accounts */}
+          {/* ── 5. Compact Dormant Accounts Pill ─────────────────────────────── */}
           {zeroAccounts.length > 0 && (
-            <div className="pt-2">
+            <div className="pt-0.5">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   setShowDormant(!showDormant);
                 }}
-                className="w-full py-2.5 px-3 rounded-2xl flex items-center justify-between text-[11.5px] font-medium border transition-all cursor-pointer active:scale-[0.99]"
+                className="w-full py-1.5 px-2.5 rounded-xl flex items-center justify-between text-[10.5px] font-medium border transition-all cursor-pointer active:scale-[0.99]"
                 style={{
-                  background: "var(--bg-elevated)",
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.02)"
+                    : "rgba(0, 0, 0, 0.015)",
                   borderColor: "var(--glass-border)",
                 }}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span
                     className="w-1.5 h-1.5 rounded-full shrink-0"
                     style={{ background: "var(--text-tertiary)", opacity: 0.5 }}
@@ -658,16 +662,20 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                       : "Dormant Accounts (Rp 0)"}
                   </span>
                 </div>
+
                 <div
                   className="flex items-center gap-1.5 shrink-0"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  <span className="text-[11px] font-medium">
-                    {zeroAccounts.slice(0, 3).map((a) => a.name).join(", ")}
-                    {zeroAccounts.length > 3 ? "..." : ""}
+                  <span className="text-[9.5px] font-medium opacity-60">
+                    {zeroAccounts
+                      .slice(0, 2)
+                      .map((a) => a.name)
+                      .join(", ")}
+                    {zeroAccounts.length > 2 ? "..." : ""}
                   </span>
                   <ChevronDown
-                    size={14}
+                    size={12}
                     className={`transition-transform duration-200 ${
                       showDormant ? "rotate-180" : ""
                     }`}
@@ -676,51 +684,37 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               </button>
 
               {showDormant && (
-                <div className="flex flex-col px-1 pt-1">
-                  <div
-                    className="h-[1px] w-full shrink-0"
-                    style={{ background: dividerGradient }}
-                  />
-                  {zeroAccounts.map((acc, zIdx) => (
-                    <Fragment key={acc.id || acc.name}>
-                      {zIdx > 0 && (
-                        <div
-                          className="h-[1px] w-full shrink-0"
-                          style={{ background: dividerGradient }}
-                        />
+                <div className="grid grid-cols-2 gap-1 pt-1  overflow-y-auto no-scrollbar">
+                  {zeroAccounts.map((acc) => (
+                    <div
+                      key={acc.id || acc.name}
+                      onClick={() => handleOpenWalletModal(acc)}
+                      className={cn(
+                        "p-1.5 px-2 rounded-lg border flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all",
+                        isDark
+                          ? "bg-white/[0.015] border-white/[0.05] hover:bg-white/[0.03]"
+                          : "bg-black/[0.01] border-black/[0.04] hover:bg-black/[0.02]",
                       )}
-                      <div
-                        onClick={() => handleOpenWalletModal(acc)}
-                        className="py-2.5 flex items-center justify-between text-xs cursor-pointer active:opacity-70 transition-opacity"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-6 h-6 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
-                            <IconRenderer icon={acc.icon} size="w-4 h-4" />
-                          </div>
-                          <span
-                            className="truncate font-medium"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {acc.name}
-                          </span>
-                          <ChevronRight
-                            size={12}
-                            className="text-[var(--text-tertiary)]"
-                          />
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-4 h-4 flex items-center justify-center shrink-0 opacity-60 text-[var(--text-secondary)]">
+                          <IconRenderer icon={acc.icon} size="w-3 h-3" />
                         </div>
                         <span
-                          className="amount text-[11px] font-medium"
-                          style={{ color: "var(--text-tertiary)" }}
+                          className="truncate font-medium text-[10px]"
+                          style={{ color: "var(--text-secondary)" }}
                         >
-                          Rp 0
+                          {acc.name}
                         </span>
                       </div>
-                    </Fragment>
+                      <span
+                        className="amount text-[9.5px] font-medium tabular-nums shrink-0 pl-1"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        Rp 0
+                      </span>
+                    </div>
                   ))}
-                  <div
-                    className="h-[1px] w-full shrink-0"
-                    style={{ background: dividerGradient }}
-                  />
                 </div>
               )}
             </div>

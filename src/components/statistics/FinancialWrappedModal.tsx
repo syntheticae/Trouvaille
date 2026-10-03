@@ -717,13 +717,22 @@ export function FinancialWrappedModal({
           if (nativeErr?.name === "AbortError") {
             sharedSuccess = true;
           } else {
-            console.warn("[FinancialWrappedModal] Native share photo error:", nativeErr);
+            console.warn(
+              "[FinancialWrappedModal] Native share photo error:",
+              nativeErr,
+            );
           }
         }
       }
 
       // 2. Web Share API Fallback
-      if (!sharedSuccess && file && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+      if (
+        !sharedSuccess &&
+        file &&
+        typeof navigator !== "undefined" &&
+        navigator.share &&
+        navigator.canShare
+      ) {
         try {
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
@@ -782,14 +791,18 @@ export function FinancialWrappedModal({
       setTimeout(() => setIsPhotoSaved(false), 2500);
 
       showToast(
-        isIndonesian ? "Foto slide berhasil dibagikan" : "Slide photo shared successfully",
+        isIndonesian
+          ? "Foto slide berhasil dibagikan"
+          : "Slide photo shared successfully",
         "update",
         () => {},
       );
     } catch (err) {
       console.error("Failed to share slide photo:", err);
       showToast(
-        isIndonesian ? "Gagal membagikan foto slide" : "Failed to share slide photo",
+        isIndonesian
+          ? "Gagal membagikan foto slide"
+          : "Failed to share slide photo",
         "delete",
         () => {},
       );
@@ -912,7 +925,10 @@ export function FinancialWrappedModal({
           if (nativeErr?.name === "AbortError") {
             sharedSuccess = true;
           } else {
-            console.warn("[FinancialWrappedModal] Native share PDF error:", nativeErr);
+            console.warn(
+              "[FinancialWrappedModal] Native share PDF error:",
+              nativeErr,
+            );
           }
         }
       }
@@ -959,14 +975,18 @@ export function FinancialWrappedModal({
       setTimeout(() => setIsCopied(false), 3000);
 
       showToast(
-        isIndonesian ? "Laporan PDF berhasil dibagikan" : "PDF report shared successfully",
+        isIndonesian
+          ? "Laporan PDF berhasil dibagikan"
+          : "PDF report shared successfully",
         "update",
         () => {},
       );
     } catch (err) {
       console.error("Failed to generate Financial Wrapped PDF:", err);
       showToast(
-        isIndonesian ? "Gagal membuat laporan PDF" : "Failed to generate PDF report",
+        isIndonesian
+          ? "Gagal membuat laporan PDF"
+          : "Failed to generate PDF report",
         "delete",
         () => {},
       );
@@ -2120,9 +2140,9 @@ export function FinancialWrappedModal({
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  className="h-full flex flex-col justify-between text-left select-none pt-1"
+                  className="h-full flex flex-col justify-between text-left select-none"
                 >
-                  <div className="space-y-3 sm:space-y-3.5">
+                  <div className="space-y-1 sm:space-y-3">
                     <div className="flex items-center justify-between">
                       <span
                         className={`text-[11px]  tracking-widest uppercase ${
@@ -2142,26 +2162,19 @@ export function FinancialWrappedModal({
                     >
                       {isIndonesian ? "Valuasi Portofolio" : "Portfolio Assets"}
                     </h2>
-
-                    <div className="text-xs italic opacity-80 max-w-md border-l-2 border-neutral-400 pl-3 py-0.5">
-                      {isIndonesian
-                        ? '"Dum spiro, Spero." — Cicero'
-                        : '"Dum spiro, Spero." — Cicero'}
-                    </div>
-
                     <p
                       className={`text-xs sm:text-sm font-normal leading-relaxed ${
                         isDark ? "text-white/60" : "text-black/60"
                       }`}
                     >
                       {isIndonesian
-                        ? "Struktur proporsi akumulasi modal dan alokasi instrumen kekayaan bersih Anda."
-                        : "Accumulated capital proportion and net worth asset allocation distribution."}
+                        ? "Struktur proporsi modal dan alokasi aset."
+                        : "Capital proportion asset allocation distribution."}
                     </p>
 
                     {/* Monolithic Summary Card */}
                     <div
-                      className={`p-4 sm:p-4.5 rounded-2xl border space-y-3 ${
+                      className={`p-4  sm:p-4.5 rounded-2xl border space-y-3 ${
                         isDark
                           ? "bg-white/[0.03] border-white/10 shadow-xl"
                           : "bg-black/[0.02] border-black/10 shadow-sm"
@@ -2289,23 +2302,17 @@ export function FinancialWrappedModal({
                               ? "1px solid rgba(255, 255, 255, 0.20)"
                               : "1px solid rgba(0, 0, 0, 0.25)",
                           }}
-                        >
-                          {dominantAssetKey === "liquid" && (
-                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
-                              {isIndonesian ? "DOMINAN" : "DOMINANT"}
-                            </span>
-                          )}
-                        </div>
+                        ></div>
                         <div className="w-full text-left mt-2 pl-0.5">
                           <span
-                            className={`text-base sm:text-lg font-bold block ${
+                            className={`text-xl sm:text-lg font-bold block ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
                             {assetPcts.liquid}%
                           </span>
                           <span
-                            className={`text-[10px]  uppercase truncate block ${
+                            className={`text-[12px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2333,23 +2340,17 @@ export function FinancialWrappedModal({
                               ? "1px solid rgba(255, 255, 255, 0.14)"
                               : "1px solid rgba(0, 0, 0, 0.18)",
                           }}
-                        >
-                          {dominantAssetKey === "physical" && (
-                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
-                              {isIndonesian ? "DOMINAN" : "DOMINANT"}
-                            </span>
-                          )}
-                        </div>
+                        ></div>
                         <div className="w-full text-left mt-2 pl-0.5">
                           <span
-                            className={`text-base sm:text-lg font-bold block ${
+                            className={`text-xl sm:text-lg font-bold block ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
                             {assetPcts.physical}%
                           </span>
                           <span
-                            className={`text-[10px]  uppercase truncate block ${
+                            className={`text-[12px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2368,30 +2369,27 @@ export function FinancialWrappedModal({
                               ? "linear-gradient(to top, #e5e5ea 0%, #ffffff 100%)"
                               : "linear-gradient(to top, #09090b 0%, #1c1c20 100%)",
                             color: isDark ? "#09090b" : "#ffffff",
-                            boxShadow: isDark
-                              ? "0 15px 35px rgba(255, 255, 255, 0.12)"
-                              : "0 15px 35px rgba(0, 0, 0, 0.25)",
+                            borderTop: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.12)"
+                              : "1px solid rgba(0, 0, 0, 0.18)",
+                            borderLeft: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.12)",
+                            borderRight: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.12)",
                           }}
-                        >
-                          {dominantAssetKey === "invest" && (
-                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
-                              {isIndonesian ? "DOMINAN" : "DOMINANT"}
-                            </span>
-                          )}
-                          <span className="text-xs  font-bold self-end opacity-90 truncate max-w-full">
-                            {assetPcts.invest}%
-                          </span>
-                        </div>
+                        ></div>
                         <div className="w-full text-left mt-2 pl-0.5">
                           <span
-                            className={`text-base sm:text-lg font-extrabold block ${
+                            className={`text-xl sm:text-lg font-extrabold block ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
                             {assetPcts.invest}%
                           </span>
                           <span
-                            className={`text-[10px]  uppercase truncate block ${
+                            className={`text-[12px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
