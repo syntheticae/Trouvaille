@@ -42,390 +42,6 @@ interface TopCategoryStat {
   emoji?: string;
 }
 
-interface WrappedDossierPdfParams {
-  jsPDF: any;
-  stats: any;
-  periodTitle: string;
-  totalAssetVal: number;
-  liquidCapital: number;
-  marketAssets: number;
-  fixedAssets: number;
-  assetPcts: { liquid: number; physical: number; invest: number };
-  formatWithPreferred: (v: number) => string;
-  isIndonesian: boolean;
-}
-
-function generateWrappedCleanDossierPdf({
-  jsPDF,
-  stats,
-  periodTitle,
-  totalAssetVal,
-  liquidCapital,
-  marketAssets,
-  fixedAssets,
-  assetPcts,
-  formatWithPreferred,
-  isIndonesian,
-}: WrappedDossierPdfParams) {
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "pt",
-    format: "a4",
-  });
-
-  const pageWidth = pdf.internal.pageSize.getWidth(); // 595.28 pt
-  const pageHeight = pdf.internal.pageSize.getHeight(); // 841.89 pt
-  const margin = 36;
-  const contentWidth = pageWidth - margin * 2; // 523.28 pt
-
-  // Pure Clean White Background
-  pdf.setFillColor(255, 255, 255);
-  pdf.rect(0, 0, pageWidth, pageHeight, "F");
-
-  let y = 46;
-
-  // Header Brand & Title
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(16);
-  pdf.setTextColor(18, 18, 20); // obsidian
-  pdf.text("TROUVAILLE", margin, y);
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(113, 113, 122); // zinc-500
-  pdf.text(
-    isIndonesian
-      ? "KILAS BALIK FINANSIAL · LAPORAN DOSSIER EKSEKUTIF"
-      : "FINANCIAL WRAPPED · EXECUTIVE DOSSIER REPORT",
-    margin,
-    y + 12
-  );
-
-  // Period, Scope & Generation Date (right aligned)
-  const now = new Date();
-  const docRef = `REF: TVL-WRAPPED-${format(now, "yyyyMMdd-HHmm")}`;
-  pdf.setFontSize(8.5);
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(24, 24, 27);
-  pdf.text(periodTitle.toUpperCase(), pageWidth - margin, y, { align: "right" });
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(docRef, pageWidth - margin, y + 11, { align: "right" });
-  pdf.text(
-    isIndonesian
-      ? `Diterbitkan: ${format(now, "dd MMMM yyyy, HH:mm", { locale: idLocale })}`
-      : `Issued: ${format(now, "dd MMMM yyyy, HH:mm")}`,
-    pageWidth - margin,
-    y + 21,
-    { align: "right" }
-  );
-
-  y += 32;
-
-  // Hairline divider
-  pdf.setDrawColor(228, 228, 233);
-  pdf.setLineWidth(0.75);
-  pdf.line(margin, y, pageWidth - margin, y);
-  y += 16;
-
-  // Section 1: Financial Persona & Archival Rating (Box)
-  const boxHeight = 78;
-  pdf.setFillColor(248, 248, 250);
-  pdf.setDrawColor(228, 228, 233);
-  pdf.roundedRect(margin, y, contentWidth, boxHeight, 6, 6, "FD");
-
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(7);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text((stats.personaTag || "").toUpperCase(), margin + 14, y + 16);
-
-  pdf.setFontSize(13);
-  pdf.setTextColor(18, 18, 20);
-  pdf.text(stats.persona || "Sovereign Allocator", margin + 14, y + 33);
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(82, 82, 91);
-  const descLines = pdf.splitTextToSize(stats.personaDesc || "", contentWidth - 140);
-  pdf.text(descLines.slice(0, 3), margin + 14, y + 46);
-
-  // Right Side Badges inside box
-  const badgeX = pageWidth - margin - 100;
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(220, 220, 226);
-  pdf.roundedRect(badgeX, y + 12, 86, 54, 4, 4, "FD");
-
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(14);
-  pdf.setTextColor(18, 18, 20);
-  pdf.text(stats.efficiencyGrade || "A", badgeX + 43, y + 30, { align: "center" });
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(
-    isIndonesian
-      ? `DISIPLIN: ${stats.disciplineScore || 0}%`
-      : `DISCIPLINE: ${stats.disciplineScore || 0}%`,
-    badgeX + 43,
-    y + 43,
-    { align: "center" }
-  );
-  pdf.text(
-    isIndonesian
-      ? `VOLATILITAS: ${stats.volatilityLabel || "STABIL"}`
-      : `VOLATILITY: ${stats.volatilityLabel || "STABLE"}`,
-    badgeX + 43,
-    y + 53,
-    { align: "center" }
-  );
-
-  y += boxHeight + 18;
-
-  // Section 2: Capital Flows & Net Equilibrium (4-Column Grid)
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(
-    isIndonesian
-      ? "RINGKASAN ARUS KAS & EKUALIBRIUM MODAL"
-      : "CAPITAL CASHFLOW & NET EQUILIBRIUM",
-    margin,
-    y
-  );
-  y += 8;
-
-  const colGap = 8;
-  const colW = (contentWidth - colGap * 3) / 4;
-  const cardH = 46;
-
-  const flowMetrics = [
-    {
-      label: isIndonesian ? "PEMASUKAN MODAL" : "CAPITAL INFLOW",
-      value: `+${formatWithPreferred(stats.totalIncome || 0)}`,
-    },
-    {
-      label: isIndonesian ? "PENGELUARAN MODAL" : "CAPITAL OUTFLOW",
-      value: `-${formatWithPreferred(stats.totalExpense || 0)}`,
-    },
-    {
-      label: isIndonesian ? "SURPLUS BERSIH" : "NET SURPLUS",
-      value: `${(stats.netCashflow || 0) >= 0 ? "+" : ""}${formatWithPreferred(stats.netCashflow || 0)}`,
-    },
-    {
-      label: isIndonesian ? "RETENSI MODAL" : "CAPITAL RETENTION",
-      value: `${stats.savingsRate || 0}% ${isIndonesian ? "Tersimpan" : "Retained"}`,
-    },
-  ];
-
-  flowMetrics.forEach((m, idx) => {
-    const cardX = margin + idx * (colW + colGap);
-    pdf.setFillColor(248, 248, 250);
-    pdf.setDrawColor(228, 228, 233);
-    pdf.roundedRect(cardX, y, colW, cardH, 4, 4, "FD");
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(113, 113, 122);
-    pdf.text(m.label, cardX + 8, y + 14);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(10.5);
-    pdf.setTextColor(18, 18, 20);
-    pdf.text(m.value, cardX + 8, y + 32);
-  });
-
-  y += cardH + 18;
-
-  // Section 3: Portfolio & Asset Architecture
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(
-    isIndonesian
-      ? "ARSITEKTUR PORTOFOLIO & KEKAYAAN BERSIH"
-      : "PORTFOLIO & WEALTH ARCHITECTURE",
-    margin,
-    y
-  );
-
-  pdf.setFontSize(8);
-  pdf.setTextColor(18, 18, 20);
-  pdf.text(
-    `${isIndonesian ? "Total Aset Terpantau:" : "Total Tracked Assets:"} ${formatWithPreferred(totalAssetVal)}`,
-    pageWidth - margin,
-    y,
-    { align: "right" }
-  );
-  y += 8;
-
-  const assetCards = [
-    {
-      label: isIndonesian ? "KAS & BANK LIKUID" : "LIQUID CASH & BANK",
-      val: formatWithPreferred(liquidCapital),
-      pct: `${assetPcts.liquid}%`,
-    },
-    {
-      label: isIndonesian ? "PORTOFOLIO INVESTASI" : "INVESTED PORTFOLIO",
-      val: formatWithPreferred(marketAssets),
-      pct: `${assetPcts.invest}%`,
-    },
-    {
-      label: isIndonesian ? "ASET FISIK & BARANG" : "PHYSICAL / FIXED ASSETS",
-      val: formatWithPreferred(fixedAssets),
-      pct: `${assetPcts.physical}%`,
-    },
-  ];
-
-  const aColW = (contentWidth - 16) / 3;
-  assetCards.forEach((ac, idx) => {
-    const ax = margin + idx * (aColW + 8);
-    pdf.setFillColor(248, 248, 250);
-    pdf.setDrawColor(228, 228, 233);
-    pdf.roundedRect(ax, y, aColW, 40, 4, 4, "FD");
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(113, 113, 122);
-    pdf.text(ac.label, ax + 8, y + 13);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9.5);
-    pdf.setTextColor(18, 18, 20);
-    pdf.text(`${ac.val} (${ac.pct})`, ax + 8, y + 28);
-  });
-
-  y += 40 + 18;
-
-  // Section 4: Top Category Outflow Allocation (Table)
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(
-    isIndonesian
-      ? "RINCIAN ALOKASI PENGELUARAN UTAMA"
-      : "PRIMARY OUTFLOW ALLOCATION BREAKDOWN",
-    margin,
-    y
-  );
-  y += 8;
-
-  // Table Header Row
-  pdf.setFillColor(240, 240, 243);
-  pdf.rect(margin, y, contentWidth, 18, "F");
-
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(7);
-  pdf.setTextColor(82, 82, 91);
-  pdf.text(isIndonesian ? "KATEGORI PENGELUARAN" : "EXPENSE CATEGORY", margin + 8, y + 12);
-  pdf.text(isIndonesian ? "FREKUENSI" : "FREQUENCY", margin + 220, y + 12);
-  pdf.text(isIndonesian ? "TOTAL NOMINAL" : "TOTAL AMOUNT", margin + 340, y + 12);
-  pdf.text(isIndonesian ? "PORSI" : "SHARE", pageWidth - margin - 8, y + 12, { align: "right" });
-
-  y += 18;
-
-  const topCats = (stats.cascadeCategories && stats.cascadeCategories.length > 0)
-    ? stats.cascadeCategories.slice(0, 6)
-    : (stats.top4Cats || []).slice(0, 6);
-
-  if (topCats.length === 0) {
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8);
-    pdf.setTextColor(113, 113, 122);
-    pdf.text(
-      isIndonesian ? "Tidak ada pengeluaran tercatat pada periode ini." : "No recorded expenses in this period.",
-      margin + 8,
-      y + 14
-    );
-    y += 24;
-  } else {
-    topCats.forEach((cat: any, cIdx: number) => {
-      const rowH = 20;
-      if (cIdx % 2 === 1) {
-        pdf.setFillColor(250, 250, 252);
-        pdf.rect(margin, y, contentWidth, rowH, "F");
-      }
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(24, 24, 27);
-      pdf.text(cat.name || "Lainnya", margin + 8, y + 13);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(113, 113, 122);
-      pdf.text(`${cat.count || 1} ${isIndonesian ? "transaksi" : "txs"}`, margin + 220, y + 13);
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(24, 24, 27);
-      pdf.text(formatWithPreferred(cat.total || 0), margin + 340, y + 13);
-
-      const pct = cat.percentage ?? ((stats.totalExpense || 0) > 0 ? Math.round(((cat.total || 0) / stats.totalExpense) * 100) : 0);
-      pdf.text(`${pct}%`, pageWidth - margin - 8, y + 13, { align: "right" });
-
-      pdf.setDrawColor(240, 240, 244);
-      pdf.setLineWidth(0.5);
-      pdf.line(margin, y + rowH, pageWidth - margin, y + rowH);
-
-      y += rowH;
-    });
-  }
-
-  y += 14;
-
-  // Section 5: Behavioral Health & Integrity Stats
-  const avgTx = (stats.txCount || 0) > 0 ? Math.round((stats.totalExpense || 0) / stats.txCount) : 0;
-  pdf.setFillColor(248, 248, 250);
-  pdf.setDrawColor(228, 228, 233);
-  pdf.roundedRect(margin, y, contentWidth, 34, 4, 4, "FD");
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(113, 113, 122);
-  pdf.text(
-    isIndonesian
-      ? `TOTAL TRANSAKSI: ${stats.txCount || 0} Operasi  ·  RATA-RATA PENGELUARAN / TRANSAKSI: ${formatWithPreferred(avgTx)}`
-      : `RECORDED TRANSACTIONS: ${stats.txCount || 0} Operations  ·  AVG OUTFLOW / TX: ${formatWithPreferred(avgTx)}`,
-    margin + 12,
-    y + 14
-  );
-
-  pdf.text(
-    isIndonesian
-      ? `STATUS INTEGRITAS: 100% Terverifikasi  ·  SKOR DISIPLIN KEUANGAN: ${stats.disciplineScore || 0}%`
-      : `INTEGRITY AUDIT: 100% Reconciled  ·  DISCIPLINE COMPLIANCE: ${stats.disciplineScore || 0}%`,
-    margin + 12,
-    y + 25
-  );
-
-  // Footer (pinned to bottom)
-  const footerY = pageHeight - 34;
-  pdf.setDrawColor(228, 228, 233);
-  pdf.setLineWidth(0.75);
-  pdf.line(margin, footerY, pageWidth - margin, footerY);
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(140, 140, 150);
-  pdf.text(
-    "TROUVAILLE FINANCIAL WRAPPED · SOVEREIGN ASSET INTELLIGENCE PLATFORM",
-    margin,
-    footerY + 14
-  );
-
-  pdf.text(
-    isIndonesian ? "DOKUMEN RAHASIA PRIBADI · HALAMAN 1 DARI 1" : "PRIVATE & CONFIDENTIAL · PAGE 1 OF 1",
-    pageWidth - margin,
-    footerY + 14,
-    { align: "right" }
-  );
-
-  return pdf;
-}
-
 interface FinancialWrappedModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -455,8 +71,6 @@ export function FinancialWrappedModal({
   const [direction, setDirection] = useState<number>(1);
   const [isPaused, setIsPaused] = useState(false);
   const [showPauseHUD, setShowPauseHUD] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [isSharingPhoto, setIsSharingPhoto] = useState(false);
   const [isPhotoSaved, setIsPhotoSaved] = useState(false);
   const totalSlides = 10;
@@ -949,7 +563,6 @@ export function FinancialWrappedModal({
       setDirection(1);
       setIsPaused(false);
       setShowPauseHUD(false);
-      setIsCopied(false);
       setIsPhotoSaved(false);
       setIsSharingPhoto(false);
       cachedSlideFilesRef.current.clear();
@@ -1184,139 +797,6 @@ export function FinancialWrappedModal({
     }
   };
 
-  const handleDownloadPDF = async () => {
-    triggerHaptic("medium");
-    if (isExporting) return;
-    setIsExporting(true);
-    setIsPaused(true);
-    setShowPauseHUD(false);
-    if (pauseHUDTimerRef.current) {
-      clearTimeout(pauseHUDTimerRef.current);
-      pauseHUDTimerRef.current = null;
-    }
-
-    try {
-      const { jsPDF } = await import("jspdf");
-
-      const periodLabel =
-        mode === "month"
-          ? format(targetDate, "yyyy-MM")
-          : format(targetDate, "yyyy");
-      const fileName = `Trouvaille-Financial-Wrapped-${periodLabel}.pdf`;
-
-      const pdf = generateWrappedCleanDossierPdf({
-        jsPDF,
-        stats,
-        periodTitle,
-        totalAssetVal,
-        liquidCapital,
-        marketAssets,
-        fixedAssets,
-        assetPcts,
-        formatWithPreferred,
-        isIndonesian,
-      });
-
-      let sharedSuccess = false;
-
-      // 1. Native Capacitor Sharing (iOS IPA / Android)
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const pdfDataUri = pdf.output("datauristring");
-          const base64Data = pdfDataUri.includes(",")
-            ? pdfDataUri.split(",")[1]
-            : pdfDataUri;
-
-          const savedFile = await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Cache,
-          });
-
-          await Share.share({
-            title: isIndonesian
-              ? "Laporan Kilas Balik Finansial Trouvaille"
-              : "Trouvaille Financial Wrapped Report",
-            text: isIndonesian
-              ? `Laporan Finansial Lengkap ${periodTitle}`
-              : `Complete Financial Report ${periodTitle}`,
-            url: savedFile.uri,
-          });
-          sharedSuccess = true;
-        } catch (nativeErr: any) {
-          if (nativeErr?.name === "AbortError") {
-            sharedSuccess = true;
-          } else {
-            console.warn(
-              "[FinancialWrappedModal] Native share PDF error:",
-              nativeErr,
-            );
-          }
-        }
-      }
-
-      // 2. Web Share API Fallback
-      if (!sharedSuccess) {
-        const pdfBlob = pdf.output("blob");
-        if (
-          typeof navigator !== "undefined" &&
-          typeof navigator.share === "function" &&
-          typeof navigator.canShare === "function"
-        ) {
-          try {
-            const pdfFile = new File([pdfBlob], fileName, {
-              type: "application/pdf",
-            });
-            if (navigator.canShare({ files: [pdfFile] })) {
-              await navigator.share({
-                files: [pdfFile],
-                title: isIndonesian
-                  ? "Laporan Kilas Balik Finansial Trouvaille"
-                  : "Trouvaille Financial Wrapped Report",
-                text: isIndonesian
-                  ? `Laporan Finansial Lengkap ${periodTitle}`
-                  : `Complete Financial Report ${periodTitle}`,
-              });
-              sharedSuccess = true;
-            }
-          } catch (err: any) {
-            if (err?.name === "AbortError") {
-              sharedSuccess = true;
-            }
-          }
-        }
-
-        // 3. Desktop / Browser Download Fallback
-        if (!sharedSuccess) {
-          pdf.save(fileName);
-          sharedSuccess = true;
-        }
-      }
-
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 3000);
-
-      showToast(
-        isIndonesian
-          ? "Laporan PDF berhasil dibagikan"
-          : "PDF report shared successfully",
-        "add",
-        () => {},
-      );
-    } catch (err) {
-      console.error("Failed to generate Financial Wrapped PDF:", err);
-      showToast(
-        isIndonesian
-          ? "Gagal membuat laporan PDF"
-          : "Failed to generate PDF report",
-        "delete",
-        () => {},
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   const slideVariants: Variants = {
     enter: (dir: number) => ({
       x: dir > 0 ? 50 : -50,
@@ -1466,7 +946,6 @@ export function FinancialWrappedModal({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {currentSlide < totalSlides - 1 && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1509,7 +988,6 @@ export function FinancialWrappedModal({
                             : "Share"}
                     </span>
                   </button>
-                )}
 
                 <button
                   type="button"
@@ -4261,39 +3739,41 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Download & Share Full PDF Report Button */}
+                  {/* Share Story Recap Button */}
                   <button
                     type="button"
+                    data-html2canvas-ignore="true"
+                    data-ignore-export="true"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDownloadPDF();
+                      handleShareSlidePhoto();
                     }}
-                    disabled={isExporting}
+                    disabled={isSharingPhoto}
                     className={`w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg relative z-50 pointer-events-auto ${
                       isDark
                         ? "bg-white text-black hover:bg-zinc-100"
                         : "bg-black text-white hover:bg-zinc-900"
                     }`}
                   >
-                    {isExporting ? (
+                    {isSharingPhoto ? (
                       <Loader2 size={16} className="animate-spin" />
-                    ) : isCopied ? (
+                    ) : isPhotoSaved ? (
                       <Check size={16} />
                     ) : (
                       <Share2 size={16} />
                     )}
                     <span>
-                      {isExporting
+                      {isSharingPhoto
                         ? isIndonesian
-                          ? "Membuat Laporan PDF..."
-                          : "Generating PDF Dossier..."
-                        : isCopied
+                          ? "Menyiapkan Foto..."
+                          : "Preparing Story..."
+                        : isPhotoSaved
                           ? isIndonesian
-                            ? "Laporan PDF Berhasil Disimpan!"
-                            : "PDF Report Successfully Saved!"
+                            ? "Foto Tersimpan!"
+                            : "Story Photo Saved!"
                           : isIndonesian
-                            ? "Bagikan Laporan PDF (Dossier Lengkap)"
-                            : "Share Full PDF Dossier Report"}
+                            ? "Bagikan Rekap Cerita"
+                            : "Share Story Recap"}
                     </span>
                   </button>
                 </motion.div>
