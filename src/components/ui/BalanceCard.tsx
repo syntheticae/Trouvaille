@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo } from "react";
 import { ChevronRight, ChevronDown, Wallet as WalletIcon } from "lucide-react";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useBills } from "../../hooks/useBills";
@@ -145,9 +145,6 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   );
   const safeToSpend = Math.max(0, liquidCapital - committedAmount);
 
-  const dividerGradient = isDark
-    ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
-    : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.04) 20%, rgba(0, 0, 0, 0.04) 80%, transparent 100%)";
   const SEGMENT_COLORS = isDark ? SEGMENT_COLORS_DARK : SEGMENT_COLORS_LIGHT;
 
   const posLiquidAccs = useMemo(
